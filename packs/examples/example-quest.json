@@ -103,7 +103,12 @@
      ],
      "answer": "as",
      "hint": "\"As brave as a lion.\"",
-     "explanation": "Similes use like or as."
+     "explanation": "Similes use like or as.",
+     "guided": true,
+     "steps": [
+      "Look for the little word LIKE or AS.",
+      "Found it? Then it's a simile!"
+     ]
     },
     {
      "type": "mc",
@@ -236,7 +241,12 @@
      ],
      "answer": "who",
      "hint": "People get \"who.\"",
-     "explanation": "Use who for people."
+     "explanation": "Use who for people.",
+     "guided": true,
+     "steps": [
+      "Is it a person or a thing?",
+      "Person → who. Thing → which."
+     ]
     },
     {
      "type": "blank",
@@ -352,7 +362,75 @@
       ]
      ],
      "hint": "The Sun only looks big because it's close.",
-     "explanation": "The Sun is a medium star. Distance changes how bright stars look."
+     "explanation": "The Sun is a medium star. Distance changes how bright stars look.",
+     "guided": true,
+     "steps": [
+      "Think: is the star close or far?",
+      "Closer stars look brighter."
+     ]
+    }
+   ]
+  },
+  {
+   "topicId": "mt_AabJisinfi",
+   "format": "quest",
+   "teaches": [
+    "mt_lvaSGHwvQ5"
+   ],
+   "stage": {
+    "name": "Fraction Training Cove",
+    "emoji": "🏝️"
+   },
+   "intro": {
+    "emoji": "🏝️",
+    "title": "Fraction Training Cove",
+    "story": "The Kraken loves fraction riddles. Train here first!"
+   },
+   "questions": [
+    {
+     "type": "learn",
+     "emoji": "✖️",
+     "title": "\"Of\" means times",
+     "body": "1/2 of 1/4 means 1/2 × 1/4. Multiply the tops, then multiply the bottoms.",
+     "example": {
+      "prompt": "What is 1/2 of 1/3?",
+      "steps": [
+       "Tops: 1 × 1 = 1",
+       "Bottoms: 2 × 3 = 6",
+       "So 1/2 of 1/3 = 1/6"
+      ]
+     }
+    },
+    {
+     "type": "numeric",
+     "guided": true,
+     "prompt": "What is 1/2 × 1/2?",
+     "answer": "1/4",
+     "steps": [
+      "Tops: 1 × 1 = 1",
+      "Bottoms: 2 × 2 = ?"
+     ],
+     "hint": "Multiply the bottoms: 2 × 2.",
+     "explanation": "1 × 1 = 1 and 2 × 2 = 4, so 1/4."
+    },
+    {
+     "type": "mc",
+     "prompt": "What is 1/3 of 1/2?",
+     "choices": [
+      "1/6",
+      "2/5",
+      "1/5"
+     ],
+     "answer": "1/6",
+     "hint": "Tops: 1 × 1. Bottoms: 3 × 2.",
+     "explanation": "1 × 1 = 1 and 3 × 2 = 6, so 1/6."
+    },
+    {
+     "type": "numeric",
+     "prompt": "What is 2/3 × 1/2?",
+     "answer": "1/3",
+     "hint": "Tops: 2 × 1. Bottoms: 3 × 2.",
+     "explanation": "2/6, which is the same as 1/3."
     }
    ]
   },
@@ -408,7 +486,8 @@
      "hint": "Multiply the bottoms: 2 × 4.",
      "explanation": "1/2 × 1/4 = 1/8. Treasure unlocked!"
     }
-   ]
+   ],
+   "powerup": "Boss ahead! Remember: \"of\" means times. Multiply the tops, then the bottoms."
   }
  ],
  "terms": {

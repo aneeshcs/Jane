@@ -43,6 +43,9 @@ export default{async fetch(req,env){E.configure(env);const u=new URL(req.url),P=
  else if(P==='/api/map'){const sm=E.summary(S,g,now);out={codes:sm.codes,focus:S.focus,current:S.current?.topicId,progress:{...sm,codes:undefined}};}
  else if(P==='/api/answer'&&req.method==='POST'){if(!S.current)E.next(S,g,pack,now);const x=E.submit(S,g,body.answer??'',now);ev=x.ev;if(x.r.medal)x.r.medal=E.medalInfo(x.r.medal,g);
    if(x.r.done){const md=E.miniAfter(S,g,pack,now,x.r);if(md){x.r.miniDone=md;x.r.askChoice=false;}questCheck(x.r);if(!S.current&&!x.r.askChoice)E.next(S,g,pack,now);}out={...x.r,state:pub()};}
+ else if(P==='/api/stuck'&&req.method==='POST'){if(!S.current)E.next(S,g,pack,now);const x=E.stuck(S,g,now);if(x.error)return J(x,400);ev=x.ev;out={...x.r,state:pub()};}
+ else if(P==='/api/skip'&&req.method==='POST'){if(!S.current)E.next(S,g,pack,now);const x=E.skip(S,g,pack,now);if(x.error)return J(x,400);ev=x.ev;
+   const md=E.miniAfter(S,g,pack,now,x.r);if(md)x.r.miniDone=md;questCheck(x.r);if(!S.current)E.next(S,g,pack,now);out={...x.r,state:pub()};}
  else if(P==='/api/explore'&&req.method==='POST'){if(!g.byId[body.topicId])return J({error:'unknown topic'},400);const it=E.startMini(S,g,body.topicId,pack,now);if(it.error)return J(it,400);out=pub();}
  else if(P==='/api/mini/quit'&&req.method==='POST'){if(S.mini){S.mini=null;S.current=S.miniHold||null;S.miniHold=null;}if(!S.current)E.next(S,g,pack,now);out=pub();}
  else if(P==='/api/quest/start'&&req.method==='POST'){const d=body.date||today;const qp=PC[d];

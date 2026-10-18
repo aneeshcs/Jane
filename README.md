@@ -59,6 +59,10 @@ friendly tutor. The name is just a nod to the books: this project has no affilia
   `publish-lessons.mjs` validates and publishes it.
 - **Interactive formats:** multiple choice, fill-in-the-blank, order, match, picture choice, number line,
   fraction bars, true/false speed rounds, "why" and fun-fact cards, scenes and templates.
+- **Teach first, and a way out when stuck.** New or shaky skills start with a *Learn it* card (idea + worked example)
+  and guided practice before anything is graded. Every question, boss battles included, has an **I'm stuck 🤔**
+  button: a hint, then a worked example and how to start, then *Skip for now* (no heart lost). Typing "idk" does the
+  same. Skipped items come back a day later, guided. All of it is plain code, no live AI.
 - **Glossary popups.** Key words get a playful dotted underline; tap or hover shows a kid-friendly definition. Tapping a
   term never counts as an answer. Lookups are logged so the next quests can reuse those words.
 - **Creative answers.** Open questions ("as brave as a ___") accept any sensible answer and celebrate it. Fuzzy

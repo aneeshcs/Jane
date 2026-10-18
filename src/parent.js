@@ -28,9 +28,9 @@ export function parentData({S,g,now,today,logs,packs,tomorrowPack,boosts}){
   // weak spots & wins (last 7 days)
   const last7=new Set(days.slice(-7));const W={};
   for(const l of all){if(!last7.has(l.day)||!g.byId[l.topicId]||l.regraded==='neutral')continue;const w=W[l.topicId]??={id:l.topicId,name:g.byId[l.topicId].name,subject:g.byId[l.topicId].subject,hints:0,lm:0,slow:0,unsure:0,failed:0,right:0};
-    if(l.event==='demoted'||l.event==='reviewMiss'){w.failed++;continue;}if(l.event)continue;
+    if(l.event==='demoted'||l.event==='reviewMiss'){w.failed++;continue;}if(l.event==='skipped'||(l.event==='stuck'&&l.step===1)){w[l.event]=(w[l.event]||0)+1;continue;}if(l.event)continue;
     if(l.expected==='(self-check)'){if(l.given!=='yes')w.unsure++;continue;}if(l.try===1&&!l.correct)w.hints++;if(l.try>=2&&!l.correct)w.lm++;if(l.try===1&&l.correct)w.right++;if(l.elapsedSec>30&&l.elapsedSec<600)w.slow++;}
-  const score=w=>w.lm*3+w.hints*2+w.slow+w.failed*3+w.unsure*2;
+  const score=w=>w.lm*3+w.hints*2+w.slow+w.failed*3+w.unsure*2+(w.stuck||0)*2+(w.skipped||0)*3;
   const struggles=Object.values(W).map(w=>({...w,score:score(w),state:st(w.id)})).filter(w=>w.score>=2&&w.state!=='mastered'||w.score>=4).sort((a,b)=>b.score-a.score).slice(0,6);
   const wins=all.filter(l=>last7.has(l.day)&&l.event==='mastered').map(l=>({name:l.topic,how:l.how,day:l.day,subject:g.byId[l.topicId]?.subject}));
   const terms={};for(const l of all)if(l.event==='term'&&l.term){const k=l.term.toLowerCase();(terms[k]??={term:l.term,count:0,last:l.ts}).count++;terms[k].last=l.ts;}

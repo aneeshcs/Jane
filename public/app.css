@@ -191,3 +191,12 @@ header{view-transition-name:hdr}
  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}.confetti{display:none}}
 main[hidden]{display:none!important}
 .mc>:not(button){grid-column:1/-1}
+
+/* "I'm stuck" help, guided steps, Learn-it / power-up cards */
+.stuckb{background:#ffb300;box-shadow:0 5px 0 #c67c00;color:#3e2723}.stuckb:active{box-shadow:0 2px 0 #c67c00}.skipb{background:#7e57c2;box-shadow:0 5px 0 #4527a0}
+#srow{margin-top:10px;text-align:center}#stuckf[hidden]{display:none}
+.help{margin-top:12px;background:#fffde7;border:3px dashed #ffb300;border-radius:18px;padding:10px 14px;font-size:1.15rem}.help p{margin:.2em 0 .5em}
+.help .hl{font-weight:800;color:#e65100;margin-top:6px}.help ol{margin:.3em 0 .5em 1.2em;padding:0}.help li{margin:.2em 0}.hb{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+.ex{background:#fff;border-radius:14px;padding:8px 12px;margin:6px 0;text-align:left}.ex ol{margin:.3em 0 0 1.2em;padding:0}.ex li{margin:.25em 0;animation:pop .4s}
+.steps{margin-top:10px;background:#e8f5e9;border:3px solid #66bb6a;border-radius:16px;padding:8px 14px;font-size:1.15rem}.steps ol{margin:.3em 0 0 1.2em;padding:0}
+.k-learn{background:linear-gradient(135deg,#e8f5e9,#fffde7);border:4px solid #00c853}.k-learn .klbl{color:#2e7d32}.f-guided{background:#43a047!important;color:#fff}

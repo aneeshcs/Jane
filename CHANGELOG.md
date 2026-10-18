@@ -3,6 +3,41 @@
 All notable changes to Jane are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 Dates are Pacific Time.
 
+## [Unreleased]
+
+### Added
+- **"I'm stuck 🤔" button** next to Check on every graded question, boss battles included. Each tap goes one step
+  further: a hint, then a worked example of a similar problem plus how to start this one, then **"Skip for now"**.
+  Skipping costs no heart, points or streak; in a boss it's neither a hit nor a miss. New `POST /api/stuck` and
+  `POST /api/skip` (Worker and Node server).
+- **Typing "idk", "I don't know", "dunno", "no idea", "help", "skip", "don't show this"…** in a fill-in opens the
+  same help instead of being graded wrong.
+- **Deterministic scaffolds** (`src/stuck.js`, no live AI): worked steps for fraction → decimal/percent (halving,
+  money, ×10/100/1000), fraction of a number, adding/multiplying/dividing fractions, simplifying and whole-number
+  facts, plus fair nudges for mc/order/match/true-false/number line/fraction bar. Packs can supply their own
+  `steps` and `example`.
+- **Teach before test.** New `learn` card type (idea + worked example, revealed one step per tap) and **guided
+  practice** (`"guided": true` + `steps`, shown before answering). In Play, a new or shaky math skill now gets a
+  generated Learn-it card and 2 guided items before it's graded.
+- **"Boss ahead! Here's your power-up"** recap card before every boss (quest bosses: the stage's `powerup`, or the
+  earlier learn card; Play bosses: the skill's idea + a worked example).
+- **Support tracking:** `stuck` / `skipped` events in the day log; per-topic `support` in progress; skipped items are
+  re-queued for a day later, guided and never as a boss. `export-progress.mjs` adds `stuck`/`skipped` to
+  `weakSpots`, plus `needsSupport` and `requeued`; the parent report counts them.
+- **Validator rules** (`publish-lessons.mjs`): a new skill's stage must start with a learn/why card and a guided
+  question; a boss may only test skills taught/practised earlier in the quest (`teaches`) or mastered; no boss answers
+  past thousandths or with decimal percents. `--offline` skips the progress lookup.
+- **Tests:** `test/stuck.test.mjs` (stuck → hint → example → skip on the 3/16 boss, fair bosses, retry cap,
+  validator rules, and an end-to-end run on the Node server).
+
+### Changed
+- **Play bosses are fair and can't trap the kid:** a boss only appears after the skill has 2 right answers, its level is
+  capped at 4, generated boss questions never need more than 3 decimal places (no more 3/16 = 0.1875 in a boss), a
+  question the kid missed or skipped isn't generated again for a day, and two boss misses pause that boss until tomorrow
+  and re-teach the skill first.
+- The example quest follows teach → guided → graded → boss (new "Fraction Training Cove" stage before the Kraken).
+- LESSONS.md and docs/NIGHTLY.md: the teach → guided practice → graded → boss rule and the gentle "stuck" deep dive.
+
 ## [0.2.0] - 2026-10-17
 
 Run the full app anywhere Node 22 runs, or in Docker. No Cloudflare account needed.

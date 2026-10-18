@@ -8,7 +8,7 @@ function pizza(n,eaten){const cx=100,cy=100,r=90;let s=`<svg viewBox="0 0 200 20
   if(!gone){const m=(a1+a2)/2;for(const k of[.45,.75])s+=`<circle cx="${cx+r*k*Math.cos(m+(k>.6?.12:-.08))}" cy="${cy+r*k*Math.sin(m+(k>.6?.12:-.08))}" r="${Math.min(9,40/n+4)}" fill="#d32f2f"/>`;}}
  return s+`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#bf6c00" stroke-width="8"/></svg>`;}
 function bar(n,sh){const w=190/n;let s='<svg viewBox="0 0 200 60">';for(let i=0;i<n;i++)s+=`<rect x="${5+i*w}" y="10" width="${w}" height="40" fill="${i<sh?'#8d6e63':'#ffccbc'}" stroke="#4e342e" stroke-width="2" rx="3"/>`;return s+'</svg>';}
-const FRAMES={card:'💡 Cool Card',explore:'🔍 Explorer Check',review:'🧠 Memory Check-in',boss:'👾 BOSS BATTLE',timed:'⏱️ Speed Round',mystery:'🕵️ Mystery',story:'📖 Story Quest',minigame:'🎲 Mini-game',quest:'🗡️ Quest',bonus:'⭐ Bonus'};
+const FRAMES={card:'💡 Cool Card',explore:'🔍 Explorer Check',review:'🧠 Memory Check-in',boss:'👾 BOSS BATTLE',timed:'⏱️ Speed Round',mystery:'🕵️ Mystery',story:'📖 Story Quest',minigame:'🎲 Mini-game',quest:'🗡️ Quest',bonus:'⭐ Bonus',guided:'🧭 Practice'};
 const BOSSES=['🐉','👾','🦖','🐙','🤖','🧌'];
 function say(t){const b=$('jane');b.innerHTML=gl(t);b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop');}
 function confetti(n=40){for(let i=0;i<n;i++){const e=document.createElement('div');e.className='confetti';e.textContent=['🎉','⭐','🍕','✨','🎈','💜'][i%6];e.style.left=Math.random()*100+'vw';e.style.animationDuration=1.5+Math.random()*2+'s';document.body.appendChild(e);setTimeout(()=>e.remove(),4000);}}
@@ -24,6 +24,8 @@ function render(s){st=s;if(s?.learner)setLearner(s.learner);chips(s);const p=s.i
  $('bossbar').innerHTML=p.boss?`<div class="hp"><span class="boss">${BOSSES[p.topicId.charCodeAt(4)%BOSSES.length]}</span>${'❤️'.repeat(p.boss.hp)}${'🖤'.repeat(p.boss.max-p.boss.hp)}<span class="small">Hit it ${p.boss.hp} more time${p.boss.hp>1?'s':''} in a row!</span></div>`:'';
  if(p.intro){$('intro').hidden=false;$('intro').innerHTML=`<h3>${esc(p.intro.emoji||'✨')} ${gl(p.intro.title||'',new Set())}</h3><div>${gl(p.intro.story||'',new Set())}</div>`;}else $('intro').hidden=true;
  medalRow(s);
+ $('steps').innerHTML=p.steps?.length?`<div class="steps"><b>🧭 Start like this:</b><ol>${p.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`:'';
+ const canStuck=p.type!=='card'&&p.type!=='self';$('stuckf').hidden=!canStuck;$('srow').innerHTML=canStuck&&p.type!=='input'?'<button type="button" class="stuckb" onclick="stuckTap()">I\'m stuck 🤔</button>':'';showHelp(p.help);
  $('extra').innerHTML=p.stage==='bonus'?'<button class="ghost" onclick="skip()">Skip bonus ➡</button>':'';$('mc').innerHTML='';
  if(INTER[p.type]){$('f').style.display='none';INTER[p.type](p);}
  else if(p.type==='mc'||p.type==='self'){$('f').style.display='none';const ch=p.type==='self'?[['yes',p.choices[0]],['kinda',p.choices[1]],['no',p.choices[2]]]:p.choices.map(c=>[c,c]);
@@ -32,6 +34,7 @@ function render(s){st=s;if(s?.learner)setLearner(s.learner);chips(s);const p=s.i
  if(p.timed){const end=Date.now()+p.timed*1000;$('timer').innerHTML='<div class="tbar"><i id="tb"></i></div><div class="small" id="tl"></div>';
   timerInt=setInterval(()=>{const left=Math.max(0,end-Date.now());$('tb').style.transform=`scaleX(${left/(p.timed*1000)})`;$('tl').textContent=left?`⚡ ${Math.ceil(left/1000)}s for a speed bonus!`:'Time\'s up for the bonus — but keep going, you can still get it!';if(!left)clearInterval(timerInt);},200);}}
 async function send(v){if(!v||$('pcard').classList.contains('busy'))return;$('pcard').classList.add('busy');let r;try{r=await api('/api/answer',{answer:v});}catch(e){$('pcard').classList.remove('busy');say('Oops, the internet hiccuped. Try again! 🔌');return;}$('pcard').classList.remove('busy');say(r.jane);
+ if(r.stuck){if(r.state)st=r.state;showHelp(r.stuck);return;}
  if(r.questDone)setTimeout(()=>questMedal(r.questDone),r.medal?2600:300);
  if(r.miniDone&&!r.reveal){chips(r.state);return miniEnd(r);}
  if(r.correct){const big=!!(r.mastered||r.levelUp||r.medal);if(!(window.FX&&FX.good($('pcard'),big)))confetti(big?80:30);if(r.medal)reveal(r.medal,r.inferred);else if(r.mastered)banner(`🏆 Mastered!<br><small>${esc(r.mastered)}</small>${r.inferred?`<br><small>+${r.inferred} skills lit up on your map!</small>`:''}`);else if(r.levelUp)banner('⬆ Level '+r.levelUp+'!');}
@@ -45,6 +48,18 @@ function ask(prev){$('f').style.display='none';$('mc').innerHTML='';$('extra').i
  say(prev+` Hey ${LN}, what would you like to do next?`);}
 async function choose(c){const r=await api('/api/choice',{choice:c});say(r.jane);render(r.state);}
 async function skip(){render(await api('/api/skipbonus',{}));say('No problem! Here\'s a new one. 😊');}
+// ---------- "I'm stuck 🤔": hint → worked example → skip for now (never costs a heart, a point or the boss) ----------
+async function stuckTap(){if($('pcard').classList.contains('busy'))return;$('pcard').classList.add('busy');let r;try{r=await api('/api/stuck',{});}finally{$('pcard').classList.remove('busy');}
+ if(!r||r.error)return;say(r.jane);if(r.state)st=r.state;showHelp(r.stuck);}
+async function skipNow(){if($('pcard').classList.contains('busy'))return;$('pcard').classList.add('busy');let r;try{r=await api('/api/skip',{});}finally{$('pcard').classList.remove('busy');}
+ if(!r||r.error)return;say(r.jane);if(r.questDone)setTimeout(()=>questMedal(r.questDone),300);if(r.miniDone){chips(r.state);return miniEnd(r);}render(r.state);}
+function tryAgain(){if(st?.item?.type==='input'){$('a').focus();$('a').select();}else $('mc').scrollIntoView({behavior:'smooth',block:'center'});}
+function showHelp(h){const el=$('help');if(!h){el.hidden=true;el.innerHTML='';return;}el.hidden=false;const li=a=>(a||[]).map(x=>`<li>${esc(x)}</li>`).join('');
+ el.innerHTML=h.step<2?`<div class="help"><div class="hl">💡 Hint</div><p>${gl(h.hint,new Set())}</p><div class="hb"><button type="button" class="ghost" onclick="tryAgain()">✏️ I'll try</button><button type="button" class="stuckb" onclick="stuckTap()">Still stuck 🤔</button></div></div>`
+  :`<div class="help"><div class="hl">💡 Hint</div><p>${gl(h.hint,new Set())}</p>${h.example?`<div class="hl">👀 Watch me do one</div><div class="ex"><b>${esc(h.example.title)}</b><ol>${li(h.example.steps)}</ol></div>`:''}${h.start?.length?`<div class="hl">🚀 Your turn! Start like this:</div><ol class="start">${li(h.start)}</ol>`:''}
+  <div class="hb"><button type="button" onclick="tryAgain()">✏️ I'll try!</button><button type="button" class="skipb" onclick="skipNow()">⏭️ Skip for now</button></div><div class="small">Skipping is OK! No hearts lost. We'll come back to it later.</div></div>`;
+ if(window.FX)FX.enter(el);}
+$('stuckf').onclick=()=>stuckTap();
 async function next(){if(window._mini){const m=window._mini;window._mini=null;return miniEnd(m);}render(window._next||await api('/api/next',{}));window._next=null;}
 $('f').onsubmit=e=>{e.preventDefault();send($('a').value.trim());};
 // ---------- world map ----------
@@ -210,7 +225,11 @@ function tplHTML(t){switch(t.type){
 // ---------- interactive formats ----------
 const checkBtn=(f,label='Check ✔')=>{$('extra').innerHTML=`<button class="check" id="chk">${label}</button>`;$('chk').onclick=f;};
 const INTER={
- card(p){$('pcard').classList.add('cardy');$('q').innerHTML=`<div class="kcard k-${p.card}"><div class="kemo">${esc(p.emoji||(p.card==='why'?'🧠':'🤩'))}</div><div class="klbl">${p.card==='why'?'💡 Why it works':'🤩 Fun fact!'}</div><h3>${gl(p.q)}</h3><p>${gl(p.body||'')}</p></div>`;
+ card(p){$('pcard').classList.add('cardy');
+  if(p.card==='learn'||p.card==='powerup'){const ex=p.example||{},S=ex.steps||[];let k=0;
+   $('q').innerHTML=`<div class="kcard k-learn"><div class="kemo">${esc(p.emoji||(p.card==='learn'?'🧠':'🔋'))}</div><div class="klbl">${p.card==='learn'?'🧠 Learn it':'🔋 Power-up'}</div><h3>${gl(p.title||p.q)}</h3><p>${gl(p.body||'')}</p>${S.length?`<div class="ex"><b>👀 Watch: ${esc(ex.prompt||'')}</b><ol id="exs"></ol></div>`:''}</div>`;$('mc').innerHTML='';
+   const nb=()=>{if(k<S.length){$('extra').innerHTML=`<button class="check" id="chk">${k?'Next step ➡':'Show me how ➡'}</button>`;$('chk').onclick=()=>{$('exs').insertAdjacentHTML('beforeend',`<li>${esc(S[k++])}</li>`);nb();};}
+    else{$('extra').innerHTML=`<button class="check" id="chk">${p.card==='learn'?'Got it! Let me try 🧠':'Let\'s go! ⚔️'}</button>`;$('chk').onclick=()=>send('ok');}};nb();return;}$('q').innerHTML=`<div class="kcard k-${p.card}"><div class="kemo">${esc(p.emoji||(p.card==='why'?'🧠':'🤩'))}</div><div class="klbl">${p.card==='why'?'💡 Why it works':'🤩 Fun fact!'}</div><h3>${gl(p.q)}</h3><p>${gl(p.body||'')}</p></div>`;
   $('mc').innerHTML='';$('extra').innerHTML=`<button class="check" id="chk">${p.card==='why'?'Got it! 🧠':'Whoa, cool! ➡'}</button>`;$('chk').onclick=()=>send('ok');},
  picture(p){$('mc').innerHTML=`<div class="pics">${p.choices.map((c,i)=>`<button class="pic" data-v="${esc(c)}"><span class="pe">${String(p.pics[i]||'').trim().startsWith('<svg')?cleanSVG(p.pics[i]):esc(p.pics[i]||'')}</span><span>${esc(c)}</span></button>`).join('')}</div>`;
   $('mc').querySelectorAll('.pic').forEach(b=>b.onclick=()=>{b.classList.add('picked');send(b.dataset.v);});},

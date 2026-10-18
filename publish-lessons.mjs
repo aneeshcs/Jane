@@ -33,8 +33,8 @@ const tax=loadTax(),byId=Object.fromEntries(tax.topics.map(t=>[t.id,t])),errs=[]
 const str=(v,p,req=true)=>{if(v==null||v===''){if(req)E(p,'required string');return false;}if(typeof v!=='string'){E(p,'must be a string');return false;}return true;};
 const strs=(a,p,min,max)=>{if(!Array.isArray(a)||a.length<min||a.length>max||!a.every(x=>typeof x==='string'&&x.trim())){E(p,`${min}-${max} non-empty strings`);return false;}if(new Set(a).size!==a.length)E(p,'items must be unique');return true;};
 const num=v=>typeof v==='number'&&isFinite(v);const wc=x=>String(x||'').trim().split(/\s+/).filter(Boolean).length;
-const FORMATS=['quest','story','mystery','minigame','timed','boss','explore'];
-const TYPES=['mc','numeric','text','creative','picture','blank','order','match','truefalse','numberline','fracbar','why','fact'];const CARDS=['why','fact'];
+const FORMATS=['quest','story','mystery','minigame','timed','boss','explore','guided'];
+const TYPES=['mc','numeric','text','creative','picture','blank','order','match','truefalse','numberline','fracbar','why','fact','learn'];const CARDS=['why','fact','learn'];
 const TPL={pizza:['slices'],fracbar:['parts'],numberline:['min','max'],timeline:['events'],foodweb:['chain'],orbit:['planets']};
 const unsafe=s=>/<script|<foreignObject|\son\w+\s*=|javascript:|<iframe|<image[^>]+href\s*=\s*["']?https?:/i.test(s);
 const parseNum=s=>{s=String(s).trim();const m=s.match(/^(-?\d+)\s*\/\s*(\d+)$/);return m?+m[1]/+m[2]:+s;};
@@ -58,18 +58,42 @@ function acc(q,Qp){for(const k of['accept','acceptedAnswers'])if(q[k]!=null&&!(A
 const OPEN=/\b(finish|complete) (the|this|it|a)\b|\bas \w+ as an? _{3,}|\blike an? _{3,}|describ|example|\bname (a|an|one|some|something)\b|\bany\b|think of|your own|a word (that|for)|adjective|favorite|why do you|what would you/i;
 function openEnded(q,Qp){const n=1+(q.accept?.length||0)+(q.acceptedAnswers?.length||0);if(OPEN.test(q.prompt||''))W(Qp,`looks open-ended (${n} accepted answer${n>1?'s':''}, many could make sense): use "creative", 3-choice mc, or add a clear clue (LESSONS.md "Fill-ins")`);
   else if(n===1&&String(q.answer||'').split(' ').length<=2&&!/\d/.test(q.answer))W(Qp,'one-answer fill-in: is that the ONLY sensible word? If not, use mc/creative or add acceptedAnswers');}
+// Teach before test (LESSONS.md "Teach → practice → graded → boss"). Uses the learner's progress (read-only) when it can:
+// mastered topics and stages the learner already finished are exempt. --offline skips the lookup (nothing counts as mastered).
+let PROG=null;if(!args.includes('--offline'))try{PROG=kvGet('progress');}catch{}
+if(!PROG)console.warn('ℹ️  no learner progress available: treating every topic as new for the teach-before-test rules');
+const mastered=id=>PROG?.ts?.[id]?.st==='mastered';
+const stageDone=t=>!!PROG&&(t.questions||[]).every((q,j)=>CARDS.includes(q.type)||PROG.packSeen?.[`${pack.date}:${t.topicId}:${j}`]);
+const tooHard=a=>/\.\d{4,}/.test(String(a))||/\d\.\d+\s*%/.test(String(a)); // past thousandths, or a decimal percent: too hard for a boss
+function steps(v,P,req){if(v==null){if(req)E(P,'guided practice needs "steps": 1-4 short strings shown before answering');return;}if(!Array.isArray(v)||!v.length||v.length>6||!v.every(x=>typeof x==='string'&&x.trim()))E(P,'1-6 non-empty strings');else v.forEach((x,k)=>{if(wc(x)>18)W(`${P}[${k}]`,`${wc(x)} words (steps ≤ 18)`);});}
+const taught=new Set();
 const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0;const typesUsed=new Set();
 (pack.topics||[]).forEach((t,i)=>{const P=`topics[${i}]`,tp=byId[t.topicId];if(!tp)E(P+'.topicId',`unknown Marble topic id "${t.topicId}"`);if(seen.has(t.topicId))E(P+'.topicId','duplicate');seen.add(t.topicId);
   if(t.format&&!FORMATS.includes(t.format))E(P+'.format','one of '+FORMATS.join('|'));
   if(t.intro){str(t.intro.title,P+'.intro.title');str(t.intro.story,P+'.intro.story');str(t.intro.emoji,P+'.intro.emoji',false);if(wc(t.intro.story)>25)W(P+'.intro.story',`${wc(t.intro.story)} words (aim ≤ 25)`);}
+  if(t.teaches!=null&&!(Array.isArray(t.teaches)&&t.teaches.every(x=>byId[x])))E(P+'.teaches','array of Marble topic ids this stage teaches or practises (for a later boss)');
+  if(t.powerup!=null&&(typeof t.powerup!=='string'||wc(t.powerup)>30))E(P+'.powerup','string, ≤ 30 words (the "Boss ahead! Here\'s your power-up" recap)');
   if(t.review!=null&&typeof t.review!=='boolean')E(P+'.review','true|false');if(t.deepDive!=null&&typeof t.deepDive!=='boolean')E(P+'.deepDive','true|false');
   if(!Array.isArray(t.questions)||!t.questions.length)E(P+'.questions','non-empty array required');const qs=t.questions||[];
   const graded=qs.filter(q=>!CARDS.includes(q.type)).length;if(!graded)E(P+'.questions','needs at least one graded question (not only cards)');
   if(t.review)nReview+=graded;nGraded+=graded;nq+=qs.length;
-  if(t.deepDive){nDeep++;if(graded<4)E(P,`deep dive needs ≥ 4 graded questions (has ${graded})`);if(graded>5)W(P,`deep dive has ${graded} graded questions (aim 4-5 to keep quests short)`);if(!qs.some(q=>q.type==='why'))E(P,'deep dive needs a "why" card');
+  if(t.deepDive){nDeep++;if(graded<4)E(P,`deep dive needs ≥ 4 graded questions (has ${graded})`);if(graded>5)W(P,`deep dive has ${graded} graded questions (aim 4-5 to keep quests short)`);if(!qs.some(q=>q.type==='why'||q.type==='learn'))E(P,'deep dive needs a "why" or "learn" card');
     if(new Set(qs.map(q=>q.type).filter(x=>!CARDS.includes(x))).size<3)W(P,'deep dive: mix at least 3 question types');}
   if(tp&&tp.ageRangeStart<LRN.age-2)W(P,`"${tp.name}" starts at age ${tp.ageRangeStart}: below the target level (${LRN.grade}, ~age ${LRN.age})`);
-  qs.forEach((q,j)=>{const Qp=`${P}.questions[${j}]`;typesUsed.add(q.type);if(!TYPES.includes(q.type)){E(Qp+'.type',TYPES.join('|'));return;}
+  // teach → guided practice → graded, for every new (not mastered) skill; boss stages only test what was taught, practised or mastered
+  if(Q&&tp&&!stageDone(t)){const done=stageDone(t),isNew=!mastered(t.topicId)&&!t.review;
+    if(t.format==='boss'){for(const id of new Set([t.topicId,...qs.map(q=>q.skill).filter(Boolean)]))if(!mastered(id)&&!taught.has(id))E(P,`boss tests "${byId[id]?.name||id}" but no earlier stage taught or practised it (add "teaches": ["${id}"] to an earlier stage with a learn card and guided practice) and it isn't mastered yet`);
+      if(!t.powerup)W(P+'.powerup','add a short "Boss ahead! Here\'s your power-up" recap (the app builds one from the earlier learn card otherwise)');
+      qs.forEach((q,j)=>{if(!CARDS.includes(q.type)&&tooHard(q.answer))E(`${P}.questions[${j}]`,`"${q.answer}" is too hard for a boss (more than 3 decimal places or a decimal percent). Teach it in a guided stage instead`);});}
+    else if(isNew&&!done){const fg=qs.findIndex(q=>!CARDS.includes(q.type));
+      if(!['learn','why'].includes(qs[0]?.type))E(P,`new skill: start with a "learn" card (idea + worked example) or a "why" card before any question`);
+      if(fg>=0&&!qs[fg].guided)E(`${P}.questions[${fg}]`,'new skill: the first graded question must be guided practice ("guided": true with "steps")');}}
+  if(!t.review&&qs.some(q=>q.type==='learn'||q.type==='why')&&qs.some(q=>q.guided)){taught.add(t.topicId);for(const x of t.teaches||[])taught.add(x);}
+  qs.forEach((q,j)=>{const Qp=`${P}.questions[${j}]`;typesUsed.add(q.type);
+    if(q.skill!=null&&!byId[q.skill])E(Qp+'.skill','unknown Marble topic id');if(q.guided!=null&&typeof q.guided!=='boolean')E(Qp+'.guided','true|false');
+    if(!CARDS.includes(q.type))steps(q.steps,Qp+'.steps',!!q.guided);
+    if(q.example!=null&&(typeof q.example!=='object'||!q.example.prompt))E(Qp+'.example','{prompt, steps: [...]} (a similar solved problem for the stuck help)');else if(q.example)steps(q.example.steps,Qp+'.example.steps',true);
+    if(q.type==='learn'){str(q.title,Qp+'.title');str(q.body,Qp+'.body');if(wc(q.body)>30)W(Qp+'.body',`${wc(q.body)} words (cards: ≤ 30)`);if(!q.example)W(Qp+'.example','learn card: add one worked example {prompt, steps}');return;}if(!TYPES.includes(q.type)){E(Qp+'.type',TYPES.join('|'));return;}
     if(q.format&&!FORMATS.includes(q.format))E(Qp+'.format','one of '+FORMATS.join('|'));scene(q.scene,Qp+'.scene');tpl(q.template,Qp+'.template');
     if(CARDS.includes(q.type)){str(q.title,Qp+'.title');str(q.body,Qp+'.body');str(q.emoji,Qp+'.emoji',false);if(wc(q.body)>30)W(Qp+'.body',`${wc(q.body)} words (cards: ≤ 30)`);if(third(q.body))W(Qp+'.body',YOU);return;}
     str(q.prompt,Qp+'.prompt');str(q.hint,Qp+'.hint');str(q.explanation,Qp+'.explanation');

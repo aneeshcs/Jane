@@ -27,6 +27,44 @@ the Quests tab (red dot = new quest) lists today's and past quests with progress
 the app serves its stages in order (no placement diagnostics or engine reviews in between). Finishing every item of
 every stage awards the quest medal (shown in Trophies). Old packs without `quest` still work as plain adventures.
 
+## Teach → guided practice → graded → boss (required)
+Jane teaches first and tests second. Every quest follows this order, and `publish-lessons.mjs` fails a pack that doesn't:
+1. **Teach.** A stage for a skill that is new or shaky (not mastered, not a `review` stage) starts with a **`learn`
+   card**: one short idea plus one worked example (`example: {prompt, steps}`; the app reveals the steps one tap at a
+   time). A `why` card also counts, but a `learn` card with an example is better.
+2. **Guided practice.** The first graded question of that stage is **guided**: `"guided": true` with `steps` (1-4
+   short lines shown *before* answering, e.g. `["1/8 = 0.125", "Half of 0.125 = ?"]`). Use 1-2 of them.
+3. **Graded.** Then the normal graded questions, climbing back to the target level.
+4. **Boss.** The boss may only test skills that were **taught or practised in an earlier stage of the same quest**
+   (list them in that stage's `"teaches": ["mt_..."]`) or are **already mastered**. Questions can name the skill they
+   test with `"skill": "mt_..."` (default: the stage topic). Add `"powerup"` (≤ 30 words) to the boss stage: the app
+   shows it as a **"Boss ahead! Here's your power-up"** recap card right before the first boss question (without it,
+   the app builds one from the earlier learn card).
+5. **Fair bosses.** No boss answer past thousandths or with a decimal percent (3/16 = 0.1875, 18.75%): the publisher
+   fails it. Put such items in a guided stage instead, scaffolded (1/16 = half of 1/8 = 0.0625, so 3/16 = 3 × 0.0625).
+
+Stages the learner already finished, and mastered topics, are exempt (the publisher reads progress read-only;
+`--offline` skips that and treats everything as new). Play mode does the same on its own: a new or shaky math skill
+gets a generated Learn-it card and 2 guided items before it is graded, and a Play boss only appears after the skill
+has 2 right answers, never above level 4 and never with 4-decimal answers.
+
+## When the kid gets stuck
+Every graded question has an **"I'm stuck 🤔"** button next to Check. Typing *idk, I don't know, dunno, no idea,
+help, skip, don't show this…* into a fill-in does the same instead of being graded wrong. Each tap goes one step:
+1. a **hint** (the question's `hint`), 2. a **worked example** of a similar, easier problem plus **how to start this
+one** (the question's `example` and `steps` if the pack has them; otherwise built in code for common shapes:
+fraction → decimal/percent, fraction of a number, adding/multiplying/dividing fractions, simplifying, whole-number
+facts; and a fair nudge for mc/order/match/true-false/number line), 3. **"Skip for now"**: no heart, no points and no
+streak lost, and in a boss a skip is neither a hit nor a miss. There is no live AI anywhere in this.
+
+A skipped item comes back **a day later, guided** (steps visible, never as a boss), the topic's level drops one notch,
+and the topic is flagged. Two boss misses on the same skill pause that boss until tomorrow and re-teach it first.
+`export-progress.mjs` shows `stuck`/`skipped` counts in `weakSpots`, a `needsSupport` list and the `requeued` items.
+**For tomorrow:** a `needsSupport` topic gets a *gentle* deep dive: scaffold DOWN a level first (sixteenths via
+eighths, halving or money; smaller numbers; one idea per step), a learn card, 2 guided items, then graded questions
+that climb back up. **No boss on that skill tomorrow**, and add its own `example`/`steps` so the stuck help is
+specific.
+
 ## Quest cap: max 3 active quests
 A quest is **active** once started and until finished. At most **3** can be active.
 - The app shows `🗺️ x/3` on the quest strip and Quests tab. It plays the quest the learner picked ("Keep going" / "Play this
@@ -50,10 +88,12 @@ A quest is **active** once started and until finished. At most **3** can be acti
 0. Check `quests.nextStep` first: at the cap, write a boost (above), not a quest.
 Run `node export-progress.mjs` and read `weakSpots` first. Then:
 1. **Go deeper where the learner struggles.** Every topic in `weakSpots.goDeeper` (misses, hints, slow answers, failed
-   reviews, "not yet / sort of" self-checks) gets a **deep dive** stage (`"deepDive": true`): a "Why it works" card
-   first, then **4-5 graded questions** that start one notch easier and climb back to the level they missed, using at
+   reviews, "not yet / sort of" self-checks, "I'm stuck" taps and skips) gets a **deep dive** stage (`"deepDive": true`): a `learn`
+   (or "Why it works") card first, then 1-2 guided items, then **4-5 graded questions** in all that start one notch easier and climb back to the level they missed, using at
    least 3 different formats. Easier-to-target steps = smaller numbers, one idea per step, the same trick in a new
-   setting, then the original hard question last. Use `easierSteps` (hard prerequisites) for ideas.
+   setting, then the original hard question last. Use `easierSteps` (hard prerequisites) for ideas. Topics marked
+   `needsSupport` (the kid tapped "I'm stuck" or skipped) get the gentle version: start a full level down, and no boss on them
+   tomorrow (see "When the kid gets stuck").
 2. **Keep stretching strengths.** For each `weakSpots.strengths` domain, add a **new** topic from `stretchTo` (or the
    frontier), short (2-3 questions), with a picture/template.
 3. **Never below the learner's level.** The target age and grade are settings (`LEARNER_AGE`, `LEARNER_GRADE` in `wrangler.toml`; the app is designed around ages ~8-12, upper elementary). No topics starting more than 2 years below the target age (the publisher warns), no
@@ -123,7 +163,12 @@ those words in the next quest (use them in a question, or add a fun-fact card).
 | `fracbar` | taps pieces of a bar to shade a fraction | `parts` (2-12), `answer` like "3/8" (equivalents accepted) |
 | `why` | "💡 Why it works" card, tap Got it | `title`, `body`, `emoji?` (no prompt/hint/answer) |
 | `fact` | "🤩 Fun fact!" card | `title`, `body`, `emoji?` |
+| `learn` | "🧠 Learn it" card: an idea plus a worked example, revealed one step per tap | `title`, `body` (≤ 30 words), `example: {prompt, steps}`, `emoji?` |
 Cards earn 2 points and never count for or against mastery.
+
+**On any graded question:** `guided: true` + `steps` (guided practice: steps shown before answering; a miss is a
+learning moment), `steps` alone (used as "how to start" in the stuck help), `example: {prompt, steps}` (a similar
+solved problem for the stuck help), `skill` (the topic a boss question tests).
 
 **Illustrations** (optional on any question): `scene` = a few emoji (`"🚗💨 10 miles ⏱️ 2 hours"`) or an inline
 `<svg viewBox=...>` (no scripts, event handlers, external images; < 12k chars), and/or `template`:
@@ -146,8 +191,10 @@ Cards earn 2 points and never count for or against mastery.
     {
       "topicId": "mt_hJW7hVflm3",            // a Marble topic id (public/tax.json or the export's frontier)
       "stage": { "name": "Simile Swamp", "emoji": "🐊" },   // required in quests: the stop on the path
-      "format": "story",                     // quest | story | mystery | minigame | timed | boss | explore
-      "deepDive": true,                      // weak area: why card + 4-5 graded steps, mastery needs 3 in a row
+      "format": "story",                     // quest | story | mystery | minigame | timed | boss | explore | guided
+      "deepDive": true,                      // weak area: learn/why card + guided + 4-5 graded steps, mastery needs 3 in a row
+      "teaches": ["mt_lvaSGHwvQ5"],          // optional: skills this stage teaches/practises for the boss
+      "powerup": "...",                      // boss stage only: the "Boss ahead!" recap (≤ 30 words)
       "review": false,                       // true = review stage for an already-mastered topic
       "intro": { "emoji": "🐊", "title": "Simile Swamp", "story": "The swamp guard only talks in similes..." },
       "questions": [ /* any of the formats above, asked in order */ ]

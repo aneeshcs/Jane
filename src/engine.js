@@ -1,6 +1,7 @@
 // Jane's adaptive engine: topic states over the full Marble taxonomy, graph-based placement & inference,
 // Leitner spaced review, lesson packs -> procedural math -> kid MCQs -> kid self-check (never the raw assessmentPrompt).
-import {G,kindFor,parseNum,gcd} from './gen.js';
+import {G,kindFor,parseNum,gcd} from './gen.js';import {solve,scaffold,isStuck,IDEA} from './stuck.js';
+export {isStuck,scaffold};
 const DAY=864e5, BOXES=[1,3,7,21,60];
 // Learner settings (wrangler.toml [vars]: LEARNER_NAME, LEARNER_AGE, LEARNER_GRADE). Kid-facing strings use the
 // placeholder {name}; the Worker substitutes it in every response, so it is never stored in progress or packs.
@@ -93,7 +94,8 @@ function selfCheck(g,id){const t=g.byId[id];
 const shuf=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;};
 const shufNot=a=>{if(a.length<2)return[...a];let b;do b=shuf(a);while(b.join('|')===a.join('|'));return b;};
 function packItem(pq,q){const graded=pq.t.questions.filter(x=>!CARD.includes(x.type)&&!x._skip).length;
-  const it={kind:'pack',packN:graded,deep:!!pq.t.deepDive,packReview:!!pq.t.review,ptype:q.type,q:q.prompt,hint:q.hint,explain:q.explanation,packKey:pq.key,format:q.format||pq.t.format,scene:q.scene,tpl:q.template,stage:'main'};
+  const it={kind:'pack',packN:graded,deep:!!pq.t.deepDive,packReview:!!pq.t.review,ptype:q.type,q:q.prompt,hint:q.hint,explain:q.explanation,packKey:pq.key,format:q.format||pq.t.format,scene:q.scene,tpl:q.template,stage:'main',guided:q.guided||undefined,steps:q.steps,example:q.example};
+  if(q.guided&&!q.format)it.format='guided';
   switch(q.type){
    case 'mc':return{...it,type:'mc',choices:q.choices,answer:q.answer};
    case 'picture':return{...it,type:'picture',choices:q.choices.map(c=>c.label),pics:q.choices.map(c=>c.pic),answer:q.answer};
@@ -106,18 +108,42 @@ function packItem(pq,q){const graded=pq.t.questions.filter(x=>!CARD.includes(x.t
    case 'truefalse':return{...it,type:'truefalse',statements:q.statements.map(x=>x[0]),tf:q.statements.map(x=>x[1]?'T':'F').join(''),answer:q.statements.map(x=>`${x[0]} → ${x[1]?'True':'False'}`).join(' · '),timed:q.seconds||30};
    case 'numberline':return{...it,type:'numberline',line:{min:q.min,max:q.max,step:q.step??1,labels:q.labels},answer:String(q.answer),tol:q.tolerance??(q.step??1)/2};
    case 'fracbar':return{...it,type:'fracbar',parts:q.parts,answer:String(q.answer)};
-   case 'why':case 'fact':return{...it,type:'card',card:q.type,title:q.title,body:q.body||q.prompt,q:q.title||q.prompt,emoji:q.emoji};}
+   case 'why':case 'fact':case 'learn':return{...it,type:'card',card:q.type,title:q.title,body:q.body||q.prompt,q:q.title||q.prompt,emoji:q.emoji,format:'card'};}
   return{...it,type:'input',answer:q.answer};}
-export const CARD=['why','fact'];
-export function buildItem(S,g,id,mode,pack,now){const t=g.byId[id],r=S.ts[id];let it;
+export const CARD=['why','fact','learn'];
+// Boss questions must be fair for the target grade: no answers past thousandths, no decimal percents (e.g. 3/16 = 0.1875).
+export const BOSS_MAX_LVL=4;
+export function bossFair(p){const a=String(p?.a??p?.answer??'');return !/\.\d{4,}/.test(a)&&!(/%$/.test(a)&&/\./.test(a));}
+const avoided=(sp,q,now)=>!!sp?.avoid?.some(x=>x.q===q&&x.until>now);
+function genFair(k,lvl,sp,boss,now){let p;for(let n=0;n<25;n++){p=G[k](lvl);if(avoided(sp,p.q,now))continue;if(boss&&!bossFair(p))continue;return p;}return p;}
+// a Play boss only tests a skill that was taught or practised first (2+ right answers), and pauses after repeated misses
+function bossReady(S,r,id,now){return (r?.c||0)>=2&&!(S.support?.[id]?.bossOff>now);}
+function powerText(pack,t){if(t.powerup)return t.powerup;const src=pack.topics.find(x=>x!==t&&(x.teaches||[]).includes(t.topicId));
+  const c=src?.questions.find(q=>q.type==='learn'||q.type==='why');if(c)return c.body;const h=t.questions.find(q=>!CARD.includes(q.type))?.hint;return h?`Remember: ${h}`:'Take a breath. You\'ve practised this!';}
+export function buildItem(S,g,id,mode,pack,now){const t=g.byId[id],r=S.ts[id];let it,bossOk=true;const sp=S.support?.[id];
   const pq=mode!=='review'?packQ(S,pack,id):null;
-  if(pq){const q=pq.q;it=packItem(pq,q);
+  if(pq){const q=pq.q,pk=`${pack.date}:${id}:powerup`;
+    // "Boss ahead! Here's your power-up": a recap card right before the first question of a quest boss stage
+    if(pq.t.format==='boss'&&!S.packSeen[pk]&&!pq.t.questions.some((x,j)=>!CARD.includes(x.type)&&S.packSeen[`${pack.date}:${id}:${j}`]))
+      it={kind:'pack',type:'card',card:'powerup',q:'Boss ahead! Here\'s your power-up',title:'Boss ahead! Here\'s your power-up',body:powerText(pack,pq.t),emoji:'🔋',packKey:pk,format:'card'};
+    else it=packItem(pq,q);
     if(!S.packSeen[`${pack.date}:${id}:intro`]){it.intro=pq.t.intro;S.packSeen[`${pack.date}:${id}:intro`]=1;}}
-  else if(kindFor(t)){const lvl=mode==='review'?Math.max(2,(r?.lvl||4)-1):mode==='diagnostic'?(t.ageRangeStart>=10?4:3):(r?.lvl||(t.ageRangeStart>=10?3:2));const p=G[kindFor(t)](lvl);
-    it={kind:'math',type:'input',q:p.q,answer:p.a,cmp:p.cmp,needSimplest:p.needSimplest,hint:p.hint,explain:p.explain,vis:p.vis,bonus:p.bonus,lvl};}
+  else if(kindFor(t)){const k=kindFor(t),T=S.teach?.[id];
+    let lvl=mode==='review'?Math.max(2,(r?.lvl||4)-1):mode==='diagnostic'?(t.ageRangeStart>=10?4:3):(r?.lvl||(t.ageRangeStart>=10?3:2));
+    // teach before test: a new or shaky skill gets a Learn-it card (idea + worked example), then 2 guided practice items
+    if(mode==='learn'&&((!(r?.c>0)&&!T)||sp?.teachDue)){const ex=genFair(k,Math.max(1,lvl-1),sp,true,now),so=solve(ex.q);
+      (S.teach??={})[id]={at:now,left:2};if(sp)sp.teachDue=false;
+      it={kind:'teach',type:'card',card:'learn',q:`Learn it: ${t.sn||t.name}`,title:`Learn it: ${t.sn||t.name}`,body:IDEA[k],emoji:'🧠',example:{prompt:ex.q,steps:so?so.steps:[ex.explain],answer:ex.a},format:'card',lvl};}
+    else{const guided=mode!=='review'&&T?.left>0,boss=mode==='learn'&&!guided&&g.boss.has(id)&&bossReady(S,r,id,now);bossOk=boss;
+      if(guided)lvl=Math.max(1,lvl-1);if(boss)lvl=Math.min(lvl,BOSS_MAX_LVL);
+      if(boss&&!(r?.streak>0)&&!(T?.power>now-6*3600e3)){const ex=genFair(k,Math.max(1,lvl-1),sp,true,now),so=solve(ex.q);(S.teach??={})[id]={...(T||{}),left:0,power:now};
+        it={kind:'teach',type:'card',card:'powerup',q:'Boss ahead! Here\'s your power-up',title:'Boss ahead! Here\'s your power-up',body:IDEA[k],emoji:'🔋',example:{prompt:ex.q,steps:so?so.steps:[ex.explain],answer:ex.a},format:'card',lvl};}
+      else{const p=genFair(k,lvl,sp,boss,now);
+        it={kind:'math',type:'input',q:p.q,answer:p.a,cmp:p.cmp,needSimplest:p.needSimplest,hint:p.hint,explain:p.explain,vis:p.vis,bonus:p.bonus,lvl};
+        if(guided){const so=solve(p.q);it.guided=true;it.steps=so?so.start:[p.hint];it.format='guided';it.bonus=null;}}}}
   else it=kidMcq(g,id)||selfCheck(g,id);
-  if(!it.format)it.format=mode==='review'?'review':mode==='diagnostic'?'explore':g.boss.has(id)?'boss':(it.kind==='math'&&Math.random()<.25)?'timed':(it.type==='mc'?'minigame':'quest');
-  if(mode==='review')it.format='review';if(mode==='diagnostic')it.format='explore';
+  if(!it.format)it.format=mode==='review'?'review':mode==='diagnostic'?'explore':g.boss.has(id)&&bossOk?'boss':(it.kind==='math'&&Math.random()<.25)?'timed':(it.type==='mc'?'minigame':'quest');
+  if(it.type!=='card'){if(mode==='review')it.format='review';if(mode==='diagnostic')it.format='explore';}
   if(it.format==='timed'&&!it.timed)it.timed=it.kind==='math'?60:45;if(it.type==='card'){it.timed=null;it.format='card';}
   if(it.format==='boss'&&it.type!=='card')it.boss=it.kind==='quiz'?{max:1,hp:1}:{max:3,hp:3-Math.min(2,r?.streak||0)};
   return{...it,id:now+'-'+R(0,999),topicId:id,mode,tries:0,stage:'main',issued:now};}
@@ -134,6 +160,10 @@ export function next(S,g,pack,now){
     hint:'Count the slices that are still on the plate: 8 − 3 − 2. Put that number over 8, the total slices.',explain:'8 − 3 − 2 = 3 slices left out of 8, so 3/8 of the pizza is left!',
     vis:{type:'pizza',slices:8,eaten:5},bonus:{q:'Bonus ⭐: write 3/8 as a decimal!',a:'0.375'},first:true,format:'explore',lvl:4};
     S.current={...it,id:now+'-0',topicId:PIZZA_ID,mode:'diagnostic',tries:0,stage:'main',issued:now};return S.current;}
+  // a skipped item comes back a day later, guided (steps visible) and never as a boss
+  const rq=(S.requeue||[]).findIndex(x=>x.notBefore<=now&&g.byId[x.item?.topicId]);
+  if(rq>=0&&!questActive(S,pack)&&!S.mini){const x=S.requeue.splice(rq,1)[0],so=solve(x.item.q);S.itemsServed++;S.recent=[...S.recent.slice(-9),x.item.topicId];
+    S.current={...x.item,id:now+'-rq',mode:'learn',tries:0,stage:'main',issued:now,guided:true,steps:x.item.steps?.length?x.item.steps:(so?so.start:[x.item.hint].filter(Boolean)),format:'guided',boss:null,timed:null,bonus:null,requeued:x.n,packKey:undefined,intro:undefined};return S.current;}
   const due=g.topics.filter(t=>stateOf(S,g,t.id,now)==='review').sort((a,b)=>S.ts[a.id].due-S.ts[b.id].due);
   let id,mode;
   const qa=questActive(S,pack);
@@ -168,7 +198,10 @@ function grade(it,ans,isBonus){const a=String(ans??'').trim();if(isBonus){const 
 const praise=['Amazing, {name}! 🎉','You nailed it! 🌟','Brilliant thinking! 🧠','Wow, superstar! ⭐','That\'s exactly right! 🙌','You\'re on fire! 🔥'];
 const comfort=['Ooh, so close! Let\'s think it through together.','Good try! Mistakes help our brains grow. 🌱','Not quite — but I love that you tried!'];
 export function submit(S,g,answer,now){const it=S.current;if(!it)return{error:'no item'};const ev=[],r={};const isBonus=it.stage==='bonus';const t=g.byId[it.topicId];
-  if(it.type==='card'){S.packSeen[it.packKey]=1;S.points+=2;S.current=null;ev.push({event:'card',card:it.card,topicId:it.topicId,topic:t.name,title:it.q});return finish(S,{done:true,correct:true,card:true,jane:it.card==='why'?'Now you know WHY it works! 🧠 +2':'Cool fact unlocked! 🤩 +2'},ev,true);}
+  // "idk", "skip", "help", "don't show this"... opens the stuck help instead of being graded wrong
+  if((it.type==='input'||isBonus)&&isStuck(answer))return stuck(S,g,now,String(answer));
+  if(it.type==='card'){if(it.packKey)S.packSeen[it.packKey]=1;S.points+=2;S.current=null;ev.push({event:'card',card:it.card,topicId:it.topicId,topic:t.name,title:it.q});
+    return finish(S,{done:true,correct:true,card:true,jane:{why:'Now you know WHY it works! 🧠 +2',learn:'Nice! Now you try one. 🧠 +2',powerup:'Powered up! 🔋 Go get that boss! +2'}[it.card]||'Cool fact unlocked! 🤩 +2'},ev,true);}
   const rec=S.ts[it.topicId]??={st:'learning',how:'direct',c:0,w:0,lvl:it.lvl||3,streak:0};rec.c??=0;rec.w??=0;rec.streak??=0;
   const ok=grade(it,answer,isBonus);const logE={topicId:it.topicId,topic:t.name,subject:t.subject,mode:it.mode,format:it.format,qtype:it.ptype||it.kind,pack:it.packKey?it.packKey.split(':')[0]:undefined,mini:it.mini||undefined,level:it.lvl,stage:it.stage,question:isBonus?it.bonus.q:it.q,expected:isBonus?it.bonus.a:(it.type==='self'?'(self-check)':it.answer),given:String(answer),correct:it.type==='self'?answer==='yes':ok===true||ok==='creative',creative:ok==='creative'||undefined,try:it.tries+1,elapsedSec:Math.round((now-it.issued)/1000)};
   ev.push(logE);
@@ -187,7 +220,8 @@ export function submit(S,g,answer,now){const it=S.current;if(!it)return{error:'n
     S.points+=pts;S.streak++;S.bestStreak=Math.max(S.bestStreak,S.streak);S.solved++;if(S.streak%3===0)S.stars++;r.correct=true;
     r.jane=`${pick(praise)} +${pts} points${fast?' (speed bonus ⚡)':''}${S.streak>=3?` — ${S.streak} in a row!`:''}`;
     if(ok==='creative'){const g0=String(answer).trim();r.creative=true;r.jane=(it.celebrate||'Nice! "{given}" works! "{answer}" is the classic one, but your idea is great too. 🎨').replace(/\{given\}/g,g0).replace(/\{answer\}/g,it.answer)+` +${pts} points`;}
-    if(it.packReview&&rec.st==='mastered'){if(!it.tries&&rec.due<=now+DAY){rec.box=Math.min(4,(rec.box||0)+1);rec.due=now+BOXES[rec.box]*DAY;r.jane+=' Memory check passed! 🧠';}}
+    if(it.guided){guidedDone(S,it);r.guided=true;r.jane+=' Practice done! ✅';}
+    else if(it.packReview&&rec.st==='mastered'){if(!it.tries&&rec.due<=now+DAY){rec.box=Math.min(4,(rec.box||0)+1);rec.due=now+BOXES[rec.box]*DAY;r.jane+=' Memory check passed! 🧠';}}
     else if(it.mode==='review'){if(it.practice){}else if(!it.tries){rec.box=Math.min(4,(rec.box||0)+1);rec.due=now+BOXES[rec.box]*DAY;r.jane+=` Memory check passed — see you in ${BOXES[rec.box]} days, "${t.sn||t.name}"! 🧠`;}else rec.due=now+DAY;}
     else if(it.mode==='diagnostic'){if(!it.tries){setMastered(S,g,it.topicId,'direct',.9,now,ev);const n=inferDown(S,g,it.topicId,.9,now,ev);const md=award(S,g,it.topicId,false,now);if(md)r.medal=md;r.mastered=t.sn||t.name;r.inferred=n;
         if(n)r.jane+=` That tells me you already know ${n} earlier skill${n>1?'s':''} — I lit them up on your map! 🗺️`;}
@@ -204,14 +238,42 @@ export function submit(S,g,answer,now){const it=S.current;if(!it)return{error:'n
   if(it.kind==='pack'){/* learning moment: show the answer kindly, small points, no big penalty */rec.learn=(rec.learn||0)+1;S.points+=2;r.learningMoment=true;logE.learningMoment=true;
     r.jane=`Learning moment! 🌱 The answer is "${String(it.answer).replace(/\|/g," → ")}". ${it.explain} +2 points for sticking with it! 💪`;}
   else{rec.w++;r.jane=`Let me show you how: ${it.explain} You'll get the next one! 💪`;}
-  if(it.packReview&&rec.st==='mastered'){rec.due=Math.min(rec.due,now+DAY);ev.push({event:'reviewMiss',topicId:it.topicId,topic:t.name});}
+  const sp=sup(S,it.topicId);if(it.kind==='math'){(sp.avoid??=[]).push({q:it.q,until:now+DAY});sp.avoid=sp.avoid.filter(x=>x.until>now).slice(-8);} // no same-question loops
+  if(it.guided){guidedDone(S,it);r.guided=true;}
+  else if(it.packReview&&rec.st==='mastered'){rec.due=Math.min(rec.due,now+DAY);ev.push({event:'reviewMiss',topicId:it.topicId,topic:t.name});}
   else if(it.mode==='review'&&it.practice){}
   else if(it.mode==='review'){rec.st='learning';rec.how='direct';rec.box=0;r.jane+=` We'll practise "${t.sn||t.name}" again soon.`;ev.push({event:'demoted',topicId:it.topicId,topic:t.name});}
   else if(it.mode==='diagnostic'){rec.st='learning';rec.how='direct';failUp(S,g,it.topicId);placementResult(S,g,it.topicId,false);}
   else if(it.kind==='pack'){}
   else{if(it.kind==='math'&&(rec.lvl||3)>1){rec.lvl--;r.levelDown=rec.lvl;}rec.wrongInRow=(rec.wrongInRow||0)+1;
-    if(rec.wrongInRow>=2){rec.wrongInRow=0;const p=probeDown(S,g,it.topicId);if(p){S.focus=p;r.jane+=` Let's power up with "${g.byId[p].sn||g.byId[p].name}" first.`;}}}
+    // retry cap: two boss misses on the same skill pause that boss until tomorrow and re-teach it first
+    if(it.format==='boss'&&it.kind==='math'){sp.bossMiss=(sp.bossMiss||0)+1;if(sp.bossMiss>=2){sp.bossMiss=0;sp.bossOff=now+DAY;sp.teachDue=true;r.jane+=' Let\'s practise this one first. The boss can wait! 💪';}}
+    if(rec.wrongInRow>=2){rec.wrongInRow=0;sp.teachDue=true;const p=probeDown(S,g,it.topicId);if(p){S.focus=p;r.jane+=` Let's power up with "${g.byId[p].sn||g.byId[p].name}" first.`;}}}
   r.done=true;S.current=null;return finish(S,r,ev);}
+const sup=(S,id)=>(S.support??={})[id]??={stuck:0,skipped:0};
+function guidedDone(S,it){const T=S.teach?.[it.topicId];if(T?.left>0)T.left--;}
+function helpFor(it){if(!it?.stuckStep)return null;const sc=scaffold(it),two=it.stuckStep>=2;return{step:it.stuckStep,hint:sc.hint,example:two?sc.example:null,start:two?sc.start:[],canSkip:two};}
+// "I'm stuck 🤔": each tap goes one step further: 1 a hint, 2 a worked example + how to start this one, with "Skip for now".
+// Nothing is graded: no points, hearts, streak or boss hits change.
+export function stuck(S,g,now,given){const it=S.current;if(!it)return{error:'no item'};const t=g.byId[it.topicId];
+  if(it.type==='card'||it.type==='self')return{r:{jane:'Just tap the button to keep going! 😊'},ev:[]};
+  it.stuckStep=Math.min(3,(it.stuckStep||0)+1);const sp=sup(S,it.topicId);sp.stuck++;sp.at=now;
+  const ev=[{event:'stuck',step:it.stuckStep,topicId:it.topicId,topic:t?.name,subject:t?.subject,mode:it.mode,format:it.format,level:it.lvl,question:it.stage==='bonus'?it.bonus?.q:it.q,given:given||undefined,pack:it.packKey?it.packKey.split(':')[0]:undefined}];
+  return{r:{stuck:helpFor(it),jane:['','Hey, want a hint? 💡','Let\'s do one together! 👀','No worries! You can skip this one for now. ⏭️'][it.stuckStep]},ev};}
+// "Skip for now": no heart, no lost streak, no boss miss. The item comes back tomorrow, easier (guided), and the topic is flagged for support.
+export function skip(S,g,pack,now){const it=S.current;if(!it)return{error:'no item'};const t=g.byId[it.topicId],ev=[];
+  if(it.stage==='bonus'){S.current=null;return finish(S,{done:true,skipped:true,jane:'No problem! Here\'s a new one. 😊'},ev,true);}
+  const sp=sup(S,it.topicId);sp.skipped++;sp.at=now;sp.teachDue=true;(sp.avoid??=[]).push({q:it.q,until:now+DAY});sp.avoid=sp.avoid.filter(x=>x.until>now).slice(-8);
+  ev.push({event:'skipped',topicId:it.topicId,topic:t?.name,subject:t?.subject,mode:it.mode,format:it.format,level:it.lvl,question:it.q,expected:it.answer,stuckStep:it.stuckStep||0,pack:it.packKey?it.packKey.split(':')[0]:undefined});
+  if(it.packKey)S.packSeen[it.packKey]=1;const rec=S.ts[it.topicId];
+  if(it.kind==='math'&&rec&&(rec.lvl||3)>1)rec.lvl--;
+  if(it.mode==='diagnostic'&&g.byId[it.topicId])placementResult(S,g,it.topicId,false);
+  if(it.mode==='review'&&rec?.st==='mastered')rec.due=Math.min(rec.due,now+DAY);
+  if(it.type!=='card'&&it.type!=='self'&&(it.requeued||0)<2){const {id,tries,stuckStep,issued,...item}=it;(S.requeue??=[]).push({item:{...item,stage:'main'},n:(it.requeued||0)+1,notBefore:now+DAY,at:now});S.requeue=S.requeue.slice(-12);}
+  if(it.guided)guidedDone(S,it);
+  if(it.kind==='math'&&it.mode==='learn'&&!S.mini)S.focus=it.topicId;
+  S.current=null;const playBoss=it.format==='boss'&&it.kind==='math';
+  return finish(S,{done:true,skipped:true,jane:playBoss?'Skipped! No heart lost. 💜 Let\'s power up, then back to the boss!':it.format==='boss'?'Skipped! No heart lost. 💜 On to the next one!':'Skipped for now! We\'ll come back to it later. 💜'},ev,true);}
 function finish(S,r,ev,noChoice){if(r.done&&!noChoice&&!S.mini){S.sinceChoice++;if(S.sinceChoice>=6){r.askChoice=true;S.sinceChoice=0;}}return{r,ev};}
 export function choose(S,g,c,pack,now){const cur=S.focus&&g.byId[S.focus];let msg='Keep going — you\'re doing great!',id=null;
   if(c==='harder'){id=pickFocus(S,g,pack,now,{subject:cur?.subject,minAge:(cur?.ageRangeStart||10)+1});msg='Ooh, a challenge! Let\'s go! 🚀';}
@@ -220,7 +282,7 @@ export function choose(S,g,c,pack,now){const cur=S.focus&&g.byId[S.focus];let ms
   else if(c==='fractions'){id=pickFocus(S,g,pack,now,{domain:'Fractions'});msg='Back to fractions! 🍕';}
   if(id)S.focus=id;S.current=null;return{jane:msg};}
 export function publicItem(it,g){if(!it)return null;const t=g.byId[it.topicId];const b=it.stage==='bonus';
-  return{id:it.id,topicId:it.topicId,topic:{name:t.sn||t.name,subject:t.subject,domain:t.domain,ic:t.ic},q:b?it.bonus.q:it.q,type:b?'input':it.type,choices:b?null:it.choices,vis:it.vis,ptype:it.ptype,creative:it.creative,placeholder:it.placeholder,pics:it.pics,items:it.items,left:it.left,right:it.right,statements:it.statements,line:it.line,parts:it.parts,blank:it.blank,card:it.card,body:it.body,emoji:it.emoji,scene:it.scene,tpl:it.tpl,mini:it.mini,stage:it.stage,mode:it.mode,format:b?'bonus':it.format,intro:b?null:it.intro,timed:b?null:it.timed,boss:it.boss,level:it.lvl,issued:it.issued};}
+  return{id:it.id,topicId:it.topicId,topic:{name:t.sn||t.name,subject:t.subject,domain:t.domain,ic:t.ic},q:b?it.bonus.q:it.q,type:b?'input':it.type,choices:b?null:it.choices,vis:it.vis,ptype:it.ptype,creative:it.creative,placeholder:it.placeholder,pics:it.pics,items:it.items,left:it.left,right:it.right,statements:it.statements,line:it.line,parts:it.parts,blank:it.blank,card:it.card,body:it.body,emoji:it.emoji,scene:it.scene,tpl:it.tpl,mini:it.mini,stage:it.stage,mode:it.mode,format:b?'bonus':it.format,intro:b?null:it.intro,timed:b?null:it.timed,boss:it.boss,level:it.lvl,issued:it.issued,title:it.title,example:it.example,guided:b?undefined:it.guided,steps:b||!it.guided?undefined:it.steps,requeued:it.requeued,help:helpFor(it)};}
 export function medalInfo(m,g){const t=g.byId[m.id];if(!t)return null;return{id:m.id,tier:m.tier,at:m.at,boss:!!m.boss,name:t.sn||t.name,ic:t.ic,subject:t.subject,domain:t.domain,why:t.kq?`${t.kq} → ${t.ka}`:t.self};}
 // upgrade an in-flight old-style self-check (raw assessmentPrompt) to the kid-friendly item, keeping its mode
 export function refresh(S,g,pack,now){const c=S.current;if(c&&c.kind==='self'&&/Yes, I can/.test(c.choices?.[0]||'')&&g.byId[c.topicId]){S.current=buildItem(S,g,c.topicId,c.mode,pack,now);return true;}return false;}
@@ -250,7 +312,7 @@ export function miniAfter(S,g,pack,now,r){const M=S.mini;if(!M)return null;
   const t=g.byId[M.topicId];S.mini=null;S.current=S.miniHold||null;S.miniHold=null;
   return{topicId:M.topicId,name:t.sn||t.name,subject:M.ret,state:st,mastered:!!mastered||(M.mode==='review'&&st==='mastered')};}
 // catch-up boost for an unfinished quest (KV boost:<questDate>): shorter remaining stages, extra hints, a cheer message
-export function applyBoost(pack,b){const p=JSON.parse(JSON.stringify(pack));const CARDS=['why','fact'];
+export function applyBoost(pack,b){const p=JSON.parse(JSON.stringify(pack));const CARDS=CARD;
   for(const t of p.topics){const n=b.trim?.[t.topicId];if(n>0){let g=0;for(const q of t.questions)if(!CARDS.includes(q.type)&&++g>n)q._skip=1;}
     const h=b.hints?.[t.topicId];if(h)for(const q of t.questions)if(!CARDS.includes(q.type))q.hint=`${h} ${q.hint||''}`.trim();}
   p.boost={message:b.message,emoji:b.emoji||'🚀',date:b.date};if(b.terms)p.terms={...(p.terms||{}),...b.terms};return p;}

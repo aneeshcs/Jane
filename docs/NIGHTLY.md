@@ -53,7 +53,14 @@ At most **3 quests** can be active (started and unfinished) at a time. The routi
   message. `publish-lessons.mjs` also refuses to publish a new quest at the cap unless you pass `--force`.
 
 ## 4. Write the pack (rules in LESSONS.md)
-- **Go deeper on struggles.** For every `goDeeper` topic, add a deep dive: a "why" card first, then 4-5 graded
+- **Teach → guided practice → graded → boss, always.** Every new or shaky skill starts with a `learn` card (idea + one
+  worked example), then 1-2 `guided` questions with `steps`, then graded ones. The boss only tests skills taught or
+  practised earlier in the quest (`teaches`) or already mastered, and gets a `powerup` recap. The publisher fails a
+  pack that breaks this, or a boss answer past thousandths (see LESSONS.md "Teach → guided practice → graded → boss").
+- **Gentle on stuck topics.** `weakSpots.needsSupport` (the kid tapped "I'm stuck" or skipped) → a gentle deep dive that
+  starts a full level down (e.g. sixteenths via eighths, halving or money), no boss on that skill tomorrow, and
+  `example`/`steps` on its questions. `weakSpots.requeued` lists skipped items the app brings back by itself, guided.
+- **Go deeper on struggles.** For every `goDeeper` topic, add a deep dive: a `learn` card and guided items first, then 4-5 graded
   questions that start one notch easier and climb back up, in at least 3 formats.
 - **Stretch strengths.** Add a new topic next to the strongest domains (`stretchTo`).
 - **Never below level.** Nothing starting more than 2 years below the target age, and no baby wording.

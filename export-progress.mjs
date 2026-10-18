@@ -19,26 +19,34 @@ const near=t=>Math.abs(t.ageRangeStart-L.age);
 const frontier=g.topics.filter(t=>['ready','learning'].includes(E.stateOf(S,g,t.id,now))).sort((a,b)=>near(a)-near(b)).map(t=>full(t));
 const reviewDue=g.topics.filter(t=>E.stateOf(S,g,t.id,now)==='review').sort((a,b)=>S.ts[a.id].due-S.ts[b.id].due).map(t=>full(t,{dueAt:new Date(S.ts[t.id].due).toISOString(),box:S.ts[t.id].box}));
 // ---------- weak spots ----------
-const SLOW=30,IDLE=600;const W={};const T=id=>W[id]??={topicId:id,name:g.byId[id]?.name,subject:g.byId[id]?.subject,domain:g.byId[id]?.domain,answers:0,correct:0,misses:0,hints:0,slow:0,failedReviews:0,unsure:0,secs:[],qtypes:{},examples:[]};
+const SLOW=30,IDLE=600;const W={};const T=id=>W[id]??={topicId:id,name:g.byId[id]?.name,subject:g.byId[id]?.subject,domain:g.byId[id]?.domain,answers:0,correct:0,misses:0,hints:0,slow:0,failedReviews:0,unsure:0,stuck:0,skipped:0,secs:[],qtypes:{},examples:[]};
 for(const l of logs){if(!g.byId[l.topicId])continue;
-  if(l.event==='demoted'||l.event==='reviewMiss'){T(l.topicId).failedReviews++;continue;}if(l.event)continue;if(l.regraded==='neutral')continue;const w=T(l.topicId);
+  if(l.event==='demoted'||l.event==='reviewMiss'){T(l.topicId).failedReviews++;continue;}
+  // "I'm stuck" (counted once per question, at the first tap) and "Skip for now": this topic needs support
+  if(l.event==='stuck'||l.event==='skipped'){if(l.event==='stuck'&&l.step!==1)continue;const w=T(l.topicId);w[l.event]++;w.examples.push(`${l.event==='stuck'?'tapped I\'m stuck':'skipped'}${l.format==='boss'?' in a BOSS':''}: "${l.question}"${l.level?` (Lv ${l.level})`:''}`);continue;}
+  if(l.event)continue;if(l.regraded==='neutral')continue;const w=T(l.topicId);
   if(l.try===1)w.answers++;if(l.correct&&l.try===1)w.correct++;if(l.qtype)w.qtypes[l.qtype]=(w.qtypes[l.qtype]||0)+1;
   if(l.expected==='(self-check)'){if(l.given!=='yes'){w.unsure++;w.examples.push(`self-check "${l.question}" → ${l.given}`);}continue;}
   if(!l.correct&&l.try===1){w.hints++;w.examples.push(`missed first try: "${l.question}" (said "${l.given}", wanted "${l.expected}")`);}
   if(!l.correct&&l.try>=2)w.misses++;
   if(l.elapsedSec>SLOW&&l.elapsedSec<IDLE){w.slow++;w.examples.push(`slow (${l.elapsedSec}s): "${l.question}"`);}if(l.elapsedSec<IDLE)w.secs.push(l.elapsedSec);}
-const score=w=>w.misses*3+w.hints*2+w.slow+w.failedReviews*3+w.unsure*2;
+const score=w=>w.misses*3+w.hints*2+w.slow+w.failedReviews*3+w.unsure*2+w.stuck*2+w.skipped*3;
 const per=Object.values(W).map(w=>({...w,avgSec:w.secs.length?Math.round(w.secs.reduce((a,b)=>a+b,0)/w.secs.length):null,secs:undefined,state:E.stateOf(S,g,w.topicId,now),weakScore:score(w)}));
 const weakTopics=per.filter(w=>w.weakScore>0).sort((a,b)=>b.weakScore-a.weakScore);
-const dom={};for(const w of per){const d=dom[w.subject+' › '+w.domain]??={domain:w.domain,subject:w.subject,topics:0,answers:0,correct:0,misses:0,hints:0,slow:0,failedReviews:0,unsure:0,weakScore:0};d.topics++;for(const k of['answers','correct','misses','hints','slow','failedReviews','unsure','weakScore'])d[k]+=w[k];}
+const dom={};for(const w of per){const d=dom[w.subject+' › '+w.domain]??={domain:w.domain,subject:w.subject,topics:0,answers:0,correct:0,misses:0,hints:0,slow:0,failedReviews:0,unsure:0,stuck:0,skipped:0,weakScore:0};d.topics++;for(const k of['answers','correct','misses','hints','slow','failedReviews','unsure','stuck','skipped','weakScore'])d[k]+=w[k];}
 const domains=Object.values(dom).map(d=>({...d,firstTryRate:d.answers?Math.round(100*d.correct/d.answers):null})).sort((a,b)=>b.weakScore-a.weakScore);
 const stepDown=id=>g.pre[id].filter(e=>e.h).map(e=>({id:e.id,name:g.byId[e.id].name,state:E.stateOf(S,g,e.id,now)}));
-const goDeeper=weakTopics.filter(w=>w.weakScore>=2).map(w=>({topicId:w.topicId,name:w.name,domain:w.domain,why:[w.misses&&`${w.misses} miss`,w.hints&&`${w.hints} needed a hint`,w.slow&&`${w.slow} slow`,w.failedReviews&&`${w.failedReviews} failed review`,w.unsure&&`${w.unsure} unsure self-check`].filter(Boolean).join(', '),
-  suggest:`deep dive: why-card + 5-7 graded steps, start one notch easier, mix formats (avoid only ${Object.keys(w.qtypes).join('/')||'mc'})`,easierSteps:stepDown(w.topicId).slice(0,4)}));
+const goDeeper=weakTopics.filter(w=>w.weakScore>=2).map(w=>({topicId:w.topicId,name:w.name,domain:w.domain,why:[w.misses&&`${w.misses} miss`,w.hints&&`${w.hints} needed a hint`,w.slow&&`${w.slow} slow`,w.failedReviews&&`${w.failedReviews} failed review`,w.unsure&&`${w.unsure} unsure self-check`,w.stuck&&`tapped I'm stuck ${w.stuck}×`,w.skipped&&`skipped ${w.skipped}×`].filter(Boolean).join(', '),
+  needsSupport:!!(w.stuck||w.skipped)||undefined,
+  suggest:w.stuck||w.skipped?`GENTLE deep dive (the kid got stuck): scaffold DOWN a level first (e.g. sixteenths via eighths, halving or money), learn card + 2 guided items with steps, then 3 graded that climb back up. No boss on this skill tomorrow.`:`deep dive: learn/why card + guided practice + 4-5 graded steps, start one notch easier, mix formats (avoid only ${Object.keys(w.qtypes).join('/')||'mc'})`,easierSteps:stepDown(w.topicId).slice(0,4)}));
 const strengths=domains.filter(d=>d.weakScore===0&&d.correct>=2).map(d=>({domain:d.domain,subject:d.subject,correct:d.correct,
   stretchTo:frontierStretch(d.domain)}));
 function frontierStretch(dm){return g.topics.filter(t=>t.domain===dm&&['ready','learning'].includes(E.stateOf(S,g,t.id,now))&&t.ageRangeStart>=L.age-1.5).sort((a,b)=>Math.abs(a.ageRangeStart-L.age)-Math.abs(b.ageRangeStart-L.age)).slice(0,3).map(t=>({id:t.id,name:t.name,age:t.ageRangeStart}));}
-const weakSpots={window:`${dayList[dayList.length-1]}..${date}`,rules:{slowSec:SLOW,idleIgnoredSec:IDLE,score:'misses×3 + hints×2 + slow + failedReviews×3 + unsure×2'},topics:weakTopics,domains,goDeeper,strengths};
+// topics the engine flagged (stuck / skipped) and skipped items waiting to come back (guided, a day later)
+const needsSupport=Object.entries(S.support||{}).filter(([id,v])=>g.byId[id]&&(v.stuck||v.skipped)).map(([id,v])=>({topicId:id,name:g.byId[id].name,domain:g.byId[id].domain,stuck:v.stuck,skipped:v.skipped,lastAt:v.at?new Date(v.at).toISOString():null,
+  bossPausedUntil:v.bossOff>now?new Date(v.bossOff).toISOString():undefined,easierSteps:stepDown(id).slice(0,4)}));
+const requeued=(S.requeue||[]).map(x=>({topicId:x.item.topicId,name:g.byId[x.item.topicId]?.name,question:x.item.q,answer:x.item.answer,comesBackAfter:new Date(x.notBefore).toISOString(),times:x.n}));
+const weakSpots={window:`${dayList[dayList.length-1]}..${date}`,rules:{slowSec:SLOW,idleIgnoredSec:IDLE,score:'misses×3 + hints×2 + slow + failedReviews×3 + unsure×2 + stuck×2 + skipped×3'},topics:weakTopics,domains,goDeeper,strengths,needsSupport,requeued};
 // ---------- quests (cap 3 active) + glossary lookups ----------
 const A=activeQuests(S);const qinfo=d=>{const p=kvGet('lessons:'+d);if(!p?.quest)return null;const b=kvGet('boost:'+d);const pp=b?E.applyBoost(p,b):p;const qi=E.questInfo(S,g,pp);
   return{date:d,title:qi.title,startedAt:new Date(S.quests[d].started).toISOString(),done:qi.done,total:qi.total,pct:qi.pct,boosted:!!b,
@@ -55,5 +63,5 @@ const res={exportedAt:new Date(now).toISOString(),date,timezone:'America/Los_Ang
   frontier,reviewDue,progress:S};
 fs.mkdirSync(path.dirname(out),{recursive:true});fs.writeFileSync(out,E.withName(JSON.stringify({learner:L,...res},null,1),JSON.stringify(L.name).slice(1,-1)));
 console.log(`  🗺️ quests: ${quests.nextStep}`);if(termsLookedUp.length)console.log(`  📘 looked up: ${termsLookedUp.slice(0,10).map(t=>t.term+'×'+t.count).join(', ')}`);
-for(const x of goDeeper)console.log(`  🔎 go deeper: ${x.name} (${x.domain}): ${x.why}`);for(const x of strengths)console.log(`  💪 strength: ${x.domain} → stretch to ${x.stretchTo.map(t=>t.name).join(', ')||'(nothing ready)'}`);
+for(const x of goDeeper)console.log(`  🔎 go deeper${x.needsSupport?' (GENTLE, the kid got stuck)':''}: ${x.name} (${x.domain}): ${x.why}`);for(const x of strengths)console.log(`  💪 strength: ${x.domain} → stretch to ${x.stretchTo.map(t=>t.name).join(', ')||'(nothing ready)'}`);
 console.log(`✅ wrote ${out}: ${sm.done}/${sm.total} mastered (${sm.pct}%), ${frontier.length} frontier, ${reviewDue.length} review due, ${log.filter(l=>!l.event).length} answers today`);
