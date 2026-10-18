@@ -5,6 +5,10 @@ Dates are Pacific Time.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-18
+
+A way out when the kid gets stuck, teaching before testing, and bosses that are fair.
+
 ### Added
 - **"I'm stuck 🤔" button** next to Check on every graded question, boss battles included. Each tap goes one step
   further: a hint, then a worked example of a similar problem plus how to start this one, then **"Skip for now"**.
@@ -37,6 +41,9 @@ Dates are Pacific Time.
   and re-teach the skill first.
 - The example quest follows teach → guided → graded → boss (new "Fraction Training Cove" stage before the Kraken).
 - LESSONS.md and docs/NIGHTLY.md: the teach → guided practice → graded → boss rule and the gentle "stuck" deep dive.
+- Dependencies: `wrangler` 4.149.0 → 4.151.1 (devDependency; brings workerd/miniflare 1.20261006.1 → 1.20261012.1).
+  The UI libs (Motion 14.3.0, Floating UI 1.8.0, canvas-confetti 1.9.4, AutoAnimate 0.10.0) and esbuild 0.28.2 were
+  already the latest; the vendor bundle was rebuilt. `npm audit`: 0 vulnerabilities.
 
 ## [0.2.0] - 2026-10-17
 
@@ -101,5 +108,7 @@ First public release.
 - Runs on Cloudflare Workers (or `npm run dev` locally) only; the standalone Node server is planned for v0.2.
   `prototype/` is the early math-only version, not the full app.
 
+[Unreleased]: https://github.com/kentlangley/Jane/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/kentlangley/Jane/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kentlangley/Jane/releases/tag/v0.2.0
 [0.1.0]: https://github.com/kentlangley/Jane/releases/tag/v0.1.0

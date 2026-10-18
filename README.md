@@ -7,7 +7,7 @@ container) with file-based storage, and it is built on the open
 [Marble Skill Taxonomy](https://github.com/withmarbleapp/os-taxonomy): 1,590 micro-topics across 8 subjects,
 linked by 3,221 prerequisite edges.
 
-> **v0.2.0.** It's a child's learning app, so all personal data is excluded from the repo, and every path has a clear
+> **v0.3.0.** It's a child's learning app, so all personal data is excluded from the repo, and every path has a clear
 > license (see [LICENSING.md](LICENSING.md)). What's next: [Roadmap](#roadmap). Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## Philosophy
@@ -200,6 +200,13 @@ See [CHANGELOG.md](CHANGELOG.md) for what's shipped.
 
 **v0.2** (shipped)
 - **Standalone Node server** for the full app with file-based storage (`npm start`), plus a **Docker** option.
+
+**v0.3** (shipped)
+- **"I'm stuck 🤔" help** on every question (hint → worked example → skip, no heart lost), **teach before test**
+  (Learn-it cards and guided practice), **fairer bosses** that only test what was taught, and pack-validator rules for all of it.
+
+**Next**
+- **Generated Learn-it cards for non-math topics** (today Play mode generates them for math; packs cover the rest).
 
 **Later**
 - **Built-in nightly generator** that authors packs offline only, validates every pack before publishing, and never uses live AI during play ([details](docs/NIGHTLY.md#planned-a-built-in-nightly-generator)).
