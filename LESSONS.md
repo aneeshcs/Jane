@@ -260,6 +260,8 @@ correct graded answers** on a directly mastered topic (placement answers master 
 Medals and mastery from before these rules are re-scored once with `node migrate-medals.mjs --dry-run` (shows
 before/after counts), then `node migrate-medals.mjs --backup <file>` (needs a fresh `node backup-progress.mjs`; add
 `--local` for the Node server). Topics that lose mastery become unverified and due now, so review gates re-check them.
+**Legendary policy (default):** legendary medals that were already awarded are always kept as legendary, and their
+topics keep their mastery; everything else is re-scored. `--no-keep-legendary` re-scores legendary medals strictly too.
 
 ## Example deep dive (Similes & Metaphors, for a topic that showed up in `weakSpots.goDeeper`)
 ```json

@@ -5,6 +5,17 @@ Dates are Pacific Time.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-19
+
+### Changed
+- **`migrate-medals.mjs` legendary policy:** legendary medals that were already awarded are always kept as legendary,
+  and their topics keep their mastery (default). Everything else is re-scored as before. `--no-keep-legendary` gives
+  the strict re-score.
+
+### Fixed
+- **Review gates behind the learner:** in a quest started before gates existed, a gate before a stage the learner
+  already reached showed as a locked 🗝️ behind them. It now shows as passed (the parent report says "not needed").
+
 ## [0.4.0] - 2026-10-19
 
 The learning loop: shorter quests, review built into quests, honest medals and wider coverage
@@ -152,7 +163,8 @@ First public release.
 - Runs on Cloudflare Workers (or `npm run dev` locally) only; the standalone Node server is planned for v0.2.
   `prototype/` is the early math-only version, not the full app.
 
-[Unreleased]: https://github.com/kentlangley/Jane/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/kentlangley/Jane/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/kentlangley/Jane/releases/tag/v0.4.1
 [0.4.0]: https://github.com/kentlangley/Jane/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kentlangley/Jane/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kentlangley/Jane/releases/tag/v0.2.0

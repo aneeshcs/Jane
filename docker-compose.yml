@@ -3,7 +3,7 @@
 services:
   jane:
     build: .
-    image: jane:0.4.0
+    image: jane:0.4.1
     restart: unless-stopped
     environment:
       LEARNER_NAME: "Explorer"           # first name or nickname

@@ -51,7 +51,10 @@ function award(S,g,id,boss,now){S.medals??=[];if(S.medals.some(m=>m.id===id))ret
 // ---------- one-time re-score of old medals and mastery under the honest rules (slice 9, migrate-medals.mjs) ----------
 // Pure: returns a new record. logs = every answer-log entry (all days). Idempotent: S.rules >= 2 means already done.
 const OPENERS=/^(?:Hey \{name\}! |Hey [^!]{1,20}! |Quick one! |Ooh, try this! |Your turn! )/;
-export function rescore(S0,g,logs,now=Date.now()){const S=JSON.parse(JSON.stringify(S0));
+// opt.keepLegendary (default true, the documented policy): legendary medals already awarded stay legendary and their
+// topics keep their mastery; everything else is re-scored. Pass {keepLegendary:false} for the strict re-score.
+export function rescore(S0,g,logs,now=Date.now(),{keepLegendary=true}={}){const S=JSON.parse(JSON.stringify(S0));
+  const legend=new Set(keepLegendary?(S.medals||[]).filter(m=>m.tier==='legendary').map(m=>m.id):[]);
   const count=o=>({direct:Object.values(o.ts).filter(r=>r.st==='mastered'&&r.how==='direct').length,self:Object.values(o.ts).filter(r=>r.st==='mastered'&&r.how==='self').length,
     inferred:Object.values(o.ts).filter(r=>r.st==='mastered'&&r.how==='inferred').length,medals:(o.medals||[]).length,
     tiers:(o.medals||[]).reduce((a,m)=>(a[m.tier]=(a[m.tier]||0)+1,a),{}),legendary:(o.medals||[]).filter(m=>m.tier==='legendary').length,questMedals:(o.questMedals||[]).length});
@@ -60,18 +63,19 @@ export function rescore(S0,g,logs,now=Date.now()){const S=JSON.parse(JSON.string
     if(l.try!==1||!l.correct||l.format==='guided'||l.stage==='bonus')continue;const day=ptDay(Date.parse(l.ts)||now);
     e.ft.add(day+'|'+String(l.question||'').replace(OPENERS,'').slice(0,120));if(l.mode==='diagnostic')e.placed=true;if(l.format==='boss')e.boss[day]=(e.boss[day]||0)+1;}
   const changes=[],lost=new Set(),fallback=[];
-  for(const [id,r] of Object.entries(S.ts)){if(r.st!=='mastered'||r.how==='inferred'||!g.byId[id])continue;const e=ev[id],fb=!e;if(fb)fallback.push(id);
+  for(const [id,r] of Object.entries(S.ts)){if(legend.has(id)&&g.byId[id]){if(r.st!=='mastered'||r.how!=='direct'){Object.assign(r,{st:'mastered',how:'direct'});}changes.push({id,change:'kept (legendary)'});continue;}
+    if(r.st!=='mastered'||r.how==='inferred'||!g.byId[id])continue;const e=ev[id],fb=!e;if(fb)fallback.push(id);
     const ft=fb?(r.c||0):e.ft.size;r.ft=Math.max(r.ft||0,ft);
     const ok=fb?(r.how!=='self'&&ft>=MASTERY_MIN):(ft>=MASTERY_MIN||(r.how!=='self'&&e.placed));
     if(ok){if(r.how==='self'){r.how='direct';changes.push({id,change:'self→direct'});}if(e?.placed)r.placed??=r.at||now;continue;}
     lost.add(id);changes.push({id,change:'lost mastery',was:r.how,ft});Object.assign(r,{st:'mastered',how:'inferred',conf:.5,reverify:true,box:0,due:now});}
-  const medals=[];for(const m of S.medals||[]){const r=S.ts[m.id],e=ev[m.id];
+  const medals=[];for(const m of S.medals||[]){const r=S.ts[m.id],e=ev[m.id];if(m.tier==='legendary'&&legend.has(m.id)&&r){medals.push(m);continue;}
     if(lost.has(m.id)||!r||r.st!=='mastered'||r.how!=='direct'||(r.ft||0)<MEDAL_MIN){changes.push({id:m.id,change:'medal removed',tier:m.tier});continue;}
     if(m.tier==='legendary'&&!Object.values(e?.boss||{}).some(n=>n>=BOSS_LEGEND)){const t=tierOf(g,m.id,false);changes.push({id:m.id,change:'legendary→'+t});medals.push({...m,tier:t,boss:undefined});continue;}
     medals.push(m);}
   S.medals=medals;const n0=S.medals.length+(S.questMedals||[]).length;dedupeMedals(S);const dup=n0-S.medals.length-(S.questMedals||[]).length;if(dup)changes.push({change:'duplicates removed',count:dup});
   S.rules=2;S.rescoredAt=now;const after=count(S);
-  return{S2:S,before,after,changes,requeued:lost.size,fallback,duplicates:dup};}
+  return{S2:S,before,after,changes,requeued:lost.size,fallback,duplicates:dup,keptLegendary:legend.size};}
 // ---------- topic states ----------
 export function stateOf(S,g,id,now){const r=S.ts[id];if(r?.st==='mastered')return r.due<=now?'review':'mastered';if(r?.st==='learning')return 'learning';
   return g.pre[id].every(e=>!e.h||S.ts[e.id]?.st==='mastered')?'ready':'locked';}
@@ -416,7 +420,9 @@ export function questInfo(S,g,pack){if(!pack)return null;const Q=pack.quest||{},
   if(pack.quest&&rec.done){const snap=rec.snap?Object.fromEntries(rec.snap.stages.map(x=>[x.topicId,x.n])):null;
     stages=stages.filter(st=>snap?st.topicId in snap:st.done>0||st.complete).map(st=>{const n=snap?snap[st.topicId]:st.n;return{...st,n,done:n,complete:true};});}
   const total=stages.reduce((a,s)=>a+s.n,0),done=stages.reduce((a,s)=>a+s.done,0);
-  const gates=pack.quest?gateStages(pack.topics.length).filter(k=>k<stages.length).map(k=>{const r=rec.gates?.[k];return{before:k,state:r?.open?'open':'locked',items:r?.n||0,of:r?.of??null,right:r?.right||0};}):[];
+  const gates=pack.quest?gateStages(pack.topics.length).filter(k=>k<stages.length).map(k=>{const r=rec.gates?.[k],st=pack.topics[k],passed=!r?.open&&!!st&&(st.questions||[]).some((q,j)=>S.packSeen?.[`${pack.date}:${st.topicId}:${j}`]);
+    // a stage the learner already started without meeting this gate (e.g. a quest begun before gates existed) shows it as passed
+    return{before:k,state:r?.open||passed?'open':'locked',passed:passed||undefined,items:r?.n||0,of:r?.of??null,right:r?.right||0};}):[];
   return{date:pack.date,isQuest:!!pack.quest,title:Q.title||pack.title||('Adventure '+pack.date),hook:Q.hook||'',emoji:Q.emoji||'🗺️',medal:Q.medal||{name:(pack.title||'Adventure')+' medal',emoji:'🏅'},
     stages,gates,current:stages.findIndex(s=>!s.complete),total,done,pct:total?Math.round(100*done/total):0,started:rec.started||null,completed:rec.done||null};}
 // called after an answer: when every stage is done, the quest is finished once and for all (snapshot + quest medal)

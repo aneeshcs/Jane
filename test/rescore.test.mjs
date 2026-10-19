@@ -11,7 +11,14 @@ test('a self-check-only mastery loses mastery and its medal, and is due now for 
 test('1 first-try right → loses mastery; 2 → stays mastered without a medal; 3 → keeps the medal',()=>{const {S2}=run();
   assert.equal(S2.ts[T.one].how,'inferred');assert.ok(!medal(S2,T.one));assert.equal(S2.ts[T.two].how,'direct');assert.ok(!medal(S2,T.two));
   assert.equal(S2.ts[T.three].how,'direct');assert.equal(medal(S2,T.three).tier,'gold');assert.equal(S2.ts[T.three].ft,3,'"Hey {name}!" repeat of the same question that day counts once');});
-test('a legendary medal from a 1-question boss drops to the topic\'s normal tier',()=>{const {S2}=run();assert.equal(medal(S2,T.leg).tier,g.byId[T.leg].tier);});
+test('strict mode (--no-keep-legendary): a legendary medal from a 1-question boss drops to the topic\'s normal tier',()=>{const {S2}=E.rescore(F.progress,g,logs,now,{keepLegendary:false});assert.equal(medal(S2,T.leg).tier,g.byId[T.leg].tier);});
+test('default policy keeps every already-awarded legendary medal and its topic\'s mastery, even with no qualifying history',()=>{
+  const P=JSON.parse(JSON.stringify(F.progress));Object.assign(P.ts[T.leg],{how:'self',ft:0,c:0});const L=logs.filter(l=>l.topicId!==T.leg);
+  const {S2,keptLegendary,changes,after}=E.rescore(P,g,L,now);assert.equal(medal(S2,T.leg).tier,'legendary');assert.equal(S2.ts[T.leg].st,'mastered');assert.equal(S2.ts[T.leg].how,'direct');
+  assert.equal(keptLegendary,P.medals.filter(m=>m.tier==='legendary').length);assert.equal(after.legendary,keptLegendary);assert.ok(!changes.some(c=>c.id===T.leg&&/lost|removed|legendary→/.test(c.change)));
+  // everything else is re-scored exactly as in strict mode
+  const strict=E.rescore(P,g,L,now,{keepLegendary:false}).S2;for(const id of Object.keys(P.ts))if(id!==T.leg)assert.deepEqual(S2.ts[id],strict.ts[id],id);
+  assert.deepEqual(S2.medals.filter(m=>m.id!==T.leg),strict.medals.filter(m=>m.id!==T.leg));});
 test('duplicate topic and quest medals collapse; quest medals are kept',()=>{const {S2,duplicates}=run();assert.equal(S2.medals.filter(m=>m.id===T.three).length,1);
   assert.equal(S2.questMedals.length,1);assert.ok(duplicates>=1);});
 test('placement mastery stays without a medal; inferred topics are untouched; a self-check topic with 2 graded rights is kept as direct',()=>{const {S2}=run();
@@ -22,7 +29,8 @@ test('re-scoring twice changes nothing the second time',()=>{const {S2}=run();as
 function seed(){const dir=tmpDir('jane-rescore-');fs.writeFileSync(path.join(dir,'progress.json'),JSON.stringify(F.progress));for(const [d,l] of Object.entries(F.logs))fs.writeFileSync(path.join(dir,`log%3A${d}.json`),JSON.stringify(l));return dir;}
 const mig=(dir,...a)=>spawnSync(process.execPath,['migrate-medals.mjs','--local',...a],{cwd:ROOT,encoding:'utf8',env:{...process.env,DATA_DIR:dir}});
 test('migrate-medals.mjs --local --dry-run prints before/after counts and writes nothing',()=>{const dir=seed(),p=path.join(dir,'progress.json'),m0=fs.statSync(p).mtimeMs,b0=fs.readFileSync(p);
-  const r=mig(dir,'--dry-run');assert.equal(r.status,0,r.stderr);assert.match(r.stdout,/DRY RUN/);assert.match(r.stdout,/topic medals\s+8 →\s+3/);assert.match(r.stdout,/mastery removed: 2/);
+  const r=mig(dir,'--dry-run');assert.equal(r.status,0,r.stderr);assert.match(r.stdout,/DRY RUN/);assert.match(r.stdout,/topic medals\s+8 →\s+3/);assert.match(r.stdout,/mastery removed: 2/);assert.match(r.stdout,/legendary downgraded: 0/);assert.match(r.stdout,/keep already-awarded legendary medals and their mastery \(1 kept\)/);
+  assert.match(mig(dir,'--dry-run','--no-keep-legendary').stdout,/legendary downgraded: 1/);
   assert.equal(fs.statSync(p).mtimeMs,m0);assert.deepEqual(fs.readFileSync(p),b0);fs.rmSync(dir,{recursive:true,force:true});});
 test('a real run needs a matching backup (exit 5 otherwise), then writes the re-scored record',()=>{const dir=seed(),p=path.join(dir,'progress.json'),b0=fs.readFileSync(p);
   assert.equal(mig(dir).status,5,'no --backup');const bad=path.join(dir,'bad.json');fs.writeFileSync(bad,'{"v":2}');assert.equal(mig(dir,'--backup',bad).status,5,'mismatch');

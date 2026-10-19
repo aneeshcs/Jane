@@ -7,7 +7,7 @@ container) with file-based storage, and it is built on the open
 [Marble Skill Taxonomy](https://github.com/withmarbleapp/os-taxonomy): 1,590 micro-topics across 8 subjects,
 linked by 3,221 prerequisite edges.
 
-> **v0.4.0.** It's a child's learning app, so all personal data is excluded from the repo, and every path has a clear
+> **v0.4.1.** It's a child's learning app, so all personal data is excluded from the repo, and every path has a clear
 > license (see [LICENSING.md](LICENSING.md)). What's next: [Roadmap](#roadmap). Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## Philosophy
