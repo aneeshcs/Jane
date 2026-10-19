@@ -43,6 +43,8 @@ The export includes:
 - **`quests`**: active quests, the cap (3) and `nextStep` (a new quest, or a catch-up boost).
 - **`frontier`**: ready and learning topics, closest to the target age first.
 - **`reviewDue`**: mastered topics whose spaced review is due (the gates serve them; don't write review stages).
+- **`coverage`**: per subject, areas (Marble domains) seen out of total; `coverage.untouched` lists the unseen
+  areas (math and science first) with up to 3 `starters` near the target age.
 - **`reviewHealth`**: `due`, `overdue` (> 1 day late), `oldestOverdueDays`, `gateItems7d`, `spotChecks7d`,
   `unverifiedInferred`: is spaced review keeping up?
 - **`summary`**, **`stats`** and the raw **`progress`** record.
@@ -55,6 +57,9 @@ At most **3 quests** can be active (started and unfinished) at a time. The routi
   message. `publish-lessons.mjs` also refuses to publish a new quest at the cap unless you pass `--force`.
 
 ## 4. Write the pack (rules in LESSONS.md)
+- **Visit a new area.** One stretch stage from `coverage.untouched` (a `starters` topic), rotating subjects with math
+  and science first. The publisher prints "new areas: N" and warns at 0 while untouched areas are left (a warning,
+  not an error).
 - **Teach → guided practice → graded → boss, always.** Every new or shaky skill starts with a `learn` card (idea + one
   worked example), then 1-2 `guided` questions with `steps`, then graded ones. The boss only tests skills taught or
   practised earlier in the quest (`teaches`) or already mastered, and gets a `powerup` recap. The publisher fails a

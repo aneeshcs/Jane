@@ -5,7 +5,7 @@
 //        --local (or STORAGE=file) publishes into the standalone server's DATA_DIR instead of Cloudflare KV.
 //        node publish-lessons.mjs <boost.json> [--dry-run]     (catch-up boost: file has "boostFor": "<quest date>")
 // A new quest is refused while 3 quests are active (started, unfinished) unless --force; publish a boost instead.
-import fs from 'fs';import {kvPut,kvGet,kvList,loadTax,activeQuests,QUEST_CAP,learnerConfig,LOCAL} from './lib-cli.mjs';import * as EN from './src/engine.js';
+import fs from 'fs';import {kvPut,kvGet,kvList,loadTax,activeQuests,QUEST_CAP,learnerConfig,LOCAL} from './lib-cli.mjs';import * as EN from './src/engine.js';import {coverage,seenAreas} from './src/coverage.js';
 // Learner settings from wrangler.toml [vars]. Packs may write {name}; the app fills it in. Prompts must talk to the learner as "you".
 EN.configure(learnerConfig());const LRN=EN.learner();
 const NAMES=[LRN.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'\\{name\\}','the learner'].join('|');
@@ -137,6 +137,11 @@ if(Q&&(pack.topics||[]).length>MAX_STAGES)E('size',`${pack.topics.length} stages
 if(Q&&estMin>8)W('size',`about ${estMin} min (aim ≤ 8): trim cards or questions`);
 // spaced review runs through the app's review gates now (LESSONS.md "Review gates"): review stages still publish, but spend quest budget
 const revStages=pack.topics.filter(t=>t.review).length;if(revStages)W('review',`${revStages} review stage${revStages>1?'s':''}: review runs through gates now, so spend the budget on new learning`);
+// Coverage (LESSONS.md "Coverage"): each quest should bring in at least one untouched area (Marble domain).
+// Frozen decision: no new area is a WARNING only, never an error. Uses the read-only progress; --offline skips it.
+let newAreas=null;if(Q&&PROG){const CG=EN.graph(tax),SP=EN.migrate(JSON.parse(JSON.stringify(PROG)),CG),seenA=seenAreas(SP,CG,[]),cov=coverage(SP,CG,[],{age:LRN.age});
+  const areas=[...new Set(pack.topics.filter(t=>byId[t.topicId]).map(t=>byId[t.topicId].subject+'|'+byId[t.topicId].domain))];newAreas=areas.filter(a=>!seenA.has(a));
+  if(!newAreas.length&&cov.untouched.length)W('coverage',`no new area: add one stretch stage from coverage.untouched, math and science first (e.g. ${cov.untouched.slice(0,3).map(u=>u.subject+' / '+u.domain).join(', ')})`);}
 const inter=[...typesUsed].filter(x=>!['mc','numeric','text'].includes(x));if(inter.length<3)W('formats',`only ${inter.length} interactive format(s) used; mix in order/match/picture/blank/numberline/fracbar/truefalse/why/fact`);
 if(Q&&PROG?.quests?.[pack.date]?.started){let prev=null;try{prev=kvGet('lessons:'+pack.date);}catch{}
   for(const t of prev?.topics||[]){const answered=(t.questions||[]).some((q,j)=>PROG.packSeen?.[`${pack.date}:${t.topicId}:${j}`]);if(!answered)continue;
@@ -146,6 +151,6 @@ if(warns.length)console.warn(`⚠️  ${warns.length} warning(s) (see LESSONS.md
 if(errs.length){console.error(`❌ ${errs.length} problem(s) in ${file}:\n  `+errs.join('\n  '));process.exit(1);}
 if(Q&&!dry&&!force){const S=kvGet('progress');const A=activeQuests(S,pack.date).filter(d=>kvList('lessons:'+d).length);
   if(A.length>=QUEST_CAP){console.error(`⛔ ${A.length}/${QUEST_CAP} quests are active (${A.join(', ')}). Not publishing a new quest.\n   Publish a catch-up boost for the oldest one instead (see LESSONS.md "Quest cap"), or pass --force.`);process.exit(3);}}
-const sum=`${pack.topics.length} ${Q?'stages':'topics'}, ${nq} items (~${estMin} min, ${nGraded} graded${nReview?`, ${nReview} in review stages`:''}, review via gates, ${nDeep} deep dive${nDeep===1?'':'s'}), formats: ${[...typesUsed].join(', ')}`;
+const sum=`${pack.topics.length} ${Q?'stages':'topics'}, ${nq} items (~${estMin} min, ${nGraded} graded${nReview?`, ${nReview} in review stages`:''}, review via gates, ${nDeep} deep dive${nDeep===1?'':'s'}${newAreas?`, new areas: ${newAreas.length}${newAreas.length?` (${newAreas.map(a=>a.replace('|',' / ')).join(', ')})`:''}`:''}), formats: ${[...typesUsed].join(', ')}`;
 if(dry){console.log(`✅ valid${Q?` quest "${Q.title}"`:''}: ${sum} for ${pack.date} (dry run, nothing written)`);process.exit(0);}
 kvPut('lessons:'+pack.date,pack);console.log(`✅ published${LOCAL?' (local)':''} lessons:${pack.date}${Q?` quest "${Q.title}"`:''}: ${sum}`);

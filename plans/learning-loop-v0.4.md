@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 13/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 14/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -134,7 +134,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 12 | Gates spot-check guessed skills | review | #12 ✅ |
 | 13 | Nightly hands spaced review to the gates | review | #13 ✅ |
 | 14 | See which areas have been explored | coverage | #14 ✅ |
-| 15 | Nightly quests visit new areas | coverage | #15 |
+| 15 | Nightly quests visit new areas | coverage | #15 ✅ |
 | 16 | Play wanders into new areas | coverage | #16 |
 | 17 | Parent report shows coverage by area | coverage | #17 |
 
@@ -506,7 +506,7 @@ Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 - Done test: `node --test test/coverage.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D5.)
 
-### Slice 15: Nightly quests visit new areas (#15)
+### Slice 15: Nightly quests visit new areas (#15) — ✅ done
 Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 
 - **Ships:** Every nightly quest brings in at least one untouched area. The publisher reports which areas a quest touches and warns when it adds no untouched area while some exist. `LESSONS.md` asks for one stretch stage from `coverage.untouched` per quest, rotating subjects with math and science first.
@@ -644,3 +644,8 @@ One entry per slice once its done test passes: what shipped, the done test and i
 - Shipped: New src/coverage.js: coverage(S, g, logs, {age, now}) → {subjects: [{name, total, seen, domains: [{name, seen, answered, mastered, topics, starters}]}], untouched (math and science first), seen, total}; seen = a graded answer in the logs (not a self-check) or a direct record with ≥1 correct; inferred-only doesn't count; starters = ready topics, closest to target age, never below age − 2, max 3. Export adds `coverage`. LESSONS.md 'Coverage' section.
 - Done test: `node --test test/coverage.test.mjs && npm test`: 5/5 new cases (blank learner Mathematics 0/12 + Science 0/19, direct vs inferred, graded vs self-check, starters, export includes coverage), 68/68 in npm test.
 - Deferred / discovered: -
+
+### Slice 15 (#15) ✅
+- Shipped: publish-lessons.mjs reports the quest's areas against coverage (src/coverage.js, read-only progress): summary 'new areas: N (Subject / Area…)'; warning 'coverage: no new area…' with 3 suggested untouched areas when N = 0 and some are left. Warning only, never an error (frozen Q2). --offline skips it. LESSONS.md rule 7 'Visit a new area' + Coverage section; docs/NIGHTLY.md step 4 bullet and export `coverage` entry. Owner was delegate; executed directly in this run.
+- Done test: `node --test test/coverage.test.mjs && npm test`: 8/8 (3 new validator cases with a seeded DATA_DIR: seen-only → warning + 'new areas: 0'; untouched Science stage → 'new areas: 1' and no warning; --offline skips), 71/71 in npm test.
+- Deferred / discovered: The validator uses progress records only (no log reads, to stay fast on Cloudflare), so an area with only wrong answers counts as unseen here until a correct answer lands.

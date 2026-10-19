@@ -47,7 +47,7 @@ An **area** is a Marble domain (12 in Mathematics, 19 in Science, and so on). An
 1 graded answer (not a self-check) in the exported days, or a topic shown directly with at least 1 correct answer.
 Inferred-only topics don't count. The export's `coverage` lists, per subject, how many areas are seen, and for every
 untouched area (`coverage.untouched`, math and science first) up to 3 ready **starter** topics closest to the target
-age (never more than 2 years below it).
+age (never more than 2 years below it). Each nightly quest adds one of them (rule 7 below).
 
 ## Teach → guided practice → graded → boss (required)
 Jane teaches first and tests second. Every quest follows this order, and `publish-lessons.mjs` fails a pack that doesn't:
@@ -141,6 +141,9 @@ Run `node export-progress.mjs` and read `weakSpots` first. Then:
    answers about 20 questions. The publisher **fails** a quest above 16 graded questions or 7 stages, prints a time
    estimate (graded × 25 s + cards × 10 s) and warns above 8 minutes. Spread them out: deep dives 3-4, stretch
    stages 1-3, boss 3-4.
+7. **Visit a new area.** Include at least one stretch stage from `coverage.untouched` in the export (see
+   "Coverage"), rotating subjects with math and science first, using one of the listed `starters`. The publisher
+   prints "new areas: N" and **warns** (never fails) when a quest adds no untouched area while some are left.
 
 ## Writing style (required for every pack)
 Jane talks **to** the learner, never about them. Every prompt must be:

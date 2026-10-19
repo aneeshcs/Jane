@@ -23,3 +23,15 @@ test('export-progress.mjs --local output includes coverage',()=>{const DATA=tmpD
   const out=execFileSync(process.execPath,['export-progress.mjs','--local'],{cwd:ROOT,env:{...process.env,DATA_DIR:DATA,STORAGE:'file'},encoding:'utf8'});
   const X=JSON.parse(fs.readFileSync(out.match(/wrote (\S+\.json)/)[1],'utf8'));fs.rmSync(DATA,{recursive:true,force:true});
   assert.equal(sub(X.coverage,'Mathematics').total,12);assert.ok(Array.isArray(X.coverage.untouched));});
+// ---- slice 15: the publisher reports new areas (warning only, frozen decision) ----
+import {validate,example} from './helpers.mjs';
+const seeded=skip=>{const DATA=tmpDir('jane-covp-'),S=E.blank();for(const t of example().topics)if(t.topicId!==skip)S.ts[t.topicId]={st:'learning',how:'direct',c:1,w:0};
+  fs.writeFileSync(path.join(DATA,'progress.json'),JSON.stringify(S));return DATA;};
+const pub=(DATA,args=['--dry-run','--local'])=>{const r=validate(example(),{args,env:{DATA_DIR:DATA}});fs.rmSync(DATA,{recursive:true,force:true});return r;};
+const SCI=example().topics.find(t=>g.byId[t.topicId].subject==='Science').topicId;
+test('with seeded progress, a quest only in seen areas → warning "no new area" (still valid)',()=>{const r=pub(seeded(null));
+  assert.equal(r.status,0,r.stderr);assert.match(r.stderr,/coverage: no new area/);assert.match(r.stdout,/new areas: 0/);});
+test('a stage from an untouched area → summary shows "new areas: 1" and no warning',()=>{const r=pub(seeded(SCI));
+  assert.equal(r.status,0,r.stderr);assert.match(r.stdout,/new areas: 1 \(Science \/ /);assert.doesNotMatch(r.stderr,/no new area/);});
+test('--offline skips the coverage check',()=>{const r=pub(seeded(null),['--dry-run','--offline']);
+  assert.equal(r.status,0,r.stderr);assert.doesNotMatch(r.stdout+r.stderr,/new areas|no new area/);});
