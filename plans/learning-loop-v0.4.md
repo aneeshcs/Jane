@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 11/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 12/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -132,7 +132,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 10 | Review gates between quest stages | review | #10 ✅ |
 | 11 | Gates show on the quest path | review | #11 ✅ |
 | 12 | Gates spot-check guessed skills | review | #12 ✅ |
-| 13 | Nightly hands spaced review to the gates | review | #13 |
+| 13 | Nightly hands spaced review to the gates | review | #13 ✅ |
 | 14 | See which areas have been explored | coverage | #14 |
 | 15 | Nightly quests visit new areas | coverage | #15 |
 | 16 | Play wanders into new areas | coverage | #16 |
@@ -458,7 +458,7 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 - Done test: `node --test test/review-gates.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D2.)
 
-### Slice 13: Nightly hands spaced review to the gates (#13)
+### Slice 13: Nightly hands spaced review to the gates (#13) — ✅ done
 Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 
 - **Ships:** The nightly author stops spending quest budget on review stages, and the export shows review health so starvation is visible: due, overdue, oldest overdue, gate items and spot-checks in the last 7 days, and unverified inferred topics.
@@ -634,3 +634,8 @@ One entry per slice once its done test passes: what shipped, the done test and i
 - Shipped: Gate items now include spot-checks: about 1 in 3 (every item when nothing is due) checks an inferred, never-verified skill, picked by most dependents then lowest confidence (E.spotPick). Right → how direct + verified, keeps its box, event 'verified', no medal; miss → learning, box 0, failUp withdraws guesses built on it, event 'spotMiss'. Kid frame: 'Gate! Quick check: show me you know this one'. Export unverifiedInferred; parent head verified/unverifiedInferred shown on the 'Shown directly' card; LESSONS.md Spot-checks paragraph.
 - Done test: `node --test test/review-gates.test.mjs && npm test`: 8/8 (3 new spot-check cases; the slice-10 'no due → no gate' case now also clears inferred skills, since gates never come up empty when inferred skills exist), 61/61 in npm test.
 - Deferred / discovered: -
+
+### Slice 13 (#13) ✅
+- Shipped: Validator: the 15-20% review-share warning is gone; a `review: true` stage still publishes with the warning 'review runs through gates now'; the summary says 'review via gates'. Export: new `reviewHealth` {due, overdue (>1 day late), oldestOverdueDays, gateItems7d, spotChecks7d, unverifiedInferred}. LESSONS.md rule 4 + 'How the app uses it' + export description, and docs/NIGHTLY.md (no review stages, spot-checks, reviewHealth) rewritten for gates. Owner was delegate; executed directly in this run.
+- Done test: `node --test test/quest-size.test.mjs test/server.test.mjs && npm test`: 10/10 (2 new validator cases + reviewHealth fields checked in the export case), 63/63 in npm test.
+- Deferred / discovered: The example quest keeps its one review stage (it now shows the gates warning) so old packs stay covered by an example.

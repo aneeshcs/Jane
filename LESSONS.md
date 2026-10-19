@@ -4,8 +4,9 @@ A lesson pack is the day's hand-written (or nightly-generated) content for the l
 (namespace `JANE_KV`) under the key `lessons:YYYY-MM-DD`, where the date is the **Pacific Time** calendar day.
 
 ## How the app uses it
-For every item, the engine picks a topic (spaced review ~15-20% → today's pack topics, interleaved with
-placement diagnostics → frontier topics), then chooses content in this order:
+For every item, the engine picks a topic (inside a started quest: review gates between stages, then the quest's
+stages; otherwise an occasional spaced review → today's pack topics, interleaved with placement diagnostics →
+frontier topics), then chooses content in this order:
 
 1. **Today's pack**: the next unanswered question for that topic (the intro card is shown before the topic's first question).
 2. **Procedural math generators** (fractions, decimals/percents, ×/÷, +/−, place value...) for Mathematics topics.
@@ -122,9 +123,10 @@ Run `node export-progress.mjs` and read `weakSpots` first. Then:
    frontier), short (2-3 questions), with a picture/template.
 3. **Never below the learner's level.** The target age and grade are settings (`LEARNER_AGE`, `LEARNER_GRADE` in `wrangler.toml`; the app is designed around ages ~8-12, upper elementary). No topics starting more than 2 years below the target age (the publisher warns), no
    baby wording. "Easier" means smaller steps, not younger content.
-4. **About 15-20% review.** Mark review stages `"review": true` (topics already mastered, especially `reviewDue` and
-   anything mastered yesterday). The publisher reports the review share of graded questions and warns outside 10-25%.
-   A first-try correct review answer moves the topic's memory box up; a miss brings the review back tomorrow.
+4. **Spaced review runs through the gates.** Don't spend quest budget on review stages: the app's review gates
+   (see "Review gates") pull due reviews and spot-checks from the Leitner queue at runtime. `"review": true` stages
+   still publish (for old packs) but get a warning. Watch the export's `reviewHealth` (`due`, `overdue`,
+   `oldestOverdueDays`, `gateItems7d`, `spotChecks7d`, `unverifiedInferred`) for review that isn't keeping up.
 5. **Make it interactive and illustrated.** Mix formats (the publisher warns if fewer than 3 interactive ones), add a
    `scene` or `template` to most stages, and drop in a **fun-fact** card or two.
 6. **Keep it short (enforced):** a quest is about **8 minutes**: **at most 16 graded questions** over **4-6 stages
@@ -286,8 +288,8 @@ The export contains `weakSpots` (per topic and per domain over the last 7 days, 
 needed a `hints`, final `misses`, `slow` answers > 30 s, `failedReviews`, `unsure` self-checks, a `weakScore`, plus
 `goDeeper` suggestions with easier prerequisite steps and `strengths` with `stretchTo` topics), `summary` (counts per state and subject), `stats`, `todayLog` (every answer plus `mastered`,
 `inferred` and `demoted` events), `learnedToday`, `frontier` (ready and learning topics, closest to the target age (`LEARNER_AGE`) first,
-with full topic details, prerequisites and unlocks), `reviewDue`, and the raw `progress` record.
-Write tomorrow's quest from `weakSpots`, `frontier` and `reviewDue` using the rules above, dry-run, fix every warning, then publish it.
+with full topic details, prerequisites and unlocks), `reviewDue`, `reviewHealth` (see rule 4), and the raw `progress` record.
+Write tomorrow's quest from `weakSpots` and `frontier` (the gates handle `reviewDue`) using the rules above, dry-run, fix every warning, then publish it.
 
 Both scripts call the repo's `wrangler` (Node 22; a portable Node in `~/.local/node-v22.20.0-linux-x64` is used if present), read the account and KV ids from `wrangler.toml`, and need `CLOUDFLARE_API_TOKEN` set in the environment (never commit it).
 

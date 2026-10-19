@@ -42,7 +42,9 @@ The export includes:
 - **`termsLookedUp`**: glossary words the kid tapped.
 - **`quests`**: active quests, the cap (3) and `nextStep` (a new quest, or a catch-up boost).
 - **`frontier`**: ready and learning topics, closest to the target age first.
-- **`reviewDue`**: mastered topics whose spaced review is due.
+- **`reviewDue`**: mastered topics whose spaced review is due (the gates serve them; don't write review stages).
+- **`reviewHealth`**: `due`, `overdue` (> 1 day late), `oldestOverdueDays`, `gateItems7d`, `spotChecks7d`,
+  `unverifiedInferred`: is spaced review keeping up?
 - **`summary`**, **`stats`** and the raw **`progress`** record.
 
 ## 3. Check the quest cap
@@ -64,7 +66,8 @@ At most **3 quests** can be active (started and unfinished) at a time. The routi
   questions that start one notch easier and climb back up, in at least 3 formats.
 - **Stretch strengths.** Add a new topic next to the strongest domains (`stretchTo`).
 - **Never below level.** Nothing starting more than 2 years below the target age, and no baby wording.
-- **About 15-20% spaced review.** Mark stages `"review": true`. Prefer `reviewDue` topics.
+- **No review stages.** Spaced review runs through the app's review gates, so spend every stage on new learning.
+  A `"review": true` stage still publishes, with a warning. Check `reviewHealth` in the export (below).
 - **Size (enforced).** About 8 minutes: at most 16 graded questions over 4-6 stages (7 at most), ending with a boss
   stage. The app adds up to 4 review-gate items, so about 20 answers in all. The publisher fails a bigger quest.
 - **Kid voice.** Talk to the kid as "you", 15 words or fewer, fun, and write `{name}` instead of a real name.
@@ -100,7 +103,10 @@ message and the trimmed or hinted stages apply right away. Preview either one in
   every 9 items or by chance. It prefers topics the kid showed directly.
 - **In a quest** reviews come through **review gates**: before stage 2, the middle stage and the boss, the learner
   answers 1-2 items the app draws from the due queue at runtime (most overdue first). They count in Leitner exactly
-  like other reviews, so reviews keep flowing while quests run. See LESSONS.md "Review gates".
+  like other reviews, so reviews keep flowing while quests run. About 1 gate item in 3 is a **spot-check** of an
+  inferred skill (right: it counts as shown directly; miss: back to learning). See LESSONS.md "Review gates".
+- **The nightly author doesn't write review stages.** If `reviewHealth.overdue` or `oldestOverdueDays` keeps growing,
+  the learner isn't reaching the gates (no quest played): mention it in the commit message rather than adding review stages.
 
 ## When the routine messages the parent
 Usually never. It stays quiet on a normal night. It only reaches out when something **fails** (the export or publish

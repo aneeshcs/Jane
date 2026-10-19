@@ -15,6 +15,12 @@ const full=(t,extra={})=>({...t,state:E.stateOf(S,g,t.id,now),record:S.ts[t.id]|
   prerequisites:g.pre[t.id].map(e=>({id:e.id,name:g.byId[e.id].name,strength:e.h?'hard':'soft',state:E.stateOf(S,g,e.id,now)})),
   unlocks:g.post[t.id].map(e=>({id:e.id,name:g.byId[e.id].name,strength:e.h?'hard':'soft'})),...extra});
 const sm=E.summary(S,g,now);delete sm.codes;
+// review health: due/overdue Leitner reviews and how much review the gates actually served (last --days days)
+const DAY=864e5,dueRecs=reviewDueIds(),oldest=dueRecs.length?Math.min(...dueRecs.map(id=>S.ts[id].due)):now;
+function reviewDueIds(){return g.topics.filter(t=>E.stateOf(S,g,t.id,now)==='review').map(t=>t.id);}
+const reviewHealth={due:dueRecs.length,overdue:dueRecs.filter(id=>S.ts[id].due<=now-DAY).length,oldestOverdueDays:Math.max(0,Math.floor((now-oldest)/DAY)),
+  gateItems7d:logs.filter(l=>!l.event&&l.format==='gate'&&l.try===1).length,spotChecks7d:logs.filter(l=>l.event==='verified'||l.event==='spotMiss').length,
+  unverifiedInferred:Object.keys(S.ts).filter(id=>g.byId[id]&&E.unverified(S,id)).length};
 const near=t=>Math.abs(t.ageRangeStart-L.age);
 const frontier=g.topics.filter(t=>['ready','learning'].includes(E.stateOf(S,g,t.id,now))).sort((a,b)=>near(a)-near(b)).map(t=>full(t));
 const reviewDue=g.topics.filter(t=>E.stateOf(S,g,t.id,now)==='review').sort((a,b)=>S.ts[a.id].due-S.ts[b.id].due).map(t=>full(t,{dueAt:new Date(S.ts[t.id].due).toISOString(),box:S.ts[t.id].box}));
@@ -58,7 +64,8 @@ const tl={};for(const l of logs)if(l.event==='term'){const k=l.term.toLowerCase(
 const termsLookedUp=Object.values(tl).map(x=>({...x,topics:[...x.topics]})).sort((a,b)=>b.count-a.count);
 const res={exportedAt:new Date(now).toISOString(),date,timezone:'America/Los_Angeles',learner:S.name,summary:sm,
   stats:{points:S.points,stars:S.stars,streak:S.streak,bestStreak:S.bestStreak,solved:S.solved,badges:S.badges,placement:S.placement},
-  unverifiedInferred:Object.keys(S.ts).filter(id=>g.byId[id]&&E.unverified(S,id)).length, // inferred skills a gate spot-check has not confirmed yet
+  unverifiedInferred:reviewHealth.unverifiedInferred, // inferred skills a gate spot-check has not confirmed yet
+  reviewHealth, // spaced review runs through quest gates now: watch for starvation here (LESSONS.md "Review gates")
   todaysPack:pack?{date:pack.date,title:pack.title,topicIds:pack.topics.map(t=>t.topicId)}:null,
   quests,termsLookedUp,weakSpots,todayLog:log,learnedToday:log.filter(l=>l.event==='mastered'),
   frontier,reviewDue,progress:S};

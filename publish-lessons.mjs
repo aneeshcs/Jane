@@ -135,7 +135,8 @@ if(Q&&nGraded>MAX_GRADED)E('size',`${nGraded} graded questions: too long (max ${
 if(Q&&nGraded&&nGraded<10)W('size',`${nGraded} graded questions: aim for 12-16`);
 if(Q&&(pack.topics||[]).length>MAX_STAGES)E('size',`${pack.topics.length} stages: too long (max ${MAX_STAGES}, aim 4-6)`);
 if(Q&&estMin>8)W('size',`about ${estMin} min (aim ≤ 8): trim cards or questions`);
-if(nGraded){const pct=Math.round(100*nReview/nGraded);if(pct<10||pct>25)W('review',`${pct}% of graded questions are review stages (aim 15-20%)`);}
+// spaced review runs through the app's review gates now (LESSONS.md "Review gates"): review stages still publish, but spend quest budget
+const revStages=pack.topics.filter(t=>t.review).length;if(revStages)W('review',`${revStages} review stage${revStages>1?'s':''}: review runs through gates now, so spend the budget on new learning`);
 const inter=[...typesUsed].filter(x=>!['mc','numeric','text'].includes(x));if(inter.length<3)W('formats',`only ${inter.length} interactive format(s) used; mix in order/match/picture/blank/numberline/fracbar/truefalse/why/fact`);
 if(Q&&PROG?.quests?.[pack.date]?.started){let prev=null;try{prev=kvGet('lessons:'+pack.date);}catch{}
   for(const t of prev?.topics||[]){const answered=(t.questions||[]).some((q,j)=>PROG.packSeen?.[`${pack.date}:${t.topicId}:${j}`]);if(!answered)continue;
@@ -145,6 +146,6 @@ if(warns.length)console.warn(`⚠️  ${warns.length} warning(s) (see LESSONS.md
 if(errs.length){console.error(`❌ ${errs.length} problem(s) in ${file}:\n  `+errs.join('\n  '));process.exit(1);}
 if(Q&&!dry&&!force){const S=kvGet('progress');const A=activeQuests(S,pack.date).filter(d=>kvList('lessons:'+d).length);
   if(A.length>=QUEST_CAP){console.error(`⛔ ${A.length}/${QUEST_CAP} quests are active (${A.join(', ')}). Not publishing a new quest.\n   Publish a catch-up boost for the oldest one instead (see LESSONS.md "Quest cap"), or pass --force.`);process.exit(3);}}
-const sum=`${pack.topics.length} ${Q?'stages':'topics'}, ${nq} items (~${estMin} min, ${nGraded} graded, ${nReview} review = ${nGraded?Math.round(100*nReview/nGraded):0}%, ${nDeep} deep dive${nDeep===1?'':'s'}), formats: ${[...typesUsed].join(', ')}`;
+const sum=`${pack.topics.length} ${Q?'stages':'topics'}, ${nq} items (~${estMin} min, ${nGraded} graded${nReview?`, ${nReview} in review stages`:''}, review via gates, ${nDeep} deep dive${nDeep===1?'':'s'}), formats: ${[...typesUsed].join(', ')}`;
 if(dry){console.log(`✅ valid${Q?` quest "${Q.title}"`:''}: ${sum} for ${pack.date} (dry run, nothing written)`);process.exit(0);}
 kvPut('lessons:'+pack.date,pack);console.log(`✅ published${LOCAL?' (local)':''} lessons:${pack.date}${Q?` quest "${Q.title}"`:''}: ${sum}`);
