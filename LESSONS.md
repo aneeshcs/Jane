@@ -220,8 +220,12 @@ solved problem for the stuck help), `skill` (the topic a boss question tests).
   ]
 }
 ```
-A pack topic is mastered after 2 first-try correct answers in a row (3 for `boss` and `deepDive`), or after all its
-graded questions if fewer. In a quest the stage still plays to the end after mastery.
+## Mastery and medals (honest)
+A pack topic is mastered after 2 first-try correct answers in a row (3 for `boss` and `deepDive`), and never from a
+single question: a stage with only 1 graded question can't master its topic. In a quest the stage still plays to the
+end after mastery. A "👍 Got it!" self-check never masters anything on its own (a graded check follows). A repeated
+identical question counts at most once per day, and guided practice doesn't count. A **medal** needs **3 first-try
+correct graded answers** on a directly mastered topic (placement answers master for placement, without a medal).
 
 ## Example deep dive (Similes & Metaphors, for a topic that showed up in `weakSpots.goDeeper`)
 ```json

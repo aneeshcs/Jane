@@ -68,7 +68,8 @@ friendly tutor. The name is just a nod to the books: this project has no affilia
 - **Creative answers.** Open questions ("as brave as a ___") accept any sensible answer and celebrate it. Fuzzy
   matching handles plurals, articles and small typos. After 2 misses, the app shows a kind "learning moment"
   instead of counting it as wrong.
-- **Medals & trophies.** Bronze, silver or gold topic medals (by depth in the graph), streaks, stars and quest medals.
+- **Medals & trophies.** Bronze, silver or gold topic medals (by depth in the graph), earned honestly: 3 first-try
+  right answers, never a self-check alone. Streaks, stars and quest medals.
 - **Parent report (`/parent`).** A calm, read-only report: overall %, time today and this week, wins and struggle spots,
   words looked up, charts, per-subject progress, quest history, upcoming reviews, a searchable answer log and medals.
   It works on phones and prints cleanly. All times are Pacific Time.

@@ -31,6 +31,12 @@ function upgrade(S){for(const q of Object.values(S.quests||{}))if(q?.done&&!q.sn
 // medals: one per directly-mastered topic (not inferred, not self-rated); boss wins are legendary
 export function tierOf(g,id,boss){return boss?'legendary':g.byId[id]?.tier||'bronze';}
 function backfillMedals(S,g){S.medals=[];for(const [id,r] of Object.entries(S.ts))if(r.st==='mastered'&&r.how==='direct'&&g.byId[id])S.medals.push({id,tier:tierOf(g,id,false),at:r.at||Date.now()});S.medals.sort((a,b)=>a.at-b.at);}
+// honest medals (LESSONS.md "Mastery and medals"): mastery needs ≥ 2 first-try correct graded answers, a medal ≥ 3.
+// A self-check never counts. A repeated identical question counts at most once per Pacific day. Guided practice doesn't count.
+export const MASTERY_MIN=2,MEDAL_MIN=3;
+const ptDay=ms=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
+function countFt(rec,q,now){const k=ptDay(now)+'|'+String(q||'').slice(0,120);rec.ftQ??=[];if(rec.ftQ.includes(k))return false;rec.ftQ=[...rec.ftQ.slice(-7),k];rec.ft=(rec.ft||0)+1;return true;}
+function maybeMedal(S,g,id,boss,now){const r=S.ts[id];if(!r||r.st!=='mastered'||r.how!=='direct'||(r.ft||0)<MEDAL_MIN)return null;return award(S,g,id,boss,now);}
 function award(S,g,id,boss,now){S.medals??=[];if(S.medals.some(m=>m.id===id))return null;const m={id,tier:tierOf(g,id,boss),at:now,boss:boss||undefined};S.medals.push(m);return m;}
 // ---------- topic states ----------
 export function stateOf(S,g,id,now){const r=S.ts[id];if(r?.st==='mastered')return r.due<=now?'review':'mastered';if(r?.st==='learning')return 'learning';
@@ -89,7 +95,7 @@ function packQ(S,pack,id){if(!pack||questLocked(S,pack))return null;const t=pack
 const OPEN=['Hey {name}! ','Quick one! ','Ooh, try this! ','Your turn! ',''];
 function opener(q){const o=pick(OPEN);return o&&q.split(' ').length+o.split(' ').length-1<=15?o+q:q;}
 function kidMcq(g,id){const t=g.byId[id];if(!t.kq)return null;const ch=[t.ka,...t.kw].sort(()=>Math.random()-.5);
-  return{kind:'quiz',type:'mc',q:opener(t.kq),choices:ch,answer:t.ka,hint:`Think it through. Which one makes the most sense?`,explain:`It's "${t.ka}".`};}
+  return{kind:'quiz',type:'mc',q:opener(t.kq),base:t.kq,choices:ch,answer:t.ka,hint:`Think it through. Which one makes the most sense?`,explain:`It's "${t.ka}".`};}
 function selfCheck(g,id){const t=g.byId[id];
   return{kind:'self',type:'self',q:t.self||`Hey {name}! Could you explain ${t.sn||t.name}?`,choices:['👍 Got it!','🤔 Sort of','🌱 Not yet']};}
 // interactive pack formats -> internal item. Answers stay server-side; the client only gets what it must render.
@@ -231,7 +237,9 @@ export function submit(S,g,answer,now){const it=S.current;if(!it)return{error:'n
   if(isBonus){if(ok){S.points+=15;S.stars++;r.jane='BONUS! You\'re a decimal wizard! 🧙‍♂️ +15 points and a ⭐';r.correct=true;}else{r.jane=`Good try! ${it.bonus.a} is the decimal. Tip: divide the top number by the bottom number.`;r.reveal=it.bonus.a;r.correct=false;}
     r.done=true;S.current=null;return finish(S,r,ev);}
   if(it.type==='self'){S.current=null;r.done=true;rec.last=now;
-    if(answer==='yes'){S.points+=5;r.correct=true;setMastered(S,g,it.topicId,'self',.75,now,ev);inferDown(S,g,it.topicId,.75,now,ev);r.jane=`Awesome, I believe in you! ⭐ +5 points. "${t.sn||t.name}" goes on your map!`;}
+    if(answer==='yes'&&it.mode==='review'&&rec.st==='mastered'){S.points+=5;r.correct=true;r.jane=`Awesome! ⭐ +5 points.`;}
+    else if(answer==='yes'){S.points+=5;r.correct=true;rec.st='learning';rec.how='direct';rec.selfYes=now;if(it.mode!=='diagnostic'&&!S.mini)S.focus=it.topicId;
+      r.jane=`Awesome, I believe in you! ⭐ +5 points. Show me with a quick question!`;}
     else{rec.st='learning';rec.how='direct';r.correct=false;S.points+=2;r.jane=answer==='kinda'?`Thanks for being honest! We'll practise "${t.sn||t.name}" together. +2 points for honesty 💜`:`No worries — that's what I'm here for! 🌱 +2 points for honesty.`;
       if(answer==='no'){const p=probeDown(S,g,it.topicId);if(p&&it.mode!=='diagnostic')S.focus=p;}}
     if(it.mode==='diagnostic')placementResult(S,g,it.topicId,answer==='yes');
@@ -239,20 +247,21 @@ export function submit(S,g,answer,now){const it=S.current;if(!it)return{error:'n
     return finish(S,r,ev);}
   if(ok==='notSimplest'){it.tries++;return finish(S,{correct:false,retry:true,jane:'Yes, that\'s the right amount! Can you simplify it even more? 🤏'},ev);}
   if(it.packKey&&(ok||it.tries>=1))S.packSeen[it.packKey]=1;
-  if(ok){rec.c++;rec.last=now;const fast=it.timed&&(now-it.issued)/1000<=it.timed;const pts=(it.tries?5:10+(it.lvl||3)*2)+(fast?5:0)+(it.format==='boss'?5:0);
+  if(ok){rec.c++;rec.last=now;if(!it.tries&&!it.guided)countFt(rec,it.base||it.q,now);const fast=it.timed&&(now-it.issued)/1000<=it.timed;const pts=(it.tries?5:10+(it.lvl||3)*2)+(fast?5:0)+(it.format==='boss'?5:0);
     S.points+=pts;S.streak++;S.bestStreak=Math.max(S.bestStreak,S.streak);S.solved++;if(S.streak%3===0)S.stars++;r.correct=true;
     r.jane=`${pick(praise)} +${pts} points${fast?' (speed bonus ⚡)':''}${S.streak>=3?` — ${S.streak} in a row!`:''}`;
     if(ok==='creative'){const g0=String(answer).trim();r.creative=true;r.jane=(it.celebrate||'Nice! "{given}" works! "{answer}" is the classic one, but your idea is great too. 🎨').replace(/\{given\}/g,g0).replace(/\{answer\}/g,it.answer)+` +${pts} points`;}
     if(it.guided){guidedDone(S,it);r.guided=true;r.jane+=' Practice done! ✅';}
     else if(it.packReview&&rec.st==='mastered'){if(!it.tries&&rec.due<=now+DAY){rec.box=Math.min(4,(rec.box||0)+1);rec.due=now+BOXES[rec.box]*DAY;r.jane+=' Memory check passed! 🧠';}}
     else if(it.mode==='review'){if(it.practice){}else if(!it.tries){rec.box=Math.min(4,(rec.box||0)+1);rec.due=now+BOXES[rec.box]*DAY;r.jane+=` Memory check passed — see you in ${BOXES[rec.box]} days, "${t.sn||t.name}"! 🧠`;}else rec.due=now+DAY;}
-    else if(it.mode==='diagnostic'){if(!it.tries){setMastered(S,g,it.topicId,'direct',.9,now,ev);const n=inferDown(S,g,it.topicId,.9,now,ev);const md=award(S,g,it.topicId,false,now);if(md)r.medal=md;r.mastered=t.sn||t.name;r.inferred=n;
+    else if(it.mode==='diagnostic'){if(!it.tries){setMastered(S,g,it.topicId,'direct',.9,now,ev);rec.placed=now;const n=inferDown(S,g,it.topicId,.9,now,ev);r.mastered=t.sn||t.name;r.inferred=n;
         if(n)r.jane+=` That tells me you already know ${n} earlier skill${n>1?'s':''} — I lit them up on your map! 🗺️`;}
       else{rec.st='learning';rec.how='direct';}placementResult(S,g,it.topicId,!it.tries);}
     else if(!it.tries){rec.streak=(rec.streak||0)+1;if(it.kind==='math'&&(rec.lvl||3)<5){rec.lvl=(rec.lvl||3)+1;r.levelUp=rec.lvl;}
-      const need=it.kind==='quiz'?1:it.kind==='pack'?Math.min(it.format==='boss'||it.deep?3:2,it.packN):it.format==='boss'?3:it.kind==='math'?3:2;if(it.boss)r.boss={max:it.boss.max,hp:Math.max(0,it.boss.max-rec.streak)};
-      if(rec.streak>=need){setMastered(S,g,it.topicId,'direct',.9,now,ev);const n=inferDown(S,g,it.topicId,.9,now,ev);S.badges.push(t.sn||t.name);const md=award(S,g,it.topicId,it.format==='boss',now);if(md)r.medal=md;r.mastered=t.sn||t.name;r.inferred=n;S.focus=null;
+      const need=it.kind==='quiz'?MASTERY_MIN:it.kind==='pack'?Math.max(MASTERY_MIN,Math.min(it.format==='boss'||it.deep?3:2,it.packN)):it.format==='boss'?3:it.kind==='math'?3:2;if(it.boss)r.boss={max:it.boss.max,hp:Math.max(0,it.boss.max-rec.streak)};
+      if(!(rec.st==='mastered'&&rec.how==='direct')&&rec.streak>=need&&(rec.ft||0)>=MASTERY_MIN){setMastered(S,g,it.topicId,'direct',.9,now,ev);const n=inferDown(S,g,it.topicId,.9,now,ev);S.badges.push(t.sn||t.name);r.mastered=t.sn||t.name;r.inferred=n;S.focus=null;
         r.jane+=it.format==='boss'?` 💥 You defeated the ${t.domain} BOSS! "${t.sn||t.name}" mastered! 🏆`:` You MASTERED "${t.sn||t.name}"! 🏆`;}}
+    if(!it.tries){const md=maybeMedal(S,g,it.topicId,it.format==='boss',now);if(md)r.medal=md;}
     if(it.bonus){it.stage='bonus';it.tries=0;r.bonus=it.bonus.q;r.jane+=' Want a bonus challenge?';}else{r.done=true;S.current=null;}
     return finish(S,r,ev);}
   it.tries++;S.streak=0;

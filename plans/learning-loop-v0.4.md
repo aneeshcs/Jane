@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 5/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 6/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -125,7 +125,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 3 | Publishing never changes a finished quest | integrity | #4 ✅ |
 | 4 | Asked for a percent? Write a percent | grading | #5 ✅ |
 | 5 | Pack authors declare the answer form | grading | #6 ✅ |
-| 6 | Mastery takes real answers, not a thumbs-up | medals | #7 |
+| 6 | Mastery takes real answers, not a thumbs-up | medals | #7 ✅ |
 | 7 | Legendary medals come from a real boss fight | medals | #8 |
 | 8 | One trophy per achievement | medals | #9 |
 | 9 | Existing medals re-earned under the new rules | medals | #19 |
@@ -269,7 +269,7 @@ Area: `grading` · Design: [D4](#d4-answer-in-the-asked-form)
 - Done test: `node --test test/answer-form.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D4.)
 
-### Slice 6: Mastery takes real answers, not a thumbs-up (#7)
+### Slice 6: Mastery takes real answers, not a thumbs-up (#7) — ✅ done
 Area: `medals` · Design: [D3](#d3-honest-medals)
 
 - **Ships:** A topic is only mastered, and only earns a medal, through graded answers. A "👍 Got it!" self-check alone never masters, infers or awards anything. One right answer never masters a topic, and a medal needs 3 first-try correct graded answers.
@@ -599,3 +599,8 @@ One entry per slice once its done test passes: what shipped, the done test and i
 - Shipped: Numeric pack questions take an optional form (percent|decimal|fraction|whole), passed to the engine by packItem. The validator accepts answers like 27%, rejects an unknown form, and fails a question whose prompt (or form) asks for one form while the answer is written in another ('answer form: ...'). LESSONS.md: numeric row + an 'Answer form' note.
 - Done test: `node --test test/answer-form.test.mjs && npm test`: 4/4 new cases pass (10/10 in the file), 31/31 in npm test.
 - Deferred / discovered: Already-published packs (incl. the in-progress one) are over the new size budget; they are grandfathered: the app never re-validates a published pack.
+
+### Slice 6 (#7) ✅
+- Shipped: Self-check 'yes' no longer masters, infers or medals: the topic stays learning (selfYes noted), keeps its +5 and kind words, and a graded check comes next (S.focus). New rec.ft counts first-try correct graded answers (not guided; an identical question at most once per Pacific day, kid MCQs keyed by their base question). Mastery needs ≥ 2 (MASTERY_MIN; kid MCQ 1 → 2, pack minimum 2). Medals come from maybeMedal(): directly mastered + ft ≥ 3 (MEDAL_MIN), on any first-try right (also in review). Diagnostic first-try rights master for placement (rec.placed) without a medal. A mastered-direct topic no longer re-triggers 'MASTERED' and a box reset in later quest stages. LESSONS.md 'Mastery and medals', README bullet.
+- Done test: `node --test test/medals.test.mjs && npm test`: 4/4 new cases pass, 35/35 in npm test (stuck tests unchanged).
+- Deferred / discovered: Existing medals are untouched here; slice 9 re-scores them.
