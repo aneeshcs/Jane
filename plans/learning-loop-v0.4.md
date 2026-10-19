@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** planned, 0/17 slices done. Docs only so far; nothing is implemented. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 1/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -120,7 +120,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 
 | # | Slice | Area | Issue |
 |---|---|---|---|
-| 1 | Quests fit in about eight minutes | quests | #2 |
+| 1 | Quests fit in about eight minutes | quests | #2 ✅ |
 | 2 | A finished quest stays finished | integrity | #3 |
 | 3 | Publishing never changes a finished quest | integrity | #4 |
 | 4 | Asked for a percent? Write a percent | grading | #5 |
@@ -138,7 +138,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 16 | Play wanders into new areas | coverage | #16 |
 | 17 | Parent report shows coverage by area | coverage | #17 |
 
-### Slice 1: Quests fit in about eight minutes (#2)
+### Slice 1: Quests fit in about eight minutes (#2) — ✅ done
 Area: `quests` · Design: [D1](#d1-shorter-quests)
 
 - **Ships:** A nightly quest is short enough to finish in one sitting (about 8 minutes). The publisher refuses a quest over the budget instead of only warning, so long quests can't reach the learner.
@@ -575,5 +575,7 @@ Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 
 One entry per slice once its done test passes: what shipped, the done test and its result, anything deferred or discovered.
 
-_No slices done yet._
-
+### Slice 1 (#2) ✅
+- Shipped: publish-lessons.mjs enforces the quest budget: error above 16 graded questions or 7 stages, warning below 10 graded, a time estimate (graded × 25 s + cards × 10 s) in the summary with a warning above 8 min; deep dives need 3-4 graded questions. The example quest is trimmed to 16 graded (≈ 7.5 min). LESSONS.md rule 6 and NIGHTLY.md Size updated. New shared test/helpers.mjs.
+- Done test: `node --test test/quest-size.test.mjs && npm test`: 4/4 new cases pass, 13/13 in npm test.
+- Deferred / discovered: Already-published packs are not re-validated by the app (grandfathered): the engine plays whatever is in KV.

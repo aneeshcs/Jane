@@ -60,13 +60,13 @@ At most **3 quests** can be active (started and unfinished) at a time. The routi
 - **Gentle on stuck topics.** `weakSpots.needsSupport` (the kid tapped "I'm stuck" or skipped) → a gentle deep dive that
   starts a full level down (e.g. sixteenths via eighths, halving or money), no boss on that skill tomorrow, and
   `example`/`steps` on its questions. `weakSpots.requeued` lists skipped items the app brings back by itself, guided.
-- **Go deeper on struggles.** For every `goDeeper` topic, add a deep dive: a `learn` card and guided items first, then 4-5 graded
+- **Go deeper on struggles.** For every `goDeeper` topic, add a deep dive: a `learn` card and guided items first, then 3-4 graded
   questions that start one notch easier and climb back up, in at least 3 formats.
 - **Stretch strengths.** Add a new topic next to the strongest domains (`stretchTo`).
 - **Never below level.** Nothing starting more than 2 years below the target age, and no baby wording.
 - **About 15-20% spaced review.** Mark stages `"review": true`. Prefer `reviewDue` topics.
-- **Size.** About 28 graded questions over about 8-9 stops, ending with a boss stage. The publisher warns above 30
-  graded questions or 9 stops.
+- **Size (enforced).** About 8 minutes: at most 16 graded questions over 4-6 stages (7 at most), ending with a boss
+  stage. The app adds up to 4 review-gate items, so about 20 answers in all. The publisher fails a bigger quest.
 - **Kid voice.** Talk to the kid as "you", 15 words or fewer, fun, and write `{name}` instead of a real name.
 - **Creative answers.** Open questions use `creative` (any sensible answer is celebrated) or broad `acceptedAnswers`.
 - **Terms.** Define new words in the pack's `terms`, and reuse words the kid looked up.

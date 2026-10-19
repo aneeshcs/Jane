@@ -89,7 +89,7 @@ A quest is **active** once started and until finished. At most **3** can be acti
 Run `node export-progress.mjs` and read `weakSpots` first. Then:
 1. **Go deeper where the learner struggles.** Every topic in `weakSpots.goDeeper` (misses, hints, slow answers, failed
    reviews, "not yet / sort of" self-checks, "I'm stuck" taps and skips) gets a **deep dive** stage (`"deepDive": true`): a `learn`
-   (or "Why it works") card first, then 1-2 guided items, then **4-5 graded questions** in all that start one notch easier and climb back to the level they missed, using at
+   (or "Why it works") card first, then 1-2 guided items, then **3-4 graded questions** in all that start one notch easier and climb back to the level they missed, using at
    least 3 different formats. Easier-to-target steps = smaller numbers, one idea per step, the same trick in a new
    setting, then the original hard question last. Use `easierSteps` (hard prerequisites) for ideas. Topics marked
    `needsSupport` (the kid tapped "I'm stuck" or skipped) get the gentle version: start a full level down, and no boss on them
@@ -103,7 +103,11 @@ Run `node export-progress.mjs` and read `weakSpots` first. Then:
    A first-try correct review answer moves the topic's memory box up; a miss brings the review back tomorrow.
 5. **Make it interactive and illustrated.** Mix formats (the publisher warns if fewer than 3 interactive ones), add a
    `scene` or `template` to most stages, and drop in a **fun-fact** card or two.
-6. **Keep it short:** kid voice (below), boss last, **~8-9 stops and ~28 graded questions** (publisher warns above 30 graded or 9 stops). Spread them out: deep dives 4-5, stretch and review stages 1-3, boss 3-4.
+6. **Keep it short (enforced):** a quest is about **8 minutes**: **at most 16 graded questions** over **4-6 stages
+   (7 at most)**, boss last. The app adds up to 4 review-gate items on top (see "Review gates"), so the learner
+   answers about 20 questions. The publisher **fails** a quest above 16 graded questions or 7 stages, prints a time
+   estimate (graded × 25 s + cards × 10 s) and warns above 8 minutes. Spread them out: deep dives 3-4, stretch
+   stages 1-3, boss 3-4.
 
 ## Writing style (required for every pack)
 Jane talks **to** the learner, never about them. Every prompt must be:
@@ -192,7 +196,7 @@ solved problem for the stuck help), `skill` (the topic a boss question tests).
       "topicId": "mt_hJW7hVflm3",            // a Marble topic id (public/tax.json or the export's frontier)
       "stage": { "name": "Simile Swamp", "emoji": "🐊" },   // required in quests: the stop on the path
       "format": "story",                     // quest | story | mystery | minigame | timed | boss | explore | guided
-      "deepDive": true,                      // weak area: learn/why card + guided + 4-5 graded steps, mastery needs 3 in a row
+      "deepDive": true,                      // weak area: learn/why card + guided + 3-4 graded steps, mastery needs 3 in a row
       "teaches": ["mt_lvaSGHwvQ5"],          // optional: skills this stage teaches/practises for the boss
       "powerup": "...",                      // boss stage only: the "Boss ahead!" recap (≤ 30 words)
       "review": false,                       // true = review stage for an already-mastered topic

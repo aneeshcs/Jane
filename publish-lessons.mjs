@@ -67,7 +67,7 @@ const stageDone=t=>!!PROG&&(t.questions||[]).every((q,j)=>CARDS.includes(q.type)
 const tooHard=a=>/\.\d{4,}/.test(String(a))||/\d\.\d+\s*%/.test(String(a)); // past thousandths, or a decimal percent: too hard for a boss
 function steps(v,P,req){if(v==null){if(req)E(P,'guided practice needs "steps": 1-4 short strings shown before answering');return;}if(!Array.isArray(v)||!v.length||v.length>6||!v.every(x=>typeof x==='string'&&x.trim()))E(P,'1-6 non-empty strings');else v.forEach((x,k)=>{if(wc(x)>18)W(`${P}[${k}]`,`${wc(x)} words (steps ≤ 18)`);});}
 const taught=new Set();
-const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0;const typesUsed=new Set();
+const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0,nCards=0;const typesUsed=new Set();
 (pack.topics||[]).forEach((t,i)=>{const P=`topics[${i}]`,tp=byId[t.topicId];if(!tp)E(P+'.topicId',`unknown Marble topic id "${t.topicId}"`);if(seen.has(t.topicId))E(P+'.topicId','duplicate');seen.add(t.topicId);
   if(t.format&&!FORMATS.includes(t.format))E(P+'.format','one of '+FORMATS.join('|'));
   if(t.intro){str(t.intro.title,P+'.intro.title');str(t.intro.story,P+'.intro.story');str(t.intro.emoji,P+'.intro.emoji',false);if(wc(t.intro.story)>25)W(P+'.intro.story',`${wc(t.intro.story)} words (aim ≤ 25)`);}
@@ -76,8 +76,8 @@ const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0;const typesUsed=new Se
   if(t.review!=null&&typeof t.review!=='boolean')E(P+'.review','true|false');if(t.deepDive!=null&&typeof t.deepDive!=='boolean')E(P+'.deepDive','true|false');
   if(!Array.isArray(t.questions)||!t.questions.length)E(P+'.questions','non-empty array required');const qs=t.questions||[];
   const graded=qs.filter(q=>!CARDS.includes(q.type)).length;if(!graded)E(P+'.questions','needs at least one graded question (not only cards)');
-  if(t.review)nReview+=graded;nGraded+=graded;nq+=qs.length;
-  if(t.deepDive){nDeep++;if(graded<4)E(P,`deep dive needs ≥ 4 graded questions (has ${graded})`);if(graded>5)W(P,`deep dive has ${graded} graded questions (aim 4-5 to keep quests short)`);if(!qs.some(q=>q.type==='why'||q.type==='learn'))E(P,'deep dive needs a "why" or "learn" card');
+  if(t.review)nReview+=graded;nGraded+=graded;nq+=qs.length;nCards+=qs.length-graded;
+  if(t.deepDive){nDeep++;if(graded<3)E(P,`deep dive needs ≥ 3 graded questions (has ${graded})`);if(graded>4)W(P,`deep dive has ${graded} graded questions (aim 3-4 to keep quests short)`);if(!qs.some(q=>q.type==='why'||q.type==='learn'))E(P,'deep dive needs a "why" or "learn" card');
     if(new Set(qs.map(q=>q.type).filter(x=>!CARDS.includes(x))).size<3)W(P,'deep dive: mix at least 3 question types');}
   if(tp&&tp.ageRangeStart<LRN.age-2)W(P,`"${tp.name}" starts at age ${tp.ageRangeStart}: below the target level (${LRN.grade}, ~age ${LRN.age})`);
   // teach → guided practice → graded, for every new (not mastered) skill; boss stages only test what was taught, practised or mastered
@@ -118,13 +118,18 @@ const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0;const typesUsed=new Se
      case 'numberline':if(!num(q.min)||!num(q.max)||!(q.max>q.min))E(Qp,'numeric min < max required');else{if(q.step!=null&&!(q.step>0))E(Qp+'.step','> 0');const a=parseNum(ans);if(!need()||isNaN(a))E(Qp+'.answer','number');else if(a<q.min||a>q.max)E(Qp+'.answer','must be on the line');
        else if(q.step&&Math.abs(Math.round((a-q.min)/q.step)*q.step+q.min-a)>1e-9)E(Qp+'.answer','must land on a step');if((q.max-q.min)/(q.step||1)>40)W(Qp,'more than 40 steps is hard to drag on a phone');}break;
      case 'fracbar':if(!Number.isInteger(q.parts)||q.parts<2||q.parts>12)E(Qp+'.parts','integer 2-12');else if(need()){const a=parseNum(ans);if(isNaN(a)||a<0||a>1)E(Qp+'.answer','fraction 0-1 like 3/4');else if(Math.abs(Math.round(a*q.parts)-a*q.parts)>1e-9)E(Qp+'.answer',`can't be shaded with ${q.parts} parts`);}break;}});});
-if(Q&&nGraded>30)W('size',`${nGraded} graded questions: quests should be ~28 (max 30), trim stages`);if(Q&&(pack.topics||[]).length>9)W('size',`${pack.topics.length} stops: aim for 8-9`);
+// Quest budget (LESSONS.md "Keep it short"): ≤ 16 graded pack questions + ≤ 4 review-gate items the app adds = ~20 answers, ~8 min; 4-6 stages, max 7.
+const MAX_GRADED=16,MAX_STAGES=7,estMin=Math.round((nGraded*25+nCards*10)/6)/10;
+if(Q&&nGraded>MAX_GRADED)E('size',`${nGraded} graded questions: too long (max ${MAX_GRADED}; the app adds up to 4 review-gate items, ~20 answers ≈ 8 min). Trim stages`);
+if(Q&&nGraded&&nGraded<10)W('size',`${nGraded} graded questions: aim for 12-16`);
+if(Q&&(pack.topics||[]).length>MAX_STAGES)E('size',`${pack.topics.length} stages: too long (max ${MAX_STAGES}, aim 4-6)`);
+if(Q&&estMin>8)W('size',`about ${estMin} min (aim ≤ 8): trim cards or questions`);
 if(nGraded){const pct=Math.round(100*nReview/nGraded);if(pct<10||pct>25)W('review',`${pct}% of graded questions are review stages (aim 15-20%)`);}
 const inter=[...typesUsed].filter(x=>!['mc','numeric','text'].includes(x));if(inter.length<3)W('formats',`only ${inter.length} interactive format(s) used; mix in order/match/picture/blank/numberline/fracbar/truefalse/why/fact`);
 if(warns.length)console.warn(`⚠️  ${warns.length} warning(s) (see LESSONS.md):\n  `+warns.join('\n  '));
 if(errs.length){console.error(`❌ ${errs.length} problem(s) in ${file}:\n  `+errs.join('\n  '));process.exit(1);}
 if(Q&&!dry&&!force){const S=kvGet('progress');const A=activeQuests(S,pack.date).filter(d=>kvList('lessons:'+d).length);
   if(A.length>=QUEST_CAP){console.error(`⛔ ${A.length}/${QUEST_CAP} quests are active (${A.join(', ')}). Not publishing a new quest.\n   Publish a catch-up boost for the oldest one instead (see LESSONS.md "Quest cap"), or pass --force.`);process.exit(3);}}
-const sum=`${pack.topics.length} ${Q?'stages':'topics'}, ${nq} items (${nGraded} graded, ${nReview} review = ${nGraded?Math.round(100*nReview/nGraded):0}%, ${nDeep} deep dive${nDeep===1?'':'s'}), formats: ${[...typesUsed].join(', ')}`;
+const sum=`${pack.topics.length} ${Q?'stages':'topics'}, ${nq} items (~${estMin} min, ${nGraded} graded, ${nReview} review = ${nGraded?Math.round(100*nReview/nGraded):0}%, ${nDeep} deep dive${nDeep===1?'':'s'}), formats: ${[...typesUsed].join(', ')}`;
 if(dry){console.log(`✅ valid${Q?` quest "${Q.title}"`:''}: ${sum} for ${pack.date} (dry run, nothing written)`);process.exit(0);}
 kvPut('lessons:'+pack.date,pack);console.log(`✅ published${LOCAL?' (local)':''} lessons:${pack.date}${Q?` quest "${Q.title}"`:''}: ${sum}`);
