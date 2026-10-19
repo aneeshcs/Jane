@@ -40,7 +40,10 @@ Jane teaches first and tests second. Every quest follows this order, and `publis
    test with `"skill": "mt_..."` (default: the stage topic). Add `"powerup"` (≤ 30 words) to the boss stage: the app
    shows it as a **"Boss ahead! Here's your power-up"** recap card right before the first boss question (without it,
    the app builds one from the earlier learn card).
-5. **Fair bosses.** No boss answer past thousandths or with a decimal percent (3/16 = 0.1875, 18.75%): the publisher
+5. **Real bosses.** A boss stage has **at least 3 graded questions** (the publisher fails fewer). A **legendary**
+   medal needs 3 first-try right boss answers in one fight; one-question "bosses" don't exist anymore (non-math Play
+   items are never bosses).
+6. **Fair bosses.** No boss answer past thousandths or with a decimal percent (3/16 = 0.1875, 18.75%): the publisher
    fails it. Put such items in a guided stage instead, scaffolded (1/16 = half of 1/8 = 0.0625, so 3/16 = 3 × 0.0625).
 
 Stages the learner already finished, and mastered topics, are exempt (the publisher reads progress read-only;

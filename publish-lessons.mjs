@@ -82,6 +82,7 @@ const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0,nCards=0;const typesUs
   if(t.review!=null&&typeof t.review!=='boolean')E(P+'.review','true|false');if(t.deepDive!=null&&typeof t.deepDive!=='boolean')E(P+'.deepDive','true|false');
   if(!Array.isArray(t.questions)||!t.questions.length)E(P+'.questions','non-empty array required');const qs=t.questions||[];
   const graded=qs.filter(q=>!CARDS.includes(q.type)).length;if(!graded)E(P+'.questions','needs at least one graded question (not only cards)');
+  if(Q&&t.format==='boss'&&graded&&graded<3)E(P,`boss stage needs ≥ 3 graded questions (has ${graded}): a legendary medal means a real boss fight`);
   if(t.review)nReview+=graded;nGraded+=graded;nq+=qs.length;nCards+=qs.length-graded;
   if(t.deepDive){nDeep++;if(graded<3)E(P,`deep dive needs ≥ 3 graded questions (has ${graded})`);if(graded>4)W(P,`deep dive has ${graded} graded questions (aim 3-4 to keep quests short)`);if(!qs.some(q=>q.type==='why'||q.type==='learn'))E(P,'deep dive needs a "why" or "learn" card');
     if(new Set(qs.map(q=>q.type).filter(x=>!CARDS.includes(x))).size<3)W(P,'deep dive: mix at least 3 question types');}

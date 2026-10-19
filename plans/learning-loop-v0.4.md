@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 6/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 7/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -126,7 +126,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 4 | Asked for a percent? Write a percent | grading | #5 ✅ |
 | 5 | Pack authors declare the answer form | grading | #6 ✅ |
 | 6 | Mastery takes real answers, not a thumbs-up | medals | #7 ✅ |
-| 7 | Legendary medals come from a real boss fight | medals | #8 |
+| 7 | Legendary medals come from a real boss fight | medals | #8 ✅ |
 | 8 | One trophy per achievement | medals | #9 |
 | 9 | Existing medals re-earned under the new rules | medals | #19 |
 | 10 | Review gates between quest stages | review | #10 |
@@ -296,7 +296,7 @@ Area: `medals` · Design: [D3](#d3-honest-medals)
 - Done test: `node --test test/medals.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D3.)
 
-### Slice 7: Legendary medals come from a real boss fight (#8)
+### Slice 7: Legendary medals come from a real boss fight (#8) — ✅ done
 Area: `medals` · Design: [D3](#d3-honest-medals)
 
 - **Ships:** A legendary medal means a boss of at least 3 graded questions was beaten. One-question bosses are gone: non-math Play bosses (a kid MCQ with 1 heart) no longer happen, and a quest boss stage needs at least 3 graded questions.
@@ -604,3 +604,8 @@ One entry per slice once its done test passes: what shipped, the done test and i
 - Shipped: Self-check 'yes' no longer masters, infers or medals: the topic stays learning (selfYes noted), keeps its +5 and kind words, and a graded check comes next (S.focus). New rec.ft counts first-try correct graded answers (not guided; an identical question at most once per Pacific day, kid MCQs keyed by their base question). Mastery needs ≥ 2 (MASTERY_MIN; kid MCQ 1 → 2, pack minimum 2). Medals come from maybeMedal(): directly mastered + ft ≥ 3 (MEDAL_MIN), on any first-try right (also in review). Diagnostic first-try rights master for placement (rec.placed) without a medal. A mastered-direct topic no longer re-triggers 'MASTERED' and a box reset in later quest stages. LESSONS.md 'Mastery and medals', README bullet.
 - Done test: `node --test test/medals.test.mjs && npm test`: 4/4 new cases pass, 35/35 in npm test (stuck tests unchanged).
 - Deferred / discovered: Existing medals are untouched here; slice 9 re-scores them.
+
+### Slice 7 (#8) ✅
+- Shipped: Kid-MCQ and self-check items are never bosses (no 1-heart bosses). New rec.bossRun counts first-try right boss answers per skill per Pacific day (a boss miss resets it); a boss win awards legendary only with bossRun ≥ 3 (BOSS_LEGEND), otherwise the topic's normal tier. The validator fails a quest boss stage with < 3 graded questions. LESSONS.md teach→boss rules: new 'Real bosses' rule.
+- Done test: `node --test test/medals.test.mjs && npm test`: 4/4 new cases pass (8/8 in the file), 39/39 in npm test.
+- Deferred / discovered: The example quest's boss already has 4 graded questions; no change needed.

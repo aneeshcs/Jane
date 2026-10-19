@@ -33,7 +33,7 @@ export function tierOf(g,id,boss){return boss?'legendary':g.byId[id]?.tier||'bro
 function backfillMedals(S,g){S.medals=[];for(const [id,r] of Object.entries(S.ts))if(r.st==='mastered'&&r.how==='direct'&&g.byId[id])S.medals.push({id,tier:tierOf(g,id,false),at:r.at||Date.now()});S.medals.sort((a,b)=>a.at-b.at);}
 // honest medals (LESSONS.md "Mastery and medals"): mastery needs ≥ 2 first-try correct graded answers, a medal ≥ 3.
 // A self-check never counts. A repeated identical question counts at most once per Pacific day. Guided practice doesn't count.
-export const MASTERY_MIN=2,MEDAL_MIN=3;
+export const MASTERY_MIN=2,MEDAL_MIN=3,BOSS_LEGEND=3;
 const ptDay=ms=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
 function countFt(rec,q,now){const k=ptDay(now)+'|'+String(q||'').slice(0,120);rec.ftQ??=[];if(rec.ftQ.includes(k))return false;rec.ftQ=[...rec.ftQ.slice(-7),k];rec.ft=(rec.ft||0)+1;return true;}
 function maybeMedal(S,g,id,boss,now){const r=S.ts[id];if(!r||r.st!=='mastered'||r.how!=='direct'||(r.ft||0)<MEDAL_MIN)return null;return award(S,g,id,boss,now);}
@@ -149,7 +149,7 @@ export function buildItem(S,g,id,mode,pack,now){const t=g.byId[id],r=S.ts[id];le
       else{const p=genFair(k,lvl,sp,boss,now);
         it={kind:'math',type:'input',q:p.q,answer:p.a,cmp:p.cmp,needSimplest:p.needSimplest,hint:p.hint,explain:p.explain,vis:p.vis,bonus:p.bonus,lvl};
         if(guided){const so=solve(p.q);it.guided=true;it.steps=so?so.start:[p.hint];it.format='guided';it.bonus=null;}}}}
-  else it=kidMcq(g,id)||selfCheck(g,id);
+  else{it=kidMcq(g,id)||selfCheck(g,id);bossOk=false;} // a one-question MCQ or a self-check is never a boss
   if(!it.format)it.format=mode==='review'?'review':mode==='diagnostic'?'explore':g.boss.has(id)&&bossOk?'boss':(it.kind==='math'&&Math.random()<.25)?'timed':(it.type==='mc'?'minigame':'quest');
   if(it.type!=='card'){if(mode==='review')it.format='review';if(mode==='diagnostic')it.format='explore';}
   if(it.format==='timed'&&!it.timed)it.timed=it.kind==='math'?60:45;if(it.type==='card'){it.timed=null;it.format='card';}
@@ -247,7 +247,8 @@ export function submit(S,g,answer,now){const it=S.current;if(!it)return{error:'n
     return finish(S,r,ev);}
   if(ok==='notSimplest'){it.tries++;return finish(S,{correct:false,retry:true,jane:'Yes, that\'s the right amount! Can you simplify it even more? 🤏'},ev);}
   if(it.packKey&&(ok||it.tries>=1))S.packSeen[it.packKey]=1;
-  if(ok){rec.c++;rec.last=now;if(!it.tries&&!it.guided)countFt(rec,it.base||it.q,now);const fast=it.timed&&(now-it.issued)/1000<=it.timed;const pts=(it.tries?5:10+(it.lvl||3)*2)+(fast?5:0)+(it.format==='boss'?5:0);
+  if(ok){rec.c++;rec.last=now;if(!it.tries&&!it.guided)countFt(rec,it.base||it.q,now);
+    if(it.format==='boss'){const d=ptDay(now);if(rec.bossDay!==d){rec.bossDay=d;rec.bossRun=0;}rec.bossRun=it.tries?0:(rec.bossRun||0)+1;}const fast=it.timed&&(now-it.issued)/1000<=it.timed;const pts=(it.tries?5:10+(it.lvl||3)*2)+(fast?5:0)+(it.format==='boss'?5:0);
     S.points+=pts;S.streak++;S.bestStreak=Math.max(S.bestStreak,S.streak);S.solved++;if(S.streak%3===0)S.stars++;r.correct=true;
     r.jane=`${pick(praise)} +${pts} points${fast?' (speed bonus ⚡)':''}${S.streak>=3?` — ${S.streak} in a row!`:''}`;
     if(ok==='creative'){const g0=String(answer).trim();r.creative=true;r.jane=(it.celebrate||'Nice! "{given}" works! "{answer}" is the classic one, but your idea is great too. 🎨').replace(/\{given\}/g,g0).replace(/\{answer\}/g,it.answer)+` +${pts} points`;}
@@ -261,10 +262,11 @@ export function submit(S,g,answer,now){const it=S.current;if(!it)return{error:'n
       const need=it.kind==='quiz'?MASTERY_MIN:it.kind==='pack'?Math.max(MASTERY_MIN,Math.min(it.format==='boss'||it.deep?3:2,it.packN)):it.format==='boss'?3:it.kind==='math'?3:2;if(it.boss)r.boss={max:it.boss.max,hp:Math.max(0,it.boss.max-rec.streak)};
       if(!(rec.st==='mastered'&&rec.how==='direct')&&rec.streak>=need&&(rec.ft||0)>=MASTERY_MIN){setMastered(S,g,it.topicId,'direct',.9,now,ev);const n=inferDown(S,g,it.topicId,.9,now,ev);S.badges.push(t.sn||t.name);r.mastered=t.sn||t.name;r.inferred=n;S.focus=null;
         r.jane+=it.format==='boss'?` 💥 You defeated the ${t.domain} BOSS! "${t.sn||t.name}" mastered! 🏆`:` You MASTERED "${t.sn||t.name}"! 🏆`;}}
-    if(!it.tries){const md=maybeMedal(S,g,it.topicId,it.format==='boss',now);if(md)r.medal=md;}
+    // legendary only for a real boss fight: ≥ 3 first-try right boss answers on this skill in one day
+    if(!it.tries){const md=maybeMedal(S,g,it.topicId,it.format==='boss'&&(rec.bossRun||0)>=BOSS_LEGEND,now);if(md)r.medal=md;}
     if(it.bonus){it.stage='bonus';it.tries=0;r.bonus=it.bonus.q;r.jane+=' Want a bonus challenge?';}else{r.done=true;S.current=null;}
     return finish(S,r,ev);}
-  it.tries++;S.streak=0;
+  it.tries++;S.streak=0;if(it.format==='boss')rec.bossRun=0;
   if(it.tries===1){r.retry=true;r.hint=it.hint;r.correct=false;r.jane=`${pick(comfort)} Here's a hint: ${it.hint}`;return finish(S,r,ev);}
   rec.streak=0;rec.last=now;r.correct=false;r.reveal=it.answer;
   if(it.kind==='pack'){/* learning moment: show the answer kindly, small points, no big penalty */rec.learn=(rec.learn||0)+1;S.points+=2;r.learningMoment=true;logE.learningMoment=true;
