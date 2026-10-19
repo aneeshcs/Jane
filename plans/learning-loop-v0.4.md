@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 8/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 9/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -129,7 +129,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 7 | Legendary medals come from a real boss fight | medals | #8 ✅ |
 | 8 | One trophy per achievement | medals | #9 ✅ |
 | 9 | Existing medals re-earned under the new rules | medals | #19 ⏳ |
-| 10 | Review gates between quest stages | review | #10 |
+| 10 | Review gates between quest stages | review | #10 ✅ |
 | 11 | Gates show on the quest path | review | #11 |
 | 12 | Gates spot-check guessed skills | review | #12 |
 | 13 | Nightly hands spaced review to the gates | review | #13 |
@@ -380,7 +380,7 @@ Area: `medals` · Design: [D3](#d3-honest-medals)
 - Done test: `node --test test/rescore.test.mjs && npm test`, plus `node migrate-medals.mjs --local --dry-run` on the fixture showing the before/after table
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D3.)
 
-### Slice 10: Review gates between quest stages (#10)
+### Slice 10: Review gates between quest stages (#10) — ✅ done
 Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 
 - **Ships:** In a started quest, before some later stages, the learner opens a 🗝️ gate by answering 1-2 spaced-review items picked at runtime from the engine's due Leitner queue (most overdue first). Gate answers move Leitner boxes exactly like reviews, so due reviews stop piling up while quests run.
@@ -619,3 +619,8 @@ One entry per slice once its done test passes: what shipped, the done test and i
 - Shipped: E.rescore(S,g,logs): a pure, idempotent (S.rules = 2) re-score from the answer logs: first-try correct graded answers per topic (not self-checks, guided, bonus or form nudges; an identical question once per Pacific day, openers stripped). Self-check-only or < 2 first-try rights (and no placement first-try right) → loses mastery and becomes {how: inferred, reverify, box 0, due now}; < 3 → medal removed; legendary without a 3-answer boss fight → normal tier; duplicates collapsed; rec.ft back-filled. A self-check record that does have ≥ 2 graded first-try rights is kept as direct (it qualifies under the new rules). Topics with no log history fall back to their counts and are reported. New migrate-medals.mjs (--dry-run, --local, --backup <file> whose sha256 must match the current record, else exit 5; never touches sandbox keys); backup-progress.mjs prints the sha256; Dockerfile ships the script; LESSONS.md documents it.
 - Done test: `node --test test/rescore.test.mjs && npm test`: 9/9 new cases pass, 52/52 in npm test. Fixture dry-run (`node migrate-medals.mjs --local --dry-run` on test/fixtures): topic medals 8 → 3, mastery removed 2, legendary downgraded 1, duplicates removed 2. **Live dry-run (read-only, nothing written), aggregate counts only:** topic medals 29 → 14 (bronze 3 → 1, silver 13 → 6, gold 10 → 6, legendary 3 → 1); medals removed 15 (incl. 2 legendary); legendary downgraded 0; directly mastered 29 → 27; self-check mastered 9 → 0; mastery removed 11 (these 11 topics go back to review, due now); 1 self-check topic kept as direct (earned by graded answers); quest medals 2 → 2; duplicates 0; 5 topics without log history used the count fallback; 291 log entries over 4 days.
 - Deferred / discovered: **Open: the live run needs Kent's explicit go-ahead.** Run it after slices 10 and 12 are live: `node backup-progress.mjs` then `node migrate-medals.mjs --backup backups/<date>/progress-<time>.json`. Interpretation noted: a how:self record with ≥ 2 graded first-try rights is kept (as direct) rather than demoted, since it meets the new mastery rule.
+
+### Slice 10 (#10) ✅
+- Shipped: Engine review gates: gateStages(n) = before stage 2, the middle stage and the boss (max 3). In a started quest, next() serves a gate (mode review, format gate, it.gate={k,n,of,date}) before the first item of a gate stage: 2 items when > 2 topics are due, else 1; picked at runtime from the due Leitner queue (direct before inferred, most overdue first, no topic twice per quest), with the soon-due fallback (direct, box 0-1, due within 2 days), otherwise the gate is open for free. Gate state lives in S.quests[date].gates[k] = {items, right, n, of, open}. submit/skip wrappers count answers; the gate opens once its items are answered (right, learning moment or skipped). Grading is the normal review path, so Leitner boxes move and misses demote. Gates have no bonus/timer/boss and don't count in quest total/pct. LESSONS.md 'Review gates' section; NIGHTLY.md 'In a quest'.
+- Done test: `node --test test/review-gates.test.mjs && npm test`: 5/5 new cases pass, 57/57 in npm test.
+- Deferred / discovered: -

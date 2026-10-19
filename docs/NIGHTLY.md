@@ -98,9 +98,9 @@ message and the trimmed or hinted stages apply right away. Preview either one in
   come due after roughly **10-40 days**, spread out so they don't all arrive at once.
 - **In normal play** the engine slips one due review into the session every so often: after the first few items, about
   every 9 items or by chance. It prefers topics the kid showed directly.
-- **In a quest** the quest's own `review` stages take the place of the engine's reviews. A first-try correct answer on a
-  due review stage moves the topic up a box, and a miss brings it back tomorrow. The nightly author picks these from
-  `reviewDue`, which is how the ~15-20% review share is kept.
+- **In a quest** reviews come through **review gates**: before stage 2, the middle stage and the boss, the learner
+  answers 1-2 items the app draws from the due queue at runtime (most overdue first). They count in Leitner exactly
+  like other reviews, so reviews keep flowing while quests run. See LESSONS.md "Review gates".
 
 ## When the routine messages the parent
 Usually never. It stays quiet on a normal night. It only reaches out when something **fails** (the export or publish

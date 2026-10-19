@@ -14,8 +14,8 @@ placement diagnostics → frontier topics), then chooses content in this order:
 4. **Self-check** (last resort): the topic's short `self` prompt, answered "Got it! / Sort of / Not yet".
    The raw Marble `assessmentPrompt` and `evidence` are never shown to the learner.
 
-Pack topics are served even if the map shows them as locked. Engine spaced reviews use generators or self-checks;
-a started quest replaces them with its own `review` stages. On the map, tapping a green (ready) or blue stone opens
+Pack topics are served even if the map shows them as locked. Engine spaced reviews use generators or kid MCQs; in a
+started quest they come through **review gates** between stages (below). On the map, tapping a green (ready) or blue stone opens
 its card with **Explore now!** (a 2-3 question mini-session on that topic, then back to the map); orange (review due)
 stones get **Practice now**.
 
@@ -24,8 +24,17 @@ A pack is one **quest**: a title, a short story hook, a path of **stages** (one 
 a **boss finale** (the last stage, `"format":"boss"`) and a special **quest medal**. When the learner opens the app and
 today's quest hasn't been started, they get the animated treasure-chest/scroll "New quest!" reveal with a Start button;
 the Quests tab (red dot = new quest) lists today's and past quests with progress. While a started quest is running,
-the app serves its stages in order (no placement diagnostics or engine reviews in between). Finishing every item of
+the app serves its stages in order (no placement diagnostics in between), with **review gates** before some stages. Finishing every item of
 every stage awards the quest medal (shown in Trophies). Old packs without `quest` still work as plain adventures.
+
+## Review gates (spaced review built into quests)
+*"You have to do something from the past to make it to the future."* In a started quest, a 🗝️ **gate** sits before
+stage 2, before the middle stage and before the boss (at most 3 per quest). To open it, the learner answers 1-2
+review items that the app picks **at runtime** from the due Leitner queue (most overdue first, topics shown directly
+before inferred ones; if nothing is due, a recently mastered topic that is due within 2 days; otherwise the gate is
+open for free). Gate answers move Leitner boxes like any review (a first-try right moves the topic up a box, a miss
+demotes it), and a gate opens once its items are answered, right or wrong, so it never strands the learner. Gates
+don't count toward quest progress. The nightly author doesn't pick gate items.
 
 ## Teach → guided practice → graded → boss (required)
 Jane teaches first and tests second. Every quest follows this order, and `publish-lessons.mjs` fails a pack that doesn't:

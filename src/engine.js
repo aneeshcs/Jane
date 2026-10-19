@@ -209,6 +209,8 @@ export function next(S,g,pack,now){
   const due=g.topics.filter(t=>stateOf(S,g,t.id,now)==='review').sort((a,b)=>S.ts[a.id].due-S.ts[b.id].due);
   let id,mode;
   const qa=questActive(S,pack);
+  // review gates: before some later quest stages, 1-2 due reviews open the way (LESSONS.md "Review gates")
+  if(qa&&!id){const gi=gateItem(S,g,pack,due,now);if(gi){S.sinceReview=0;S.itemsServed++;S.recent=[...S.recent.slice(-9),gi.topicId];return S.current=gi;}}
   if(!qa&&due.length&&S.itemsServed>=3&&(S.sinceReview>=9||Math.random()<.08)){const direct=due.filter(t=>S.ts[t.id].how!=='inferred');id=(direct[0]||due[0]).id;mode='review';}
   const packNext=()=>{if(!pack)return null;
     if(pack.quest){const st=pack.topics.find(t=>g.byId[t.topicId]&&packQ(S,pack,t.topicId));return st?st.topicId:null;} // quests run stage by stage
@@ -222,6 +224,29 @@ export function next(S,g,pack,now){
   if(!id){id=g.topics[0].id;mode='learn';}
   S.sinceReview=mode==='review'?0:S.sinceReview+1;S.itemsServed++;S.recent=[...S.recent.slice(-9),id];
   S.current=buildItem(S,g,id,mode,pack,now);return S.current;}
+// ---------- review gates ----------
+// Gates sit before stage 2, the middle stage and the boss (max 3 per quest). Items come from the due Leitner queue at
+// runtime (most overdue first, directly shown before inferred), are graded as normal reviews, and a gate opens once
+// its items are answered (right, learning moment or skipped). Gates never count toward quest progress.
+export const GATE_MAX=3,GATE_ITEMS=2;
+export function gateStages(n){return[...new Set([1,Math.floor(n/2),n-1])].filter(k=>k>0&&k<n).sort((a,b)=>a-b).slice(0,GATE_MAX);}
+const gateRec=(S,pack)=>{const q=(S.quests??={})[pack.date]??={};return q.gates??={};};
+function gatePick(S,g,pack,due,now,used){const inf=id=>S.ts[id].how==='inferred'?1:0;
+  const c=due.filter(t=>!used.has(t.id)).sort((a,b)=>inf(a.id)-inf(b.id)||S.ts[a.id].due-S.ts[b.id].due);if(c.length)return c[0].id;
+  // soon-due fallback: a directly mastered topic in box 0-1 due within 2 days
+  const soon=g.topics.filter(t=>{const r=S.ts[t.id];return r?.st==='mastered'&&r.how!=='inferred'&&(r.box||0)<=1&&r.due<=now+2*DAY&&!used.has(t.id);}).sort((a,b)=>S.ts[a.id].due-S.ts[b.id].due);
+  return soon[0]?.id||null;}
+function gateItem(S,g,pack,due,now){if(!pack?.quest)return null;const k=pack.topics.findIndex(t=>g.byId[t.topicId]&&packQ(S,pack,t.topicId));if(k<1)return null;
+  const st=pack.topics[k];if(!gateStages(pack.topics.length).includes(k))return null;if(st.questions.some((q,j)=>S.packSeen[`${pack.date}:${st.topicId}:${j}`]))return null;
+  const G=gateRec(S,pack),gk=G[k]??={before:k,items:[],right:0,n:0,open:false};if(gk.open)return null;
+  const used=new Set(Object.values(G).flatMap(x=>x.items||[]));
+  if(gk.of==null){const avail=due.filter(t=>!used.has(t.id)).length;gk.of=avail>2?GATE_ITEMS:avail>0?1:(gatePick(S,g,pack,[],now,used)?1:0);}
+  if(gk.n>=gk.of){gk.open=true;return null;}
+  const id=gatePick(S,g,pack,due,now,used);if(!id){gk.open=true;gk.of=gk.n;return null;}
+  const it=buildItem(S,g,id,'review',null,now);gk.items.push(id);
+  return{...it,format:'gate',timed:null,boss:null,bonus:null,gate:{k,n:gk.n+1,of:gk.of,date:pack.date}};}
+function gateDone(S,it,r){const q=S.quests?.[it.gate.date];const gk=q?.gates?.[it.gate.k];if(!gk)return;gk.n++;if(r.correct&&!it.tries)gk.right++;if(gk.n>=gk.of)gk.open=true;r.gate={k:it.gate.k,n:gk.n,of:gk.of,open:gk.open};
+  if(gk.open)r.jane=(r.jane?r.jane+' ':'')+'🗝️ Gate open! On to the next stop!';}
 // ---------- grading ----------
 // Answer form: when a question asks for a percent, a decimal, a fraction or a whole number, only that form counts.
 // The right value in another form is a gentle nudge ('wrongForm'), never a miss.
@@ -258,7 +283,8 @@ function grade(it,ans,isBonus){const a=String(ans??'').trim();if(isBonus){const 
   return [it.answer,...(it.accept||[])].some(x=>norm(x)===norm(a)||(it.fuzzy&&it.kind==='pack'&&fuzzyEq(x,a)));}
 const praise=['Amazing, {name}! 🎉','You nailed it! 🌟','Brilliant thinking! 🧠','Wow, superstar! ⭐','That\'s exactly right! 🙌','You\'re on fire! 🔥'];
 const comfort=['Ooh, so close! Let\'s think it through together.','Good try! Mistakes help our brains grow. 🌱','Not quite — but I love that you tried!'];
-export function submit(S,g,answer,now){const it=S.current;if(!it)return{error:'no item'};const ev=[],r={};const isBonus=it.stage==='bonus';const t=g.byId[it.topicId];
+export function submit(S,g,answer,now){const it=S.current,x=submit0(S,g,answer,now);if(it?.gate&&x.r?.done)gateDone(S,it,x.r);return x;}
+function submit0(S,g,answer,now){const it=S.current;if(!it)return{error:'no item'};const ev=[],r={};const isBonus=it.stage==='bonus';const t=g.byId[it.topicId];
   // "idk", "skip", "help", "don't show this"... opens the stuck help instead of being graded wrong
   if((it.type==='input'||isBonus)&&isStuck(answer))return stuck(S,g,now,String(answer));
   if(it.type==='card'){if(it.packKey)S.packSeen[it.packKey]=1;S.points+=2;S.current=null;ev.push({event:'card',card:it.card,topicId:it.topicId,topic:t.name,title:it.q});
@@ -329,7 +355,8 @@ export function stuck(S,g,now,given){const it=S.current;if(!it)return{error:'no 
   const ev=[{event:'stuck',step:it.stuckStep,topicId:it.topicId,topic:t?.name,subject:t?.subject,mode:it.mode,format:it.format,level:it.lvl,question:it.stage==='bonus'?it.bonus?.q:it.q,given:given||undefined,pack:it.packKey?it.packKey.split(':')[0]:undefined}];
   return{r:{stuck:helpFor(it),jane:['','Hey, want a hint? 💡','Let\'s do one together! 👀','No worries! You can skip this one for now. ⏭️'][it.stuckStep]},ev};}
 // "Skip for now": no heart, no lost streak, no boss miss. The item comes back tomorrow, easier (guided), and the topic is flagged for support.
-export function skip(S,g,pack,now){const it=S.current;if(!it)return{error:'no item'};const t=g.byId[it.topicId],ev=[];
+export function skip(S,g,pack,now){const it=S.current,x=skip0(S,g,pack,now);if(it?.gate&&x.r?.done)gateDone(S,it,x.r);return x;}
+function skip0(S,g,pack,now){const it=S.current;if(!it)return{error:'no item'};const t=g.byId[it.topicId],ev=[];
   if(it.stage==='bonus'){S.current=null;return finish(S,{done:true,skipped:true,jane:'No problem! Here\'s a new one. 😊'},ev,true);}
   const sp=sup(S,it.topicId);sp.skipped++;sp.at=now;sp.teachDue=true;(sp.avoid??=[]).push({q:it.q,until:now+DAY});sp.avoid=sp.avoid.filter(x=>x.until>now).slice(-8);
   ev.push({event:'skipped',topicId:it.topicId,topic:t?.name,subject:t?.subject,mode:it.mode,format:it.format,level:it.lvl,question:it.q,expected:it.answer,stuckStep:it.stuckStep||0,pack:it.packKey?it.packKey.split(':')[0]:undefined});
