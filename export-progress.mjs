@@ -58,6 +58,7 @@ const tl={};for(const l of logs)if(l.event==='term'){const k=l.term.toLowerCase(
 const termsLookedUp=Object.values(tl).map(x=>({...x,topics:[...x.topics]})).sort((a,b)=>b.count-a.count);
 const res={exportedAt:new Date(now).toISOString(),date,timezone:'America/Los_Angeles',learner:S.name,summary:sm,
   stats:{points:S.points,stars:S.stars,streak:S.streak,bestStreak:S.bestStreak,solved:S.solved,badges:S.badges,placement:S.placement},
+  unverifiedInferred:Object.keys(S.ts).filter(id=>g.byId[id]&&E.unverified(S,id)).length, // inferred skills a gate spot-check has not confirmed yet
   todaysPack:pack?{date:pack.date,title:pack.title,topicIds:pack.topics.map(t=>t.topicId)}:null,
   quests,termsLookedUp,weakSpots,todayLog:log,learnedToday:log.filter(l=>l.event==='mastered'),
   frontier,reviewDue,progress:S};

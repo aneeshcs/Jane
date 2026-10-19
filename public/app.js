@@ -16,7 +16,7 @@ function banner(t){const b=document.createElement('div');b.className='banner';b.
 function chips(s){$('pts').textContent='⭐ '+s.points+' pts';$('stars').textContent='🌟 '+s.stars;$('streak').textContent='🔥 '+s.streak;$('pct').textContent=`🗺️ ${s.progress.pct}%`;}
 let LN='Explorer';function setLearner(L){if(!L?.name||L.name===LN&&document.title.includes(LN))return;LN=L.name;document.querySelectorAll('.lname').forEach(e=>e.textContent=LN);document.title=`${LN}'s Learning Adventure with Jane`;}
 function render(s){st=s;if(s?.learner)setLearner(s.learner);chips(s);const p=s.item;clearInterval(timerInt);$('timer').innerHTML='';if(!p)return;
- const f=p.format||'quest';$('frame').className='framebar f-'+f;$('frame').textContent=p.gate?`🗝️ Gate! Unlock it with something you learned before (${p.gate.n}/${p.gate.of})`:FRAMES[f]||'🗡️ Quest';$('pcard').className='card '+f;
+ const f=p.format||'quest';$('frame').className='framebar f-'+f;$('frame').textContent=p.gate?(p.gate.spot?`🗝️ Gate! Quick check: show me you know this one (${p.gate.n}/${p.gate.of})`:`🗝️ Gate! Unlock it with something you learned before (${p.gate.n}/${p.gate.of})`):FRAMES[f]||'🗡️ Quest';$('pcard').className='card '+f;
  $('topic').textContent=`${ISL[p.topic.subject]?.e||'📚'} ${p.topic.name}${p.level?` · Lv ${p.level}`:''}`;
  PACKT=s.terms||{};glReset();if(p.blank)$('q').innerHTML=gl(p.q).replace(/_{2,}/,'<span class="blank" id="blankslot">❓</span>');else $('q').innerHTML=p.type==='card'?'':gl(p.q);$('ev').innerHTML='';
  $('vis').innerHTML=(p.vis?(p.vis.type==='pizza'?pizza(p.vis.slices,p.vis.eaten):bar(p.vis.parts,p.vis.shaded)):'')+(p.scene?sceneHTML(p.scene):'')+(p.tpl?tplHTML(p.tpl):'');

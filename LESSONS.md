@@ -36,6 +36,11 @@ open for free). Gate answers move Leitner boxes like any review (a first-try rig
 demotes it), and a gate opens once its items are answered, right or wrong, so it never strands the learner. Gates
 don't count toward quest progress. The nightly author doesn't pick gate items.
 
+**Spot-checks.** About 1 gate item in 3 (and every gate item when nothing is due) is a quick check of a skill the app
+only *inferred* and never saw: the one with the most dependent skills, then the lowest confidence. Right: the skill
+counts as shown directly (`verified`). Miss: it goes back to learning and the guesses built on it are withdrawn. A
+spot-check never awards a medal. The export's `unverifiedInferred` counts the inferred skills not checked yet.
+
 ## Teach → guided practice → graded → boss (required)
 Jane teaches first and tests second. Every quest follows this order, and `publish-lessons.mjs` fails a pack that doesn't:
 1. **Teach.** A stage for a skill that is new or shaky (not mastered, not a `review` stage) starts with a **`learn`

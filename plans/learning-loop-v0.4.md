@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 10/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 11/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -131,7 +131,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 9 | Existing medals re-earned under the new rules | medals | #19 ⏳ |
 | 10 | Review gates between quest stages | review | #10 ✅ |
 | 11 | Gates show on the quest path | review | #11 ✅ |
-| 12 | Gates spot-check guessed skills | review | #12 |
+| 12 | Gates spot-check guessed skills | review | #12 ✅ |
 | 13 | Nightly hands spaced review to the gates | review | #13 |
 | 14 | See which areas have been explored | coverage | #14 |
 | 15 | Nightly quests visit new areas | coverage | #15 |
@@ -433,7 +433,7 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 - Done test: `node --test test/gates-server.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D2.)
 
-### Slice 12: Gates spot-check guessed skills (#12)
+### Slice 12: Gates spot-check guessed skills (#12) — ✅ done
 Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 
 - **Ships:** About one gate item in three is a quick spot-check of a skill the app only inferred (credited but never seen). Right → the skill is verified and counts as shown directly. Wrong → it goes back to learning, and the guesses built on it are withdrawn. A spot-check never awards a medal.
@@ -628,4 +628,9 @@ One entry per slice once its done test passes: what shipped, the done test and i
 ### Slice 11 (#11) ✅
 - Shipped: questInfo returns gates [{before, state: locked|open, items, of, right}]; publicItem exposes gate {n, of, k}. app.js: one qpath() helper draws 🗝️ keys between stages (dim and dashed when locked, gold when open) in the quest reveal, the quest strip and the Quests tab; gate items get a gold frame 'Gate! Unlock it with something you learned before (1/2)', and the strip stays visible during gates. Parent report quest cards list each gate's result. Screenshots: /workspace/screens/v040/01-04 (synthetic data).
 - Done test: `node --test test/gates-server.test.mjs && npm test`: 1/1 new end-to-end case passes (locked gate after stage 1 → 2 items → open → stage 2; /parent data has the gate), 58/58 in npm test.
+- Deferred / discovered: -
+
+### Slice 12 (#12) ✅
+- Shipped: Gate items now include spot-checks: about 1 in 3 (every item when nothing is due) checks an inferred, never-verified skill, picked by most dependents then lowest confidence (E.spotPick). Right → how direct + verified, keeps its box, event 'verified', no medal; miss → learning, box 0, failUp withdraws guesses built on it, event 'spotMiss'. Kid frame: 'Gate! Quick check: show me you know this one'. Export unverifiedInferred; parent head verified/unverifiedInferred shown on the 'Shown directly' card; LESSONS.md Spot-checks paragraph.
+- Done test: `node --test test/review-gates.test.mjs && npm test`: 8/8 (3 new spot-check cases; the slice-10 'no due → no gate' case now also clears inferred skills, since gates never come up empty when inferred skills exist), 61/61 in npm test.
 - Deferred / discovered: -
