@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 7/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 8/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -127,7 +127,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 5 | Pack authors declare the answer form | grading | #6 ✅ |
 | 6 | Mastery takes real answers, not a thumbs-up | medals | #7 ✅ |
 | 7 | Legendary medals come from a real boss fight | medals | #8 ✅ |
-| 8 | One trophy per achievement | medals | #9 |
+| 8 | One trophy per achievement | medals | #9 ✅ |
 | 9 | Existing medals re-earned under the new rules | medals | #19 |
 | 10 | Review gates between quest stages | review | #10 |
 | 11 | Gates show on the quest path | review | #11 |
@@ -321,7 +321,7 @@ Area: `medals` · Design: [D3](#d3-honest-medals)
 - Done test: `node --test test/medals.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D3.)
 
-### Slice 8: One trophy per achievement (#9)
+### Slice 8: One trophy per achievement (#9) — ✅ done
 Area: `medals` · Design: [D3](#d3-honest-medals)
 
 - **Ships:** Trophies and the parent report list each medal once: one per topic and one per quest. Duplicates already stored are collapsed (the earliest is kept) without losing a real medal.
@@ -609,3 +609,8 @@ One entry per slice once its done test passes: what shipped, the done test and i
 - Shipped: Kid-MCQ and self-check items are never bosses (no 1-heart bosses). New rec.bossRun counts first-try right boss answers per skill per Pacific day (a boss miss resets it); a boss win awards legendary only with bossRun ≥ 3 (BOSS_LEGEND), otherwise the topic's normal tier. The validator fails a quest boss stage with < 3 graded questions. LESSONS.md teach→boss rules: new 'Real bosses' rule.
 - Done test: `node --test test/medals.test.mjs && npm test`: 4/4 new cases pass (8/8 in the file), 39/39 in npm test.
 - Deferred / discovered: The example quest's boss already has 4 graded questions; no change needed.
+
+### Slice 8 (#9) ✅
+- Shipped: New E.trophies(S,g): topic medals keyed by topic id, quest medals keyed by quest date (earliest kept, highest tier kept), newest first, with per-tier counts. /api/trophies, the Play medal count and the parent report (list + head count) all use it. migrate collapses stored duplicates. completeQuest (slice 2) never adds a second quest medal.
+- Done test: `node --test test/trophies.test.mjs && npm test`: 4/4 new cases pass, 43/43 in npm test.
+- Deferred / discovered: Root cause: no stored duplicate exists in the live record or in any local backup (checked read-only), so it could not be reproduced. The only path that could add one was the old worker questCheck, which pushed a quest medal without checking for an existing one (now guarded in completeQuest). Dedupe at read time + migrate is the defensive fix. Medal counts on the live record are unchanged (29 topic medals + 2 quest medals).

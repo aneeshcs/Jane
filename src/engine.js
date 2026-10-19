@@ -27,7 +27,17 @@ export function migrate(old,g){if(old&&old.v===2){if(!old.medals)backfillMedals(
   for(const [id,t] of Object.entries(old.topics||{}))if(g.byId[id])S.ts[id]=t.mastered?{st:'mastered',how:'direct',conf:.9,box:0,due:Date.now()+DAY,c:t.correct,w:t.incorrect}:{st:'learning',how:'direct',c:t.correct,w:t.incorrect,lvl:old.level||3};
   backfillMedals(S,g);return S;}
 // additive schema upgrades for v2 records (idempotent): finished quests from before completion snapshots are marked legacy
-function upgrade(S){for(const q of Object.values(S.quests||{}))if(q?.done&&!q.snap&&!q.legacy)q.legacy=true;return S;}
+function upgrade(S){for(const q of Object.values(S.quests||{}))if(q?.done&&!q.snap&&!q.legacy)q.legacy=true;dedupeMedals(S);return S;}
+// one trophy per achievement: one medal per topic, one quest medal per quest date (the earliest is kept)
+const TIER_RANK={bronze:0,silver:1,gold:2,legendary:3};
+function dedupeBy(a,key){const m=new Map();for(const x of a||[]){const k=key(x),o=m.get(k);if(!o){m.set(k,{...x});continue;}
+  const keep=(x.at||0)<(o.at||0)?{...x}:o;if((TIER_RANK[x.tier]??-1)>(TIER_RANK[keep.tier]??-1)||(TIER_RANK[o.tier]??-1)>(TIER_RANK[keep.tier]??-1))keep.tier=(TIER_RANK[x.tier]??-1)>(TIER_RANK[o.tier]??-1)?x.tier:o.tier;m.set(k,keep);}
+  return[...m.values()].sort((a,b)=>(a.at||0)-(b.at||0));}
+function dedupeMedals(S){if(S.medals){const d=dedupeBy(S.medals,m=>m.id);if(d.length!==S.medals.length)S.medals=d;}if(S.questMedals){const d=dedupeBy(S.questMedals,m=>m.date);if(d.length!==S.questMedals.length)S.questMedals=d;}}
+// the trophy list (kid Trophies tab and parent report): deduped, newest first, with counts per tier
+export function trophies(S,g){const M=[...dedupeBy(S.medals,m=>m.id).map(m=>medalInfo(m,g)).filter(Boolean),
+  ...dedupeBy(S.questMedals,q=>q.date).map(q=>({id:'quest:'+q.date,tier:'quest',at:q.at,name:q.name,ic:q.emoji,subject:'Quest',domain:q.title,why:`finishing the quest "${q.title}"`}))].sort((a,b)=>b.at-a.at);
+  const counts={};M.forEach(m=>counts[m.tier]=(counts[m.tier]||0)+1);return{medals:M,counts};}
 // medals: one per directly-mastered topic (not inferred, not self-rated); boss wins are legendary
 export function tierOf(g,id,boss){return boss?'legendary':g.byId[id]?.tier||'bronze';}
 function backfillMedals(S,g){S.medals=[];for(const [id,r] of Object.entries(S.ts))if(r.st==='mastered'&&r.how==='direct'&&g.byId[id])S.medals.push({id,tier:tierOf(g,id,false),at:r.at||Date.now()});S.medals.sort((a,b)=>a.at-b.at);}

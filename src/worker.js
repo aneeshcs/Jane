@@ -25,7 +25,7 @@ export default{async fetch(req,env){E.configure(env);const u=new URL(req.url),P=
  const choosePack=async()=>{const A=activeQ();let d=S.questFocus&&A.includes(S.questFocus)?S.questFocus:null;if(!d&&A.length)d=A[0];return d?withBoost(PC[d]):paused()?null:todayPack;};
  let pack=await choosePack();E.refresh(S,g,pack,now);
  const body=req.method==='POST'?await req.json().catch(()=>({})):{};let out,ev=[];
- const pub=()=>{const sm=E.summary(S,g,now);delete sm.codes;return{name:E.learner().name,learner:E.learner(),points:S.points,stars:S.stars,streak:S.streak,bestStreak:S.bestStreak,solved:S.solved,medals:(S.medals||[]).slice(-4).reverse().map(m=>E.medalInfo(m,g)).filter(Boolean),medalCount:(S.medals||[]).length,
+ const pub=()=>{const sm=E.summary(S,g,now);delete sm.codes;return{name:E.learner().name,learner:E.learner(),points:S.points,stars:S.stars,streak:S.streak,bestStreak:S.bestStreak,solved:S.solved,medals:(S.medals||[]).slice(-4).reverse().map(m=>E.medalInfo(m,g)).filter(Boolean),medalCount:E.trophies(S,g).medals.filter(m=>m.tier!=='quest').length,
    placement:{done:S.placement.done,asked:S.placement.asked},progress:sm,pack:pack?{date:pack.date,title:pack.title}:null,item:E.publicItem(S.current,g),clockOffsetDays:off||undefined,sandbox:sbx||undefined,
    quest:pack?.quest?E.questInfo(S,g,pack):null,newQuest:!!(todayPack?.quest&&!qrec(today).started&&!paused()),
    quests:{active:activeQ().length,cap:QUEST_CAP,paused:paused(),oldest:(()=>{const d=activeQ()[0];return d?{date:d,title:PC[d].quest.title,emoji:PC[d].quest.emoji||'🗺️',pct:E.questInfo(S,g,PC[d]).pct}:null;})(),boost:pack?.boost||null},
@@ -38,7 +38,7 @@ export default{async fetch(req,env){E.configure(env);const u=new URL(req.url),P=
    const data=PR.parentData({S,g,now,today,logs,packs:qp,tomorrowPack,boosts});data.sandbox=sbx||undefined;
    return new Response(PR.parentShell(data),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});}
  if(P==='/api/state'){if(!S.current)E.next(S,g,pack,now);out=pub();}
- else if(P==='/api/trophies'){const M=[...(S.medals||[]).map(m=>E.medalInfo(m,g)).filter(Boolean),...(S.questMedals||[]).map(q=>({id:'quest:'+q.date,tier:'quest',at:q.at,name:q.name,ic:q.emoji,subject:'Quest',domain:q.title,why:`finishing the quest "${q.title}"`}))].sort((a,b)=>a.at-b.at).reverse();const c={};M.forEach(m=>c[m.tier]=(c[m.tier]||0)+1);out={medals:M,counts:c};}
+ else if(P==='/api/trophies'){out=E.trophies(S,g);}
  else if(P==='/api/map'){const sm=E.summary(S,g,now);out={codes:sm.codes,focus:S.focus,current:S.current?.topicId,progress:{...sm,codes:undefined}};}
  else if(P==='/api/answer'&&req.method==='POST'){if(!S.current)E.next(S,g,pack,now);const x=E.submit(S,g,body.answer??'',now);ev=x.ev;if(x.r.medal)x.r.medal=E.medalInfo(x.r.medal,g);
    if(x.r.done){const md=E.miniAfter(S,g,pack,now,x.r);if(md){x.r.miniDone=md;x.r.askChoice=false;}questCheck(x.r);if(!S.current&&!x.r.askChoice)E.next(S,g,pack,now);}out={...x.r,state:pub()};}

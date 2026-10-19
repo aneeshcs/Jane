@@ -17,7 +17,7 @@ export function parentData({S,g,now,today,logs,packs,tomorrowPack,boosts}){
   const growth=days.map(d=>({date:d,direct:recs.filter(([,r])=>r.how!=='inferred'&&r.at&&ptDate(r.at)<=d).length,all:recs.filter(([,r])=>r.at&&ptDate(r.at)<=d).length}));
   const week=perDay.slice(-7);
   const head={pct:sm.pct,done:sm.done,total:sm.total,tot:sm.tot,direct:recs.filter(([,r])=>r.how!=='inferred').length,points:S.points,stars:S.stars,streak:S.streak,bestStreak:S.bestStreak,solved:S.solved,
-    medals:(S.medals||[]).length+(S.questMedals||[]).length,today:perDay.find(p=>p.date===today)||{answers:0,minutes:0,first:0,firstRight:0},
+    medals:E.trophies(S,g).medals.length,today:perDay.find(p=>p.date===today)||{answers:0,minutes:0,first:0,firstRight:0},
     week:{minutes:week.reduce((a,p)=>a+p.minutes,0),answers:week.reduce((a,p)=>a+p.answers,0),first:week.reduce((a,p)=>a+p.first,0),firstRight:week.reduce((a,p)=>a+p.firstRight,0),days:week.filter(p=>p.answers).length}};
   // subjects → domains → topics
   const subjects={};for(const t of g.topics){const s=st(t.id),r=S.ts[t.id];const sub=subjects[t.subject]??={name:t.subject,total:0,c:{mastered:0,review:0,ready:0,learning:0,locked:0},domains:{}};sub.total++;sub.c[s]++;
@@ -45,7 +45,7 @@ export function parentData({S,g,now,today,logs,packs,tomorrowPack,boosts}){
   const inferredDue=recs.filter(([,r])=>r.how==='inferred'&&r.due<=now+7*DAY).length;
   // log + medals
   const log=answers.map(l=>({ts:l.ts,day:l.day,subject:l.subject,topic:l.topic,mode:l.mode,qtype:l.qtype||'',q:l.question,exp:l.expected,given:l.given,ok:!!l.correct,try:l.try,secs:l.elapsedSec,lm:!!l.learningMoment,regraded:l.regraded||null,creative:!!l.creative,stage:l.stage}));
-  const medals=[...(S.medals||[]).map(m=>E.medalInfo(m,g)).filter(Boolean),...(S.questMedals||[]).map(q=>({tier:'quest',name:q.name,ic:q.emoji,subject:'Quest',domain:q.title,at:q.at}))].sort((a,b)=>b.at-a.at);
+  const medals=E.trophies(S,g).medals;
   return{name:E.learner().name,grade:E.learner().grade,today,generated:now,head,perDay,growth,subjects:Object.values(subjects),struggles,wins,terms:Object.values(terms).sort((a,b)=>b.count-a.count),quests,tonight,reviews,inferredDue,log,medals,placement:S.placement};}
 export function parentShell(data){const json=E.withName(JSON.stringify(data),JSON.stringify(data.name).slice(1,-1)).replace(/</g,'\\u003c');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parent report: ${String(data.name).replace(/[&<>"]/g,'')}</title>
