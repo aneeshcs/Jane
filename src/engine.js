@@ -416,7 +416,9 @@ export function questInfo(S,g,pack){if(!pack)return null;const Q=pack.quest||{},
   if(pack.quest&&rec.done){const snap=rec.snap?Object.fromEntries(rec.snap.stages.map(x=>[x.topicId,x.n])):null;
     stages=stages.filter(st=>snap?st.topicId in snap:st.done>0||st.complete).map(st=>{const n=snap?snap[st.topicId]:st.n;return{...st,n,done:n,complete:true};});}
   const total=stages.reduce((a,s)=>a+s.n,0),done=stages.reduce((a,s)=>a+s.done,0);
-  const gates=pack.quest?gateStages(pack.topics.length).filter(k=>k<stages.length).map(k=>{const r=rec.gates?.[k];return{before:k,state:r?.open?'open':'locked',items:r?.n||0,of:r?.of??null,right:r?.right||0};}):[];
+  const gates=pack.quest?gateStages(pack.topics.length).filter(k=>k<stages.length).map(k=>{const r=rec.gates?.[k],st=pack.topics[k],passed=!r?.open&&!!st&&(st.questions||[]).some((q,j)=>S.packSeen?.[`${pack.date}:${st.topicId}:${j}`]);
+    // a stage the learner already started without meeting this gate (e.g. a quest begun before gates existed) shows it as passed
+    return{before:k,state:r?.open||passed?'open':'locked',passed:passed||undefined,items:r?.n||0,of:r?.of??null,right:r?.right||0};}):[];
   return{date:pack.date,isQuest:!!pack.quest,title:Q.title||pack.title||('Adventure '+pack.date),hook:Q.hook||'',emoji:Q.emoji||'🗺️',medal:Q.medal||{name:(pack.title||'Adventure')+' medal',emoji:'🏅'},
     stages,gates,current:stages.findIndex(s=>!s.complete),total,done,pct:total?Math.round(100*done/total):0,started:rec.started||null,completed:rec.done||null};}
 // called after an answer: when every stage is done, the quest is finished once and for all (snapshot + quest medal)
