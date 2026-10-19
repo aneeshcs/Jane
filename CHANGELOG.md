@@ -5,6 +5,50 @@ Dates are Pacific Time.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-19
+
+The learning loop: shorter quests, review built into quests, honest medals and wider coverage
+(plan: [plans/learning-loop-v0.4.md](plans/learning-loop-v0.4.md)).
+
+### Added
+- **🗝️ Review gates.** In a started quest, a gate sits before stage 2, the middle stage and the boss (max 3). The
+  learner answers 1-2 due reviews, picked at runtime from the Leitner queue, to open it. Gates never count toward
+  quest progress and always open, right or wrong. The quest path shows locked and open keys; the parent report lists
+  gate results.
+- **Spot-checks.** About 1 gate item in 3 (all of them when nothing is due) checks a skill that was only inferred.
+  Right: it counts as shown directly. Miss: back to learning, and the guesses built on it are withdrawn. No medals.
+- **Answer-form nudges.** When a question asks for a percent, decimal, fraction or whole number, the right value in
+  another form gets a friendly "write it as a percent (like 50%)" nudge instead of a miss. The third nudge shows the
+  answer. Packs can set `form`; the validator checks prompts and answers agree.
+- **Coverage by area** (`src/coverage.js`): the export's `coverage` (areas seen per subject, untouched areas with
+  starter topics), a "new areas: N" line and warning in the validator, a small Play boost for unseen areas
+  ("Something different" tries one first), and a "Coverage by area" section in the parent report.
+- **`reviewHealth`** in the export (due, overdue, oldest overdue, gate items and spot-checks in 7 days, unverified
+  inferred skills) and `unverifiedInferred` in the parent report.
+- **`migrate-medals.mjs`**: re-scores existing medals and mastery under the new rules, with `--dry-run` (before/after
+  counts), a required verified backup, Cloudflare and `--local` storage. Demoted topics go back into the review queue.
+  Not run automatically.
+- **`/healthz` on the Worker** (the Node server already had it), reporting the version.
+- **Tests:** quest size, quest lock, answer form, medals, trophies, re-score, review gates (+ spot-checks), an
+  end-to-end gate run on the Node server, coverage and version (77 tests in all).
+
+### Changed
+- **Shorter quests (enforced):** at most 16 graded questions and 7 stages (4-6 recommended), about 8 minutes with the
+  gate items. The publisher fails a bigger quest and prints a time estimate. Deep dives are 3-4 questions.
+- **Honest medals and mastery:** mastery needs 2 first-try right graded answers (on separate items, once per day per
+  question); a medal needs 3; a self-check "yes" never masters a topic; placement doesn't award medals; legendary
+  needs 3 first-try right boss answers in one day; quiz/self items are never bosses. Duplicate trophies are merged.
+- **Finished quests are locked:** their medal, percentage and stages are snapshotted when finished; the publisher
+  refuses to overwrite or boost a finished quest (exit 4, even with `--force`) and warns when a started quest's
+  answered stages change. Older finished quests are grandfathered at 100%.
+- **Spaced review moved from pack stages to the gates:** the 15-20% review-share rule is retired; a `review: true`
+  stage still publishes with a warning. LESSONS.md and docs/NIGHTLY.md are updated for the nightly author (size
+  budget, gates, coverage, locked quests).
+
+### Fixed
+- Numeric answers like "27%" are accepted where 0.27 is expected (and vice versa when a percent is asked).
+- The parent report and export matched quest stages by index after filtering; they now match by topic.
+
 ## [0.3.0] - 2026-10-18
 
 A way out when the kid gets stuck, teaching before testing, and bosses that are fair.
@@ -108,7 +152,8 @@ First public release.
 - Runs on Cloudflare Workers (or `npm run dev` locally) only; the standalone Node server is planned for v0.2.
   `prototype/` is the early math-only version, not the full app.
 
-[Unreleased]: https://github.com/kentlangley/Jane/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/kentlangley/Jane/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/kentlangley/Jane/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kentlangley/Jane/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kentlangley/Jane/releases/tag/v0.2.0
 [0.1.0]: https://github.com/kentlangley/Jane/releases/tag/v0.1.0

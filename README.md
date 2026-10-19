@@ -7,7 +7,7 @@ container) with file-based storage, and it is built on the open
 [Marble Skill Taxonomy](https://github.com/withmarbleapp/os-taxonomy): 1,590 micro-topics across 8 subjects,
 linked by 3,221 prerequisite edges.
 
-> **v0.3.0.** It's a child's learning app, so all personal data is excluded from the repo, and every path has a clear
+> **v0.4.0.** It's a child's learning app, so all personal data is excluded from the repo, and every path has a clear
 > license (see [LICENSING.md](LICENSING.md)). What's next: [Roadmap](#roadmap). Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## Philosophy
@@ -48,12 +48,14 @@ friendly tutor. The name is just a nod to the books: this project has no affilia
   the learner is, aiming at a configurable target age (`LEARNER_AGE`).
 - **Inference.** Getting a harder topic right credits its prerequisites ("inferred" mastery); misses step down to
   easier prerequisites.
-- **Spaced repetition.** Leitner boxes with gaps of 1 → 3 → 7 → 21 → 60 days; reviews come back automatically.
+- **Spaced repetition.** Leitner boxes with gaps of 1 → 3 → 7 → 21 → 60 days; reviews come back automatically. In a
+  quest they come through 🗝️ **review gates** between stages, which also spot-check skills the app only inferred.
 - **Island map ("My World").** Each subject is an island and each topic is a stone, colored mastered / review due /
   learning / ready / locked. Tap a stone for *Explore now!* or *Practice now* mini-sessions.
 - **Quests.** Each daily lesson pack is a quest with a story hook, stages, a boss finale and a quest medal, plus an
   animated "New quest!" reveal and a Quests tab. **At most 3 quests are active at once**; at the cap, the nightly job
-  publishes a *catch-up boost* for the oldest one instead of a new quest.
+  publishes a *catch-up boost* for the oldest one instead of a new quest. Quests are short (about 8 minutes, at most
+  16 graded questions) and **a finished quest is locked**: its medal and progress never change.
 - **Nightly lesson packs.** `export-progress.mjs` exports weak spots, strengths, frontier topics and due reviews.
   You (or an AI assistant) write tomorrow's pack following [LESSONS.md](LESSONS.md), then
   `publish-lessons.mjs` validates and publishes it.
@@ -72,7 +74,8 @@ friendly tutor. The name is just a nod to the books: this project has no affilia
   right answers, never a self-check alone. Streaks, stars and quest medals.
 - **Parent report (`/parent`).** A calm, read-only report: overall %, time today and this week, wins and struggle spots,
   words looked up, charts, per-subject progress, quest history, upcoming reviews, a searchable answer log and medals.
-  It works on phones and prints cleanly. All times are Pacific Time.
+  It also shows review gates per quest and **coverage by area** (which topic areas have been explored). It works on
+  phones and prints cleanly. All times are Pacific Time.
 - **Sandbox.** `/api/sandbox?on=1` switches your browser to a copy of the progress for testing, so the real record is
   never touched.
 
@@ -205,6 +208,10 @@ See [CHANGELOG.md](CHANGELOG.md) for what's shipped.
 **v0.3** (shipped)
 - **"I'm stuck 🤔" help** on every question (hint → worked example → skip, no heart lost), **teach before test**
   (Learn-it cards and guided practice), **fairer bosses** that only test what was taught, and pack-validator rules for all of it.
+
+**v0.4** (shipped)
+- **Learning loop:** shorter quests, 🗝️ review gates with spot-checks, honest medals (and a one-time re-score tool,
+  `migrate-medals.mjs`), answer-form nudges ("write it as a percent"), locked finished quests, and coverage of new areas.
 
 **Next**
 - **Generated Learn-it cards for non-math topics** (today Play mode generates them for math; packs cover the rest).

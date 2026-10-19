@@ -1,4 +1,4 @@
-import * as E from './engine.js';import * as PR from './parent.js';
+import * as E from './engine.js';import * as PR from './parent.js';import {VERSION} from './version.js';
 let G=null;const QUEST_CAP=3;
 async function graph(env){if(!G){const r=await env.ASSETS.fetch(new Request('https://assets.local/tax.json'));G=E.graph(await r.json());}return G;}
 export const ptDate=(ms=Date.now())=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
@@ -8,6 +8,7 @@ const J=(o,s=200)=>new Response(E.withName(JSON.stringify(o),JSON.stringify(E.le
 // POST /api/sandbox/reset {offsetDays} copies the real progress into sandbox:* keys. /api/sandbox?on=0 leaves it.
 export default{async fetch(req,env){E.configure(env);const u=new URL(req.url),P=u.pathname,KV=env.JANE_KV;
  const sbxQ=u.searchParams.get('sandbox'),sbx=sbxQ!=null?sbxQ==='1':/(?:^|;\s*)sbx=1/.test(req.headers.get('cookie')||'');const K=k=>sbx?'sandbox:'+k:k;
+ if(P==='/healthz')return new Response(JSON.stringify({ok:true,version:VERSION}),{headers:{'content-type':'application/json','cache-control':'no-store'}});
  if(!P.startsWith('/api/')&&P!=='/parent'){const r=await env.ASSETS.fetch(req);if(sbxQ==null)return r;const h=new Headers(r.headers);h.append('set-cookie',`sbx=${sbxQ==='1'?1:0}; Path=/; SameSite=Lax${sbxQ==='1'?'':'; Max-Age=0'}`);return new Response(r.body,{status:r.status,headers:h});}
  const g=await graph(env);
  if(P==='/api/sandbox'){const on=u.searchParams.get('on')!=='0';return new Response(null,{status:302,headers:{location:'/','set-cookie':`sbx=${on?1:0}; Path=/; SameSite=Lax${on?'; Max-Age=86400':'; Max-Age=0'}`}});}
