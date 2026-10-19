@@ -1,13 +1,9 @@
 // Coverage by area (LESSONS.md "Coverage"): an area is a Marble domain. It is "seen" when it has at least 1 graded
 // answer in the given logs (not a self-check) or a topic with a direct record and at least 1 correct answer.
 // Inferred-only topics don't count. Shared by the export, the validator, Play and the parent report.
-import {stateOf} from './engine.js';
+import {stateOf,seenAreas} from './engine.js';
+export {seenAreas}; // the seen-area rule lives in the engine so Play can use it too
 export const AREA_ORDER=['Mathematics','Science']; // untouched areas: math and science first, then the rest
-const graded=l=>l&&!l.event&&l.topicId&&l.expected!=='(self-check)'&&l.regraded!=='neutral';
-export function seenAreas(S,g,logs=[]){const seen=new Map();const k=t=>t.subject+'|'+t.domain;
-  for(const l of logs)if(graded(l)){const t=g.byId[l.topicId];if(t){const x=seen.get(k(t))||{answered:0};x.answered++;seen.set(k(t),x);}}
-  for(const [id,r] of Object.entries(S.ts||{})){const t=g.byId[id];if(t&&r.how==='direct'&&(r.c||0)>=1&&!seen.has(k(t)))seen.set(k(t),{answered:0});}
-  return seen;}
 export function coverage(S,g,logs=[],{age=10,now=Date.now(),starters=3}={}){const seen=seenAreas(S,g,logs);const subj=new Map();
   for(const t of g.topics){const s=subj.get(t.subject)||subj.set(t.subject,{name:t.subject,domains:new Map()}).get(t.subject);
     const d=s.domains.get(t.domain)||s.domains.set(t.domain,{name:t.domain,topics:[]}).get(t.domain);d.topics.push(t);}

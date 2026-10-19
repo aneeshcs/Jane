@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 14/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 15/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -135,7 +135,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 13 | Nightly hands spaced review to the gates | review | #13 ✅ |
 | 14 | See which areas have been explored | coverage | #14 ✅ |
 | 15 | Nightly quests visit new areas | coverage | #15 ✅ |
-| 16 | Play wanders into new areas | coverage | #16 |
+| 16 | Play wanders into new areas | coverage | #16 ✅ |
 | 17 | Parent report shows coverage by area | coverage | #17 |
 
 ### Slice 1: Quests fit in about eight minutes (#2) — ✅ done
@@ -529,7 +529,7 @@ Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 - Done test: `node --test test/coverage.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D5.)
 
-### Slice 16: Play wanders into new areas (#16)
+### Slice 16: Play wanders into new areas (#16) — ✅ done
 Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 
 - **Ships:** Free Play (outside quests) mixes in topics from untouched areas: ready topics in unseen areas get a frontier score bonus, and the "Something different" choice picks an untouched area first.
@@ -649,3 +649,8 @@ One entry per slice once its done test passes: what shipped, the done test and i
 - Shipped: publish-lessons.mjs reports the quest's areas against coverage (src/coverage.js, read-only progress): summary 'new areas: N (Subject / Area…)'; warning 'coverage: no new area…' with 3 suggested untouched areas when N = 0 and some are left. Warning only, never an error (frozen Q2). --offline skips it. LESSONS.md rule 7 'Visit a new area' + Coverage section; docs/NIGHTLY.md step 4 bullet and export `coverage` entry. Owner was delegate; executed directly in this run.
 - Done test: `node --test test/coverage.test.mjs && npm test`: 8/8 (3 new validator cases with a seeded DATA_DIR: seen-only → warning + 'new areas: 0'; untouched Science stage → 'new areas: 1' and no warning; --offline skips), 71/71 in npm test.
 - Deferred / discovered: The validator uses progress records only (no log reads, to stay fast on Cloudflare), so an area with only wrong answers counts as unseen here until a correct answer lands.
+
+### Slice 16 (#16) ✅
+- Shipped: Engine: seenAreas() (shared with src/coverage.js, which now re-exports it) and focusScore() (the old score() plus +10 AREA_BONUS for ready topics in unseen areas, below the +40 pack bonus); pickFocus scores each candidate once and takes {unseen:true}; choose('different') tries an unseen area in another subject, then any unseen area, then the old pick. LESSONS.md Coverage note.
+- Done test: `node --test test/coverage.test.mjs && npm test`: 11/11 (3 new: +10 for an otherwise-equal unseen-area topic with Math.random stubbed, 'different' lands in the one unseen area, all areas seen → same pick as before), 74/74 in npm test.
+- Deferred / discovered: -

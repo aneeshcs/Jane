@@ -190,13 +190,22 @@ export function buildItem(S,g,id,mode,pack,now){const t=g.byId[id],r=S.ts[id];le
   if(it.format==='boss'&&it.type!=='card')it.boss=it.kind==='quiz'?{max:1,hp:1}:{max:3,hp:3-Math.min(2,r?.streak||0)};
   return{...it,id:now+'-'+R(0,999),topicId:id,mode,tries:0,stage:'main',issued:now};}
 // ---------- next item ----------
-function score(S,g,id,packIds){const t=g.byId[id];let s=-Math.abs(t.ageRangeStart-TARGET_AGE)*4;if(packIds.has(id))s+=40;if(S.ts[id]?.st==='learning')s+=15;if(kindFor(t))s+=4;
+// Coverage (LESSONS.md "Coverage"): an area (Marble domain) is seen with a direct record that has a correct answer
+// (the engine has no logs; src/coverage.js adds logged graded answers). Ready topics in unseen areas get +10 (below +40 for the pack).
+export const AREA_BONUS=10;
+export function seenAreas(S,g,logs=[]){const seen=new Map();const k=t=>t.subject+'|'+t.domain;
+  for(const l of logs)if(l&&!l.event&&l.topicId&&l.expected!=='(self-check)'&&l.regraded!=='neutral'){const t=g.byId[l.topicId];if(t){const x=seen.get(k(t))||{answered:0};x.answered++;seen.set(k(t),x);}}
+  for(const [id,r] of Object.entries(S.ts||{})){const t=g.byId[id];if(t&&r.how==='direct'&&(r.c||0)>=1&&!seen.has(k(t)))seen.set(k(t),{answered:0});}
+  return seen;}
+export function focusScore(S,g,id,packIds=new Set(),seenA=null){const t=g.byId[id];let s=-Math.abs(t.ageRangeStart-TARGET_AGE)*4;if(packIds.has(id))s+=40;
+  if(seenA&&!seenA.has(t.subject+'|'+t.domain)&&S.ts[id]?.st!=='learning')s+=AREA_BONUS;if(S.ts[id]?.st==='learning')s+=15;if(kindFor(t))s+=4;
   if(t.ageRangeStart<8)s-=30;const recentSubs=S.recent.slice(-3).map(x=>g.byId[x]?.subject);if(recentSubs.filter(x=>x===t.subject).length>=2)s-=12;return s+Math.random()*6;}
-function pickFocus(S,g,pack,now,opt={}){const packIds=new Set((pack?.topics||[]).map(t=>t.topicId).filter(id=>g.byId[id]&&packQ(S,pack,id)));
+export function pickFocus(S,g,pack,now,opt={}){const packIds=new Set((pack?.topics||[]).map(t=>t.topicId).filter(id=>g.byId[id]&&packQ(S,pack,id)));
   let c=g.topics.filter(t=>{const s=stateOf(S,g,t.id,now);return s==='ready'||s==='learning';});
   if(opt.subject)c=c.filter(t=>t.subject===opt.subject);if(opt.notSubject)c=c.filter(t=>t.subject!==opt.subject&&t.subject!==opt.notSubject);if(opt.domain)c=c.filter(t=>t.domain===opt.domain);
   if(opt.minAge)c=c.filter(t=>t.ageRangeStart>=opt.minAge);if(opt.maxAge)c=c.filter(t=>t.ageRangeStart<=opt.maxAge);
-  if(!c.length)return null;c.sort((a,b)=>score(S,g,b.id,packIds)-score(S,g,a.id,packIds));return c[0].id;}
+  if(opt.unseen){const sa=seenAreas(S,g);c=c.filter(t=>!sa.has(t.subject+'|'+t.domain));}
+  if(!c.length)return null;const seenA=seenAreas(S,g),sc=new Map(c.map(t=>[t.id,focusScore(S,g,t.id,packIds,seenA)]));c.sort((a,b)=>sc.get(b.id)-sc.get(a.id));return c[0].id;}
 export function next(S,g,pack,now){
   if(!S.firstDone){S.firstDone=true;const it={kind:'math',type:'input',q:'Your pizza has 8 slices. You eat 3, your friend eats 2. What fraction is left?',answer:'3/8',
     hint:'Count the slices that are still on the plate: 8 − 3 − 2. Put that number over 8, the total slices.',explain:'8 − 3 − 2 = 3 slices left out of 8, so 3/8 of the pizza is left!',
@@ -387,7 +396,7 @@ function finish(S,r,ev,noChoice){if(r.done&&!noChoice&&!S.mini){S.sinceChoice++;
 export function choose(S,g,c,pack,now){const cur=S.focus&&g.byId[S.focus];let msg='Keep going — you\'re doing great!',id=null;
   if(c==='harder'){id=pickFocus(S,g,pack,now,{subject:cur?.subject,minAge:(cur?.ageRangeStart||10)+1});msg='Ooh, a challenge! Let\'s go! 🚀';}
   else if(c==='easier'){if(cur&&S.ts[S.focus]?.lvl>1)S.ts[S.focus].lvl--;else id=pickFocus(S,g,pack,now,{subject:cur?.subject,maxAge:(cur?.ageRangeStart||10)-1});msg='Great choice — practice makes perfect!';}
-  else if(c==='different'){id=pickFocus(S,g,pack,now,{notSubject:cur?.subject||'Mathematics'});msg=id?`Something new: ${g.byId[id].sn||g.byId[id].name}! 🎨`:msg;}
+  else if(c==='different'){const ns={notSubject:cur?.subject||'Mathematics'};id=pickFocus(S,g,pack,now,{...ns,unseen:true})||pickFocus(S,g,pack,now,{unseen:true})||pickFocus(S,g,pack,now,ns);msg=id?`Something new: ${g.byId[id].sn||g.byId[id].name}! 🎨`:msg;}
   else if(c==='fractions'){id=pickFocus(S,g,pack,now,{domain:'Fractions'});msg='Back to fractions! 🍕';}
   if(id)S.focus=id;S.current=null;return{jane:msg};}
 export function publicItem(it,g){if(!it)return null;const t=g.byId[it.topicId];const b=it.stage==='bonus';

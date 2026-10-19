@@ -48,6 +48,8 @@ An **area** is a Marble domain (12 in Mathematics, 19 in Science, and so on). An
 Inferred-only topics don't count. The export's `coverage` lists, per subject, how many areas are seen, and for every
 untouched area (`coverage.untouched`, math and science first) up to 3 ready **starter** topics closest to the target
 age (never more than 2 years below it). Each nightly quest adds one of them (rule 7 below).
+In free Play the app also wanders: ready topics in unseen areas get a small boost (+10, below the +40 for today's
+pack), and "Something different" tries an unseen area first.
 
 ## Teach → guided practice → graded → boss (required)
 Jane teaches first and tests second. Every quest follows this order, and `publish-lessons.mjs` fails a pack that doesn't:
