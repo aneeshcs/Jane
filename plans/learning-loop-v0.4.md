@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 9/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 10/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -130,7 +130,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 8 | One trophy per achievement | medals | #9 ✅ |
 | 9 | Existing medals re-earned under the new rules | medals | #19 ⏳ |
 | 10 | Review gates between quest stages | review | #10 ✅ |
-| 11 | Gates show on the quest path | review | #11 |
+| 11 | Gates show on the quest path | review | #11 ✅ |
 | 12 | Gates spot-check guessed skills | review | #12 |
 | 13 | Nightly hands spaced review to the gates | review | #13 |
 | 14 | See which areas have been explored | coverage | #14 |
@@ -408,7 +408,7 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 - Done test: `node --test test/review-gates.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D2.)
 
-### Slice 11: Gates show on the quest path (#11)
+### Slice 11: Gates show on the quest path (#11) — ✅ done
 Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 
 - **Ships:** The learner sees 🗝️ keys between stages on the quest path and a clear gate card ("Unlock the gate with something you learned before!"). The parent report's quest view shows each gate's results.
@@ -623,4 +623,9 @@ One entry per slice once its done test passes: what shipped, the done test and i
 ### Slice 10 (#10) ✅
 - Shipped: Engine review gates: gateStages(n) = before stage 2, the middle stage and the boss (max 3). In a started quest, next() serves a gate (mode review, format gate, it.gate={k,n,of,date}) before the first item of a gate stage: 2 items when > 2 topics are due, else 1; picked at runtime from the due Leitner queue (direct before inferred, most overdue first, no topic twice per quest), with the soon-due fallback (direct, box 0-1, due within 2 days), otherwise the gate is open for free. Gate state lives in S.quests[date].gates[k] = {items, right, n, of, open}. submit/skip wrappers count answers; the gate opens once its items are answered (right, learning moment or skipped). Grading is the normal review path, so Leitner boxes move and misses demote. Gates have no bonus/timer/boss and don't count in quest total/pct. LESSONS.md 'Review gates' section; NIGHTLY.md 'In a quest'.
 - Done test: `node --test test/review-gates.test.mjs && npm test`: 5/5 new cases pass, 57/57 in npm test.
+- Deferred / discovered: -
+
+### Slice 11 (#11) ✅
+- Shipped: questInfo returns gates [{before, state: locked|open, items, of, right}]; publicItem exposes gate {n, of, k}. app.js: one qpath() helper draws 🗝️ keys between stages (dim and dashed when locked, gold when open) in the quest reveal, the quest strip and the Quests tab; gate items get a gold frame 'Gate! Unlock it with something you learned before (1/2)', and the strip stays visible during gates. Parent report quest cards list each gate's result. Screenshots: /workspace/screens/v040/01-04 (synthetic data).
+- Done test: `node --test test/gates-server.test.mjs && npm test`: 1/1 new end-to-end case passes (locked gate after stage 1 → 2 items → open → stage 2; /parent data has the gate), 58/58 in npm test.
 - Deferred / discovered: -
