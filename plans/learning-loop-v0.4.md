@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** planned, 0/16 slices done. Docs only so far; nothing is implemented. Tracking issue: #18.
+**Status:** planned, 0/17 slices done. Docs only so far; nothing is implemented. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -30,6 +30,7 @@ plan and its issues are public and contain no learner data.
   warns above 30 and 9). It prints an estimate (graded × 25 s + cards × 10 s) and warns above 8 minutes.
 - Deep dives shrink to 3-4 graded questions (3 minimum). Bosses stay at 3 or more (D3).
 - Catch-up boosts keep working as they do now.
+- **Frozen (Q3, resolved):** Kent approved this budget as proposed.
 
 ### D2 Review gates built into quests
 Kent: *"You should have to do something from the past to make it to the future, reinforcing your learning along
@@ -59,7 +60,11 @@ the way."*
 - **Legendary only for a multi-question boss:** a boss won with at least 3 graded boss answers. Non-math Play items
   are never bosses, and the validator requires at least 3 graded questions in a boss stage.
 - **One trophy per achievement:** one per topic, one per quest. Duplicates are collapsed on migrate.
-- **Already-awarded medals are not touched by these slices.** See open question Q1.
+- **Existing medals are re-earned under the new rules (Q1, resolved: option c).** A one-time migration
+  (slice 9) recomputes all existing mastery and medals and removes or downgrades the ones that don't qualify.
+  Topics that lose mastery go back into the review queue, due now, so review gates re-verify them. It needs a
+  backup first, runs on Cloudflare and `--local` storage, has a `--dry-run`, and the live run needs Kent's go-ahead
+  at execution time.
 
 ### D4 Answer in the asked form
 - A question's form comes from `form` on a pack question (`percent | decimal | fraction | whole`). Otherwise it is
@@ -75,7 +80,7 @@ the way."*
   topics don't count.
 - One shared `src/coverage.js` feeds the export, the validator, Play and the parent report.
 - The nightly quest includes at least one stretch stage from an untouched area (math and science first, rotating).
-  The validator reports "new areas: N" and warns at 0 (Q2).
+  The validator reports "new areas: N" and warns at 0. **Frozen (Q2, resolved): a warning only, never an error.**
 - Play gives ready topics in unseen areas a +10 frontier bonus (below the +40 pack bonus, so quests still lead).
   "Something different" tries an unseen area first.
 
@@ -88,22 +93,25 @@ the way."*
 - Legacy finished quests (finished before the snapshot existed) report 100%.
 
 ## Order and dependencies
-Trust fixes come first because they are small and independent: size (1), quest lock (2-3), answer form (4-5) and
-medals (6-8). Gates come next (9-12) so that gate results land on honest mastery rules. Coverage comes last (13-16).
-Dependencies: 5 needs 4; 10, 11 and 12 need 9 (12 also needs 11); 14, 15 and 16 need 13. Everything else is
-independent.
+Trust fixes come first because they are small and independent: size (1), quest lock (2-3), answer form (4-5),
+medals (6-8) and re-earning existing medals (9). Gates come next (10-13) so that gate results land on honest mastery
+rules. Coverage comes last (14-17).
+Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 12 and 13 need 10 (13 also needs 12);
+15, 16 and 17 need 14. Everything else is independent.
 
-## Open questions for Kent
-- **Q1 (medals, not decided):** should medals that were already awarded under the old rules be re-evaluated? Options:
-  (a) keep them all as they are; (b) keep them, but mark the ones that wouldn't pass the new rules as "re-check" and let
-  review gates re-verify them; (c) recompute and remove the ones that don't qualify. Until you decide, the new rules
-  apply only to new awards.
-- **Q2 (coverage):** is a warning enough when a quest adds no new area, or should the validator fail it? The plan
-  uses a warning.
-- **Q3 (quests):** is the D1 budget right (16 pack + 4 gate items, about 8 minutes)? The plan uses it as written.
+## Decisions (open questions resolved by Kent, 2026-10-19)
+- **Q1 (medals): resolved, option (c).** Kent: "Update all with new rules." All existing medals and mastery are
+  recomputed under the new rules, and the ones that don't qualify are removed or downgraded. Topics that lose mastery
+  go back into the review queue for gates to re-verify. This is a new slice: slice 9, "Existing medals re-earned
+  under the new rules". The live run needs Kent's go-ahead at execution time.
+- **Q2 (coverage): resolved, a warning only.** A quest that adds no new area gets a validator warning, never an
+  error (slice 15). Frozen.
+- **Q3 (quest size): resolved, yes as proposed.** At most 16 graded pack questions plus at most 4 gate items (about 20
+  answers, about 8 minutes), 4-6 stages, 7 at most (slice 1). Frozen.
 
 ## Out of scope
-- Live Cloudflare data: no migration is run against production progress in these slices. Engine migrations run
+- Live Cloudflare data is not touched while planning. The only live write in this plan is slice 9's one-time medal
+  migration, and only with a matching backup and Kent's go-ahead at execution time. Other engine migrations run
   lazily on the next request, as today.
 - The built-in nightly generator (`docs/NIGHTLY.md` "Planned"). These slices change the rules it would follow, not
   the generator itself.
@@ -120,14 +128,15 @@ independent.
 | 6 | Mastery takes real answers, not a thumbs-up | medals | #7 |
 | 7 | Legendary medals come from a real boss fight | medals | #8 |
 | 8 | One trophy per achievement | medals | #9 |
-| 9 | Review gates between quest stages | review | #10 |
-| 10 | Gates show on the quest path | review | #11 |
-| 11 | Gates spot-check guessed skills | review | #12 |
-| 12 | Nightly hands spaced review to the gates | review | #13 |
-| 13 | See which areas have been explored | coverage | #14 |
-| 14 | Nightly quests visit new areas | coverage | #15 |
-| 15 | Play wanders into new areas | coverage | #16 |
-| 16 | Parent report shows coverage by area | coverage | #17 |
+| 9 | Existing medals re-earned under the new rules | medals | #19 |
+| 10 | Review gates between quest stages | review | #10 |
+| 11 | Gates show on the quest path | review | #11 |
+| 12 | Gates spot-check guessed skills | review | #12 |
+| 13 | Nightly hands spaced review to the gates | review | #13 |
+| 14 | See which areas have been explored | coverage | #14 |
+| 15 | Nightly quests visit new areas | coverage | #15 |
+| 16 | Play wanders into new areas | coverage | #16 |
+| 17 | Parent report shows coverage by area | coverage | #17 |
 
 ### Slice 1: Quests fit in about eight minutes (#2)
 Area: `quests` · Design: [D1](#d1-shorter-quests)
@@ -147,6 +156,7 @@ Area: `quests` · Design: [D1](#d1-shorter-quests)
 - **Owner:** `delegate(task="Apply the D1 quest budget to publish-lessons.mjs, the example quest and the docs", verify="node --test test/quest-size.test.mjs && npm test")`
 
 #### Execute (Slice 1)
+- Budget frozen (Q3, Kent: yes as proposed): ≤ 16 graded pack questions + ≤ 4 gate items (~20 answers, ~8 min), 4-6 stages, max 7.
 - In `publish-lessons.mjs`, replace the soft size warnings with the D1 budget: error when graded > 16 or stages > 7; warn when graded < 10.
 - Add the D1 time estimate (graded × 25 s + cards × 10 s) to the summary line; warn above 8 min.
 - Deep dives: error below 3 graded, warn above 4 (was 4-5).
@@ -281,7 +291,7 @@ Area: `medals` · Design: [D3](#d3-honest-medals)
 - Per D3: mastery needs ≥ 2 first-try correct graded answers (no `packN` shortcut below 2); a repeated identical question counts at most once per PT day.
 - Diagnostic: keep `setMastered` + `inferDown` for placement, remove `award()` there.
 - `award()` only when the topic is directly mastered and `rec.ft ≥ 3`.
-- Do not touch medals already awarded (open question Q1).
+- Existing medals and mastery are recomputed by slice 9 (Q1, resolved); this slice only changes new awards.
 - Write `test/medals.test.mjs`.
 - Done test: `node --test test/medals.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D3.)
@@ -337,7 +347,40 @@ Area: `medals` · Design: [D3](#d3-honest-medals)
 - Done test: `node --test test/trophies.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D3.)
 
-### Slice 9: Review gates between quest stages (#10)
+### Slice 9: Existing medals re-earned under the new rules (#19)
+Area: `medals` · Design: [D3](#d3-honest-medals)
+
+- **Ships:** Medals and mastery awarded under the old rules are recomputed once under the new ones (Q1, Kent: "Update all with new rules"). Topics that don't qualify lose mastery or their medal, legendary medals without a real boss fight drop to the topic's normal tier, and duplicates are collapsed. Every topic that loses mastery goes back into the review queue (due now), so review gates re-verify it.
+- **Touches:**
+  - new `migrate-medals.mjs` (one-time script: `--dry-run`, `--local`, `--backup <file>`), using `kvGet` / `kvPut` / `kvList` from `lib-cli.mjs` so it runs against both Cloudflare KV and `--local` storage
+  - `src/engine.js`: new exported pure `rescore(S, g, logs)` → `{S2, before, after, changes}` that applies the slice 6-8 rules (reuses `trophies()` from slice 8)
+  - `backup-progress.mjs`: print the sha256 of the saved record so the migration can check the backup
+  - `LESSONS.md` / `README.md`: one line on the medal re-check; `CHANGELOG.md` entry
+  - new `test/rescore.test.mjs` with a synthetic fixture `test/fixtures/rescore-progress.json` (made-up records only, no real data)
+- **Done test:** `node --test test/rescore.test.mjs && npm test`, plus `node migrate-medals.mjs --local --dry-run` on the fixture showing the before/after table, with these new cases:
+  - fixture: a topic mastered by self-check only (`how: 'self'`) → loses mastery, ends up due now in the review queue, and its medal is removed
+  - a topic with 1 first-try correct graded answer → loses mastery; with 2 it stays mastered but its medal is removed; with 3 it keeps its medal
+  - a legendary medal won with a 1-question boss → downgraded to the topic's normal tier
+  - duplicate topic and quest medals → one each; quest medals are otherwise kept
+  - a placement (diagnostic) first-try mastery stays mastered without a medal; inferred topics are left inferred
+  - running `rescore` twice changes nothing the second time (idempotent, `S.rules >= 2`)
+  - `migrate-medals.mjs --local --dry-run` prints before/after counts and writes nothing (file mtime unchanged)
+  - `migrate-medals.mjs --local` without `--backup`, or with a backup whose sha256 doesn't match the current record, exits 5 and writes nothing
+- **Owner:** `self`
+
+#### Execute (Slice 9)
+- Needs slices 6, 7 and 8. Run it live only after slices 10 and 12 (gates and spot-checks) have shipped, so re-queued topics are re-verified.
+- Write `E.rescore(S, g, logs)`: count first-try correct graded answers per topic from all `log:*` entries (not self-checks, not form nudges). If a topic has no log history, fall back to `rec.c` and flag it as `fallback` in the report.
+- Rules (D3): `how: 'self'` or < 2 first-try correct answers (and no placement first-try correct) → not mastered; < 3 → no medal; legendary only with ≥ 3 graded boss answers in one fight, otherwise the normal tier; dedupe via `trophies()`. Inferred topics are unchanged.
+- A topic that loses mastery becomes `{st: 'mastered', how: 'inferred', reverify: true, box: 0, due: now}`: it stays on the map, but it is due now and counts as unverified, so gates (slices 10 and 12) re-check it. Set `S.rules = 2`.
+- `migrate-medals.mjs`: load progress and logs; `--dry-run` prints a before/after table (directly mastered, self-mastered, medals by tier, legendary, quest medals, duplicates removed, topics re-queued, fallbacks) and writes nothing.
+- Without `--dry-run`, require `--backup <file>` from `node backup-progress.mjs` (same storage flag) whose sha256 matches the current record; otherwise exit 5. Write only `progress` and never touch `sandbox:*` keys.
+- The live Cloudflare run needs Kent's explicit go-ahead at execution time. Until then, run only `--dry-run` against live data, and the full run only on `--local` fixtures.
+- Write `test/rescore.test.mjs` and the synthetic fixture.
+- Done test: `node --test test/rescore.test.mjs && npm test`, plus `node migrate-medals.mjs --local --dry-run` on the fixture showing the before/after table
+- Decisions frozen: design sections and resolved open questions apply as written. (Design D3.)
+
+### Slice 10: Review gates between quest stages (#10)
 Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 
 - **Ships:** In a started quest, before some later stages, the learner opens a 🗝️ gate by answering 1-2 spaced-review items picked at runtime from the engine's due Leitner queue (most overdue first). Gate answers move Leitner boxes exactly like reviews, so due reviews stop piling up while quests run.
@@ -354,7 +397,7 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
   - outside quests, Play's own review cadence is unchanged
 - **Owner:** `self`
 
-#### Execute (Slice 9)
+#### Execute (Slice 10)
 - Implement D2 gate placement: gates before stage 2, before the middle stage and before the boss (deduped for short quests), max 3 per quest.
 - `gateNext`: due topics sorted by `due`, direct before inferred; 2 items per gate (1 if ≤ 2 are due); the soon-due fallback from D2; otherwise no gate.
 - Store `S.quests[date].gates[k] = {items, right, open}`; a gate opens once its items are answered (right, learning moment or skipped).
@@ -365,7 +408,7 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 - Done test: `node --test test/review-gates.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D2.)
 
-### Slice 10: Gates show on the quest path (#11)
+### Slice 11: Gates show on the quest path (#11)
 Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 
 - **Ships:** The learner sees 🗝️ keys between stages on the quest path and a clear gate card ("Unlock the gate with something you learned before!"). The parent report's quest view shows each gate's results.
@@ -379,10 +422,10 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
   - after answering the gate items, `quest.gates[0].state === 'open'` and the next item is from stage 2
   - the `/parent` embedded data includes the gate results
   - plus a sandbox screenshot of the path with keys, attached in Progress
-- **Owner:** `delegate(task="Render review gates on the quest path, gate card and parent quest view (needs slice 9)", verify="node --test test/gates-server.test.mjs && npm test")`
+- **Owner:** `delegate(task="Render review gates on the quest path, gate card and parent quest view (needs slice 10)", verify="node --test test/gates-server.test.mjs && npm test")`
 
-#### Execute (Slice 10)
-- Needs slice 9.
+#### Execute (Slice 11)
+- Needs slice 10.
 - `questInfo`: add `gates`; `publicItem`: add `gate`.
 - `app.js`: draw a 🗝️ node between stages (locked or open) and a gate header on gate items.
 - Parent report: show each gate's items and how many were right.
@@ -390,7 +433,7 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 - Done test: `node --test test/gates-server.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D2.)
 
-### Slice 11: Gates spot-check guessed skills (#12)
+### Slice 12: Gates spot-check guessed skills (#12)
 Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 
 - **Ships:** About one gate item in three is a quick spot-check of a skill the app only inferred (credited but never seen). Right → the skill is verified and counts as shown directly. Wrong → it goes back to learning, and the guesses built on it are withdrawn. A spot-check never awards a medal.
@@ -405,8 +448,8 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
   - nothing due but inferred topics exist → the gate is all spot-checks (gates never come up empty)
 - **Owner:** `self`
 
-#### Execute (Slice 11)
-- Needs slice 9.
+#### Execute (Slice 12)
+- Needs slice 10.
 - In `gateNext`, target 1 in 3 gate items from inferred, never-verified topics (D2 picking rule); spot-checks use the review item builder.
 - Handle the result as in Ships, logging `verified` / `spotMiss`.
 - Leitner: a verified topic keeps its box; a missed one resets like a missed review.
@@ -415,7 +458,7 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 - Done test: `node --test test/review-gates.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D2.)
 
-### Slice 12: Nightly hands spaced review to the gates (#13)
+### Slice 13: Nightly hands spaced review to the gates (#13)
 Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 
 - **Ships:** The nightly author stops spending quest budget on review stages, and the export shows review health so starvation is visible: due, overdue, oldest overdue, gate items and spot-checks in the last 7 days, and unverified inferred topics.
@@ -428,10 +471,10 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
   - a pack with a `review: true` stage passes with a "review gates" warning
   - a pack with no review stages gets no review-share warning
   - `export-progress.mjs --local` output has `reviewHealth` with numeric `due`, `overdue`, `oldestOverdueDays`, `gateItems7d`, `spotChecks7d`, `unverifiedInferred`
-- **Owner:** `delegate(task="Retire review-share rules in the validator, add reviewHealth to the export and rewrite the spaced-review docs for gates (needs slices 9 and 11)", verify="node --test test/quest-size.test.mjs test/server.test.mjs && npm test")`
+- **Owner:** `delegate(task="Retire review-share rules in the validator, add reviewHealth to the export and rewrite the spaced-review docs for gates (needs slices 10 and 12)", verify="node --test test/quest-size.test.mjs test/server.test.mjs && npm test")`
 
-#### Execute (Slice 12)
-- Needs slices 9 and 11.
+#### Execute (Slice 13)
+- Needs slices 10 and 12.
 - Validator: drop the review-share warning; warn on `review: true` stages (still valid, for backward compatibility).
 - Export: add `reviewHealth` (fields in the done test) from progress and the 7-day logs.
 - Rewrite the spaced-review text in `LESSONS.md` and `docs/NIGHTLY.md` for gates.
@@ -439,7 +482,7 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 - Done test: `node --test test/quest-size.test.mjs test/server.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D2.)
 
-### Slice 13: See which areas have been explored (#14)
+### Slice 14: See which areas have been explored (#14)
 Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 
 - **Ships:** The nightly export shows coverage by area: for every subject, how many of its areas (Marble domains) have been touched by real graded answers or direct mastery, which are untouched, and up to 3 ready starter topics near the target age for each untouched area.
@@ -455,7 +498,7 @@ Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
   - `export-progress.mjs --local` output includes `coverage`
 - **Owner:** `self`
 
-#### Execute (Slice 13)
+#### Execute (Slice 14)
 - Write `src/coverage.js` using the D5 definition of "seen".
 - Starters: ready topics in the area, closest to the target age first, never below age − 2.
 - Add `coverage` to the export.
@@ -463,7 +506,7 @@ Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 - Done test: `node --test test/coverage.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D5.)
 
-### Slice 14: Nightly quests visit new areas (#15)
+### Slice 15: Nightly quests visit new areas (#15)
 Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 
 - **Ships:** Every nightly quest brings in at least one untouched area. The publisher reports which areas a quest touches and warns when it adds no untouched area while some exist. `LESSONS.md` asks for one stretch stage from `coverage.untouched` per quest, rotating subjects with math and science first.
@@ -475,17 +518,18 @@ Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
   - with seeded progress, a quest only in seen areas → warning "no new area"
   - adding a stage from an untouched area → summary shows "new areas: 1" and no warning
   - `--offline` skips the coverage check
-- **Owner:** `delegate(task="Report quest coverage in publish-lessons.mjs and add the rotate-untouched-areas rule to LESSONS.md and NIGHTLY.md (needs slice 13)", verify="node --test test/coverage.test.mjs && npm test")`
+- **Owner:** `delegate(task="Report quest coverage in publish-lessons.mjs and add the rotate-untouched-areas rule to LESSONS.md and NIGHTLY.md (needs slice 14)", verify="node --test test/coverage.test.mjs && npm test")`
 
-#### Execute (Slice 14)
-- Needs slice 13.
-- Validator: compute the quest's areas, compare with `coverage()`; print "new areas: N"; warn (not error, see Q2) when N = 0 and untouched areas exist.
+#### Execute (Slice 15)
+- Needs slice 14.
+- Frozen (Q2, Kent): no new area is a WARNING only, never an error.
+- Validator: compute the quest's areas, compare with `coverage()`; print "new areas: N"; warn when N = 0 and untouched areas exist.
 - Add the rotation rule to `LESSONS.md` and `docs/NIGHTLY.md`.
 - Add the validator cases to `test/coverage.test.mjs`.
 - Done test: `node --test test/coverage.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D5.)
 
-### Slice 15: Play wanders into new areas (#16)
+### Slice 16: Play wanders into new areas (#16)
 Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 
 - **Ships:** Free Play (outside quests) mixes in topics from untouched areas: ready topics in unseen areas get a frontier score bonus, and the "Something different" choice picks an untouched area first.
@@ -498,15 +542,15 @@ Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
   - no unseen areas → the same pick as before
 - **Owner:** `self`
 
-#### Execute (Slice 15)
-- Needs slice 13.
+#### Execute (Slice 16)
+- Needs slice 14.
 - Add the D5 bonus to `score()` for topics in unseen areas.
 - `choose('different')`: try unseen areas (other subject first), then the current behaviour.
 - Add the cases to `test/coverage.test.mjs`.
 - Done test: `node --test test/coverage.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D5.)
 
-### Slice 16: Parent report shows coverage by area (#17)
+### Slice 17: Parent report shows coverage by area (#17)
 Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 
 - **Ships:** `/parent` gets a "Coverage by area" section: per subject, areas explored out of total, with the untouched areas listed, so a parent can see breadth at a glance.
@@ -517,10 +561,10 @@ Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 - **Done test:** `node --test test/server.test.mjs && npm test`, with these new cases:
   - `test/server.test.mjs` "parent report includes coverage": the embedded data JSON has `coverage.subjects` with Mathematics total 12 and Science total 19
   - plus a sandbox screenshot of the section, attached in Progress
-- **Owner:** `delegate(task="Add a Coverage by area section to the parent report (needs slice 13)", verify="node --test test/server.test.mjs && npm test")`
+- **Owner:** `delegate(task="Add a Coverage by area section to the parent report (needs slice 14)", verify="node --test test/server.test.mjs && npm test")`
 
-#### Execute (Slice 16)
-- Needs slice 13.
+#### Execute (Slice 17)
+- Needs slice 14.
 - `parentData`: add `coverage`.
 - `public/parent.js`: render explored / total per subject with untouched areas listed.
 - Extend the `/parent` case in `test/server.test.mjs`.
