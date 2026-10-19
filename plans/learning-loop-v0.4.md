@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 12/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 13/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -133,7 +133,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 11 | Gates show on the quest path | review | #11 ✅ |
 | 12 | Gates spot-check guessed skills | review | #12 ✅ |
 | 13 | Nightly hands spaced review to the gates | review | #13 ✅ |
-| 14 | See which areas have been explored | coverage | #14 |
+| 14 | See which areas have been explored | coverage | #14 ✅ |
 | 15 | Nightly quests visit new areas | coverage | #15 |
 | 16 | Play wanders into new areas | coverage | #16 |
 | 17 | Parent report shows coverage by area | coverage | #17 |
@@ -482,7 +482,7 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 - Done test: `node --test test/quest-size.test.mjs test/server.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D2.)
 
-### Slice 14: See which areas have been explored (#14)
+### Slice 14: See which areas have been explored (#14) — ✅ done
 Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 
 - **Ships:** The nightly export shows coverage by area: for every subject, how many of its areas (Marble domains) have been touched by real graded answers or direct mastery, which are untouched, and up to 3 ready starter topics near the target age for each untouched area.
@@ -639,3 +639,8 @@ One entry per slice once its done test passes: what shipped, the done test and i
 - Shipped: Validator: the 15-20% review-share warning is gone; a `review: true` stage still publishes with the warning 'review runs through gates now'; the summary says 'review via gates'. Export: new `reviewHealth` {due, overdue (>1 day late), oldestOverdueDays, gateItems7d, spotChecks7d, unverifiedInferred}. LESSONS.md rule 4 + 'How the app uses it' + export description, and docs/NIGHTLY.md (no review stages, spot-checks, reviewHealth) rewritten for gates. Owner was delegate; executed directly in this run.
 - Done test: `node --test test/quest-size.test.mjs test/server.test.mjs && npm test`: 10/10 (2 new validator cases + reviewHealth fields checked in the export case), 63/63 in npm test.
 - Deferred / discovered: The example quest keeps its one review stage (it now shows the gates warning) so old packs stay covered by an example.
+
+### Slice 14 (#14) ✅
+- Shipped: New src/coverage.js: coverage(S, g, logs, {age, now}) → {subjects: [{name, total, seen, domains: [{name, seen, answered, mastered, topics, starters}]}], untouched (math and science first), seen, total}; seen = a graded answer in the logs (not a self-check) or a direct record with ≥1 correct; inferred-only doesn't count; starters = ready topics, closest to target age, never below age − 2, max 3. Export adds `coverage`. LESSONS.md 'Coverage' section.
+- Done test: `node --test test/coverage.test.mjs && npm test`: 5/5 new cases (blank learner Mathematics 0/12 + Science 0/19, direct vs inferred, graded vs self-check, starters, export includes coverage), 68/68 in npm test.
+- Deferred / discovered: -

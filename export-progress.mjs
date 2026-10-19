@@ -3,7 +3,7 @@
 // Usage: node export-progress.mjs [--out file.json] [--date YYYY-MM-DD] [--days 7] [--local]   (default out: exports/progress-<date>.json;
 //        with --local or STORAGE=file it reads the standalone server's DATA_DIR and writes DATA_DIR/exports/)
 // Adds weakSpots (per topic + per domain: misses, hints, slow answers, failed reviews, unsure self-checks), strengths and goDeeper suggestions.
-import fs from 'fs';import path from 'path';import {kvGet,loadTax,ptDate,DIR,activeQuests,QUEST_CAP,learnerConfig,outDir} from './lib-cli.mjs';import * as E from './src/engine.js';
+import fs from 'fs';import path from 'path';import {kvGet,loadTax,ptDate,DIR,activeQuests,QUEST_CAP,learnerConfig,outDir} from './lib-cli.mjs';import * as E from './src/engine.js';import {coverage as areaCoverage} from './src/coverage.js';
 E.configure(learnerConfig());const L=E.learner();
 const args=process.argv.slice(2),opt=k=>args.includes(k)?args[args.indexOf(k)+1]:null;
 const date=opt('--date')||ptDate(),out=opt('--out')||path.join(outDir('exports'),`progress-${date}.json`);
@@ -65,6 +65,7 @@ const termsLookedUp=Object.values(tl).map(x=>({...x,topics:[...x.topics]})).sort
 const res={exportedAt:new Date(now).toISOString(),date,timezone:'America/Los_Angeles',learner:S.name,summary:sm,
   stats:{points:S.points,stars:S.stars,streak:S.streak,bestStreak:S.bestStreak,solved:S.solved,badges:S.badges,placement:S.placement},
   unverifiedInferred:reviewHealth.unverifiedInferred, // inferred skills a gate spot-check has not confirmed yet
+  coverage:areaCoverage(S,g,logs,{age:L.age,now}), // areas (Marble domains) seen per subject + starters for untouched ones (LESSONS.md "Coverage")
   reviewHealth, // spaced review runs through quest gates now: watch for starvation here (LESSONS.md "Review gates")
   todaysPack:pack?{date:pack.date,title:pack.title,topicIds:pack.topics.map(t=>t.topicId)}:null,
   quests,termsLookedUp,weakSpots,todayLog:log,learnedToday:log.filter(l=>l.event==='mastered'),

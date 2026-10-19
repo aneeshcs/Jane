@@ -42,6 +42,13 @@ only *inferred* and never saw: the one with the most dependent skills, then the 
 counts as shown directly (`verified`). Miss: it goes back to learning and the guesses built on it are withdrawn. A
 spot-check never awards a medal. The export's `unverifiedInferred` counts the inferred skills not checked yet.
 
+## Coverage (explore new areas)
+An **area** is a Marble domain (12 in Mathematics, 19 in Science, and so on). An area is **seen** when it has at least
+1 graded answer (not a self-check) in the exported days, or a topic shown directly with at least 1 correct answer.
+Inferred-only topics don't count. The export's `coverage` lists, per subject, how many areas are seen, and for every
+untouched area (`coverage.untouched`, math and science first) up to 3 ready **starter** topics closest to the target
+age (never more than 2 years below it).
+
 ## Teach → guided practice → graded → boss (required)
 Jane teaches first and tests second. Every quest follows this order, and `publish-lessons.mjs` fails a pack that doesn't:
 1. **Teach.** A stage for a skill that is new or shaky (not mastered, not a `review` stage) starts with a **`learn`
