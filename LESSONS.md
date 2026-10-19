@@ -162,7 +162,7 @@ those words in the next quest (use them in a question, or add a fun-fact card).
 | type | what the learner does | fields (besides `prompt`, `hint`, `explanation`) |
 |---|---|---|
 | `mc` | taps one of 3 buttons | `choices`, `answer` (exactly one choice) |
-| `numeric` | types a number (12, 0.75, 3/8, "$20", "6 weeks") | `answer`, `tolerance?` |
+| `numeric` | types a number (12, 0.75, 3/8, 27%, "$20", "6 weeks") | `answer`, `tolerance?`, `form?` (`percent`/`decimal`/`fraction`/`whole`, see below) |
 | `text` | types a word (only when ONE word clearly fits) | `answer`, `acceptedAnswers?` (fuzzy: plural/singular, a/an/the, small typos) |
 | `creative` | types their own idea, graded generously: any sensible word/phrase counts, and Jane celebrates it | `answer` (your example), `acceptedAnswers?`, `notAnswers?` (e.g. the subject word), `block?`, `minLength?`(2), `maxWords?`(5), `celebrate?` ("{given}", "{answer}"), `placeholder?` |
 | `blank` | fill in the blank: prompt has `___`; tapped word flies into the gap (or typed if no choices; add `"creative": true` for any-sensible-answer) | `choices?`(2-4), `answer`, `acceptedAnswers?` |
@@ -176,6 +176,12 @@ those words in the next quest (use them in a question, or add a fun-fact card).
 | `fact` | "🤩 Fun fact!" card | `title`, `body`, `emoji?` |
 | `learn` | "🧠 Learn it" card: an idea plus a worked example, revealed one step per tap | `title`, `body` (≤ 30 words), `example: {prompt, steps}`, `emoji?` |
 Cards earn 2 points and never count for or against mastery.
+
+**Answer form.** When a question asks for a form ("as a percent", "as a decimal", "what fraction", or `"form"` on a
+`numeric` question), only that form counts: write the answer in it (`"27%"`, `"0.52"`, `"3/8"`). The right value in
+another form (0.27 for a percent, 52/100 for a decimal, 12/4 for a whole number) gets a gentle "Right value! Now
+write it as a percent" nudge, not a miss. The publisher fails a question whose prompt asks for one form and whose
+answer is written in another.
 
 **On any graded question:** `guided: true` + `steps` (guided practice: steps shown before answering; a miss is a
 learning moment), `steps` alone (used as "how to start" in the stuck help), `example: {prompt, steps}` (a similar

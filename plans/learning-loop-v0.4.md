@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 4/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 5/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -124,7 +124,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 2 | A finished quest stays finished | integrity | #3 ✅ |
 | 3 | Publishing never changes a finished quest | integrity | #4 ✅ |
 | 4 | Asked for a percent? Write a percent | grading | #5 ✅ |
-| 5 | Pack authors declare the answer form | grading | #6 |
+| 5 | Pack authors declare the answer form | grading | #6 ✅ |
 | 6 | Mastery takes real answers, not a thumbs-up | medals | #7 |
 | 7 | Legendary medals come from a real boss fight | medals | #8 |
 | 8 | One trophy per achievement | medals | #9 |
@@ -244,7 +244,7 @@ Area: `grading` · Design: [D4](#d4-answer-in-the-asked-form)
 - Done test: `node --test test/answer-form.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D4.)
 
-### Slice 5: Pack authors declare the answer form (#6)
+### Slice 5: Pack authors declare the answer form (#6) — ✅ done
 Area: `grading` · Design: [D4](#d4-answer-in-the-asked-form)
 
 - **Ships:** A nightly pack can say exactly which form a numeric answer must take (`"form": "percent" | "decimal" | "fraction" | "whole"`). The publisher catches packs whose prompt and answer disagree (e.g. "as a percent" with answer 0.27), so pack questions grade by the same rule as generated ones.
@@ -594,3 +594,8 @@ One entry per slice once its done test passes: what shipped, the done test and i
 - Shipped: engine: formOf/formOk/formCheck; grade() returns 'wrongForm' for math items, numeric pack items and the decimal bonus when the value is right but the form isn't (incl. 27 for a percent). submit() answers with a kind nudge ('Right value! Now write it as a percent (like 50%). ✍️'), no try/streak/points/Leitner change; the 3rd nudge on an item also shows the expected answer. Nudges are logged as {event:'formNudge'} so reports never count them as answers or misses. app.js: no shake on a nudge.
 - Done test: `node --test test/answer-form.test.mjs && npm test`: 6/6 new cases pass, 27/27 in npm test.
 - Deferred / discovered: No generator prompt needed rewording: they already say 'as a percent' / 'as a decimal' / 'What fraction'. The nudge examples are generic (like 50%) so the first nudge never gives the answer away.
+
+### Slice 5 (#6) ✅
+- Shipped: Numeric pack questions take an optional form (percent|decimal|fraction|whole), passed to the engine by packItem. The validator accepts answers like 27%, rejects an unknown form, and fails a question whose prompt (or form) asks for one form while the answer is written in another ('answer form: ...'). LESSONS.md: numeric row + an 'Answer form' note.
+- Done test: `node --test test/answer-form.test.mjs && npm test`: 4/4 new cases pass (10/10 in the file), 31/31 in npm test.
+- Deferred / discovered: Already-published packs (incl. the in-progress one) are over the new size budget; they are grandfathered: the app never re-validates a published pack.

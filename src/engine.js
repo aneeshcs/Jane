@@ -102,7 +102,7 @@ function packItem(pq,q){const graded=pq.t.questions.filter(x=>!CARD.includes(x.t
    case 'mc':return{...it,type:'mc',choices:q.choices,answer:q.answer};
    case 'picture':return{...it,type:'picture',choices:q.choices.map(c=>c.label),pics:q.choices.map(c=>c.pic),answer:q.answer};
    case 'blank':return q.choices?{...it,type:'mc',blank:true,choices:q.choices,answer:q.answer}:(q.creative?{...it,type:'input',blank:true,creative:true,answer:q.answer,accept:[...(q.accept||[]),...(q.acceptedAnswers||[])],notAnswers:q.notAnswers,block:q.block,celebrate:q.celebrate}:{...it,type:'input',blank:true,answer:q.answer,accept:[...(q.accept||[]),...(q.acceptedAnswers||[])],fuzzy:q.fuzzy!==false});
-   case 'numeric':return{...it,type:'input',numeric:true,answer:q.answer,tol:q.tolerance};
+   case 'numeric':return{...it,type:'input',numeric:true,answer:q.answer,tol:q.tolerance,form:q.form};
    case 'text':return{...it,type:'input',answer:q.answer,accept:[...(q.accept||[]),...(q.acceptedAnswers||[])],fuzzy:q.fuzzy!==false};
    case 'creative':return{...it,type:'input',creative:true,answer:q.answer,accept:[...(q.accept||[]),...(q.acceptedAnswers||[])],notAnswers:q.notAnswers,block:q.block,minLength:q.minLength,maxWords:q.maxWords,celebrate:q.celebrate,placeholder:q.placeholder||'Your idea!'};
    case 'order':return{...it,type:'order',items:shufNot(q.items),answer:q.items.join('|'),explain:q.explanation||q.items.join(' → ')};

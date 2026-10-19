@@ -16,3 +16,13 @@ test('fractions are unchanged: an unsimplified fraction still gets the simplify 
 test('a nudge is logged as a formNudge event, not as an answer or a first-try miss; the 3rd nudge shows the asked form',()=>{const S=withItem({q:'What is 27/100 as a percent? (like 50%)',answer:'27%'});
   const a=nudge(S,'0.27');assert.equal(a.ev.length,1);assert.equal(a.ev[0].event,'formNudge');assert.equal(a.ev[0].formNudge,true);assert.equal(a.ev[0].correct,undefined);
   nudge(S,'0.27');const c=nudge(S,'0.27');assert.match(c.r.jane,/27%/);assert.equal(S.streak,0);assert.equal(S.ts[DEC].w,0,'not a miss');});
+// ---- Slice 5: pack authors declare the answer form ----
+const withNumeric=q=>{const p=example();p.topics[4].questions.push({type:'numeric',hint:'Out of 100.',explanation:'27 out of 100 is 27%.',...q});return p;};
+test('validator: an "as a percent" prompt with answer 0.27 fails with "answer form"',()=>{const r=validate(withNumeric({prompt:'What is 27/100 as a percent?',answer:'0.27'}));
+  assert.equal(r.status,1);assert.match(r.stderr,/answer form/);});
+test('validator: form "percent" with answer 27% passes',()=>{const p=withNumeric({prompt:'How much of the map is water?',form:'percent',answer:'27%'});p.topics[4].questions.splice(2,1);
+  const r=validate(p);assert.equal(r.status,0,r.stderr);});
+test('validator: an unknown form fails',()=>{const r=validate(withNumeric({prompt:'How much?',form:'percents',answer:'27%'}));assert.equal(r.status,1);assert.match(r.stderr,/form: percent\|decimal/);});
+test('engine: a pack numeric item with form "decimal" nudges 52/100 and accepts 0.52',()=>{const S=E.blank();S.firstDone=true;S.placement.done=true;
+  const pack={date:'2026-02-02',topics:[{topicId:DEC,questions:[{type:'numeric',prompt:'How much is shaded?',form:'decimal',answer:'0.52',hint:'h',explanation:'e'}]}]};
+  S.current=E.buildItem(S,g,DEC,'learn',pack,now);assert.equal(S.current.form,'decimal');nudge(S,'52/100');assert.equal(E.submit(S,g,'0.52',now).r.correct,true);});

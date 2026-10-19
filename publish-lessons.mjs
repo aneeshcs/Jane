@@ -110,7 +110,11 @@ const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0,nCards=0;const typesUs
      case 'blank':if(!/_{3,}/.test(q.prompt||''))E(Qp+'.prompt','fill-in-the-blank prompt needs ___');if(!q.choices){acc(q,Qp);if(!q.creative)openEnded(q,Qp);}if(need()&&q.choices&&strs(q.choices,Qp+'.choices',2,4)&&!q.choices.includes(String(ans)))E(Qp+'.answer','must exactly match one of choices');break;
      case 'picture':if(!Array.isArray(q.choices)||q.choices.length<2||q.choices.length>4||!q.choices.every(c=>c&&typeof c.label==='string'&&typeof c.pic==='string'))E(Qp+'.choices','2-4 {label, pic} (pic = emoji or <svg>)');
        else{q.choices.forEach((c,k)=>scene(c.pic,`${Qp}.choices[${k}].pic`));if(need()&&!q.choices.some(c=>c.label===ans))E(Qp+'.answer','must equal one choice label');}break;
-     case 'numeric':if(need()&&!/^-?\d*\.?\d+(\s*\/\s*\d+)?$/.test(String(ans).trim()))E(Qp+'.answer','numeric answer like 12, 0.75 or 3/8');if(q.tolerance!=null&&!(q.tolerance>=0))E(Qp+'.tolerance','non-negative number');break;
+     case 'numeric':if(need()&&!/^-?\d*\.?\d+(\s*\/\s*\d+)?\s*%?$/.test(String(ans).trim()))E(Qp+'.answer','numeric answer like 12, 0.75, 3/8 or 27%');if(q.tolerance!=null&&!(q.tolerance>=0))E(Qp+'.tolerance','non-negative number');
+       // answer form (LESSONS.md "Answer form"): the prompt, the optional "form" and the answer must agree
+       if(q.form!=null&&!EN.FORMS.includes(q.form))E(Qp+'.form',EN.FORMS.join('|'));
+       else if(ans!=null&&ans!==''){const asked=q.form||EN.formOf({q:q.prompt,answer:'x'});if(asked&&!EN.formOk(String(ans),asked))E(Qp+'.answer',`answer form: the question asks for ${asked==='whole'?'a whole number':'a '+asked} but the answer is "${ans}"${asked==='percent'?' (write it like 27%)':''}`);}
+       break;
      case 'text':need();acc(q,Qp);openEnded(q,Qp);break;
      case 'creative':need();acc(q,Qp);for(const k of['notAnswers','block'])if(q[k]!=null&&!(Array.isArray(q[k])&&q[k].every(x=>typeof x==='string')))E(Qp+'.'+k,'array of strings');
        if(q.celebrate!=null&&typeof q.celebrate!=='string')E(Qp+'.celebrate','string ("{given}" = his answer, "{answer}" = your example)');if(q.minLength!=null&&!(Number.isInteger(q.minLength)&&q.minLength>=1))E(Qp+'.minLength','integer ≥ 1');
