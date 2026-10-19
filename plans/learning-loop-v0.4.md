@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** planned, 0/16 slices done. Docs only so far; nothing is implemented. Tracking issue: (to be added).
+**Status:** planned, 0/16 slices done. Docs only so far; nothing is implemented. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -112,24 +112,24 @@ independent.
 
 | # | Slice | Area | Issue |
 |---|---|---|---|
-| 1 | Quests fit in about eight minutes | quests | - |
-| 2 | A finished quest stays finished | integrity | - |
-| 3 | Publishing never changes a finished quest | integrity | - |
-| 4 | Asked for a percent? Write a percent | grading | - |
-| 5 | Pack authors declare the answer form | grading | - |
-| 6 | Mastery takes real answers, not a thumbs-up | medals | - |
-| 7 | Legendary medals come from a real boss fight | medals | - |
-| 8 | One trophy per achievement | medals | - |
-| 9 | Review gates between quest stages | review | - |
-| 10 | Gates show on the quest path | review | - |
-| 11 | Gates spot-check guessed skills | review | - |
-| 12 | Nightly hands spaced review to the gates | review | - |
-| 13 | See which areas have been explored | coverage | - |
-| 14 | Nightly quests visit new areas | coverage | - |
-| 15 | Play wanders into new areas | coverage | - |
-| 16 | Parent report shows coverage by area | coverage | - |
+| 1 | Quests fit in about eight minutes | quests | #2 |
+| 2 | A finished quest stays finished | integrity | #3 |
+| 3 | Publishing never changes a finished quest | integrity | #4 |
+| 4 | Asked for a percent? Write a percent | grading | #5 |
+| 5 | Pack authors declare the answer form | grading | #6 |
+| 6 | Mastery takes real answers, not a thumbs-up | medals | #7 |
+| 7 | Legendary medals come from a real boss fight | medals | #8 |
+| 8 | One trophy per achievement | medals | #9 |
+| 9 | Review gates between quest stages | review | #10 |
+| 10 | Gates show on the quest path | review | #11 |
+| 11 | Gates spot-check guessed skills | review | #12 |
+| 12 | Nightly hands spaced review to the gates | review | #13 |
+| 13 | See which areas have been explored | coverage | #14 |
+| 14 | Nightly quests visit new areas | coverage | #15 |
+| 15 | Play wanders into new areas | coverage | #16 |
+| 16 | Parent report shows coverage by area | coverage | #17 |
 
-### Slice 1: Quests fit in about eight minutes
+### Slice 1: Quests fit in about eight minutes (#2)
 Area: `quests` · Design: [D1](#d1-shorter-quests)
 
 - **Ships:** A nightly quest is short enough to finish in one sitting (about 8 minutes). The publisher refuses a quest over the budget instead of only warning, so long quests can't reach the learner.
@@ -156,7 +156,7 @@ Area: `quests` · Design: [D1](#d1-shorter-quests)
 - Done test: `node --test test/quest-size.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D1.)
 
-### Slice 2: A finished quest stays finished
+### Slice 2: A finished quest stays finished (#3)
 Area: `integrity` · Design: [D6](#d6-finished-quests-are-locked)
 
 - **Ships:** Once a quest is finished it stays at 100% with its medal everywhere (kid app, Quests tab, parent report, export), even if its pack changes later. A finished quest's pack never serves new items.
@@ -180,7 +180,7 @@ Area: `integrity` · Design: [D6](#d6-finished-quests-are-locked)
 - Done test: `node --test test/quest-lock.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D6.)
 
-### Slice 3: Publishing never changes a finished quest
+### Slice 3: Publishing never changes a finished quest (#4)
 Area: `integrity` · Design: [D6](#d6-finished-quests-are-locked)
 
 - **Ships:** The nightly author can't add material to a finished quest: `publish-lessons.mjs` refuses (exit 4) to overwrite `lessons:<date>` or write `boost:<date>` for a completed quest, and says to put the new material in the next quest. `--force` does not override this.
@@ -206,7 +206,7 @@ Area: `integrity` · Design: [D6](#d6-finished-quests-are-locked)
 - Done test: `node --test test/publish-lock.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D6.)
 
-### Slice 4: Asked for a percent? Write a percent
+### Slice 4: Asked for a percent? Write a percent (#5)
 Area: `grading` · Design: [D4](#d4-answer-in-the-asked-form)
 
 - **Ships:** When a question asks for a percent, a decimal or a whole number, only that form counts. The right value in another form (0.27 for "as a percent", 52/100 for "as a decimal", 12/4 for a whole number) gets a gentle "Right value! Now write it as a percent (like 27%)" nudge. The nudge is not a miss: no try used, no heart, no streak lost.
@@ -234,7 +234,7 @@ Area: `grading` · Design: [D4](#d4-answer-in-the-asked-form)
 - Done test: `node --test test/answer-form.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D4.)
 
-### Slice 5: Pack authors declare the answer form
+### Slice 5: Pack authors declare the answer form (#6)
 Area: `grading` · Design: [D4](#d4-answer-in-the-asked-form)
 
 - **Ships:** A nightly pack can say exactly which form a numeric answer must take (`"form": "percent" | "decimal" | "fraction" | "whole"`). The publisher catches packs whose prompt and answer disagree (e.g. "as a percent" with answer 0.27), so pack questions grade by the same rule as generated ones.
@@ -259,7 +259,7 @@ Area: `grading` · Design: [D4](#d4-answer-in-the-asked-form)
 - Done test: `node --test test/answer-form.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D4.)
 
-### Slice 6: Mastery takes real answers, not a thumbs-up
+### Slice 6: Mastery takes real answers, not a thumbs-up (#7)
 Area: `medals` · Design: [D3](#d3-honest-medals)
 
 - **Ships:** A topic is only mastered, and only earns a medal, through graded answers. A "👍 Got it!" self-check alone never masters, infers or awards anything. One right answer never masters a topic, and a medal needs 3 first-try correct graded answers.
@@ -286,7 +286,7 @@ Area: `medals` · Design: [D3](#d3-honest-medals)
 - Done test: `node --test test/medals.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D3.)
 
-### Slice 7: Legendary medals come from a real boss fight
+### Slice 7: Legendary medals come from a real boss fight (#8)
 Area: `medals` · Design: [D3](#d3-honest-medals)
 
 - **Ships:** A legendary medal means a boss of at least 3 graded questions was beaten. One-question bosses are gone: non-math Play bosses (a kid MCQ with 1 heart) no longer happen, and a quest boss stage needs at least 3 graded questions.
@@ -311,7 +311,7 @@ Area: `medals` · Design: [D3](#d3-honest-medals)
 - Done test: `node --test test/medals.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D3.)
 
-### Slice 8: One trophy per achievement
+### Slice 8: One trophy per achievement (#9)
 Area: `medals` · Design: [D3](#d3-honest-medals)
 
 - **Ships:** Trophies and the parent report list each medal once: one per topic and one per quest. Duplicates already stored are collapsed (the earliest is kept) without losing a real medal.
@@ -337,7 +337,7 @@ Area: `medals` · Design: [D3](#d3-honest-medals)
 - Done test: `node --test test/trophies.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D3.)
 
-### Slice 9: Review gates between quest stages
+### Slice 9: Review gates between quest stages (#10)
 Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 
 - **Ships:** In a started quest, before some later stages, the learner opens a 🗝️ gate by answering 1-2 spaced-review items picked at runtime from the engine's due Leitner queue (most overdue first). Gate answers move Leitner boxes exactly like reviews, so due reviews stop piling up while quests run.
@@ -365,7 +365,7 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 - Done test: `node --test test/review-gates.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D2.)
 
-### Slice 10: Gates show on the quest path
+### Slice 10: Gates show on the quest path (#11)
 Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 
 - **Ships:** The learner sees 🗝️ keys between stages on the quest path and a clear gate card ("Unlock the gate with something you learned before!"). The parent report's quest view shows each gate's results.
@@ -390,7 +390,7 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 - Done test: `node --test test/gates-server.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D2.)
 
-### Slice 11: Gates spot-check guessed skills
+### Slice 11: Gates spot-check guessed skills (#12)
 Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 
 - **Ships:** About one gate item in three is a quick spot-check of a skill the app only inferred (credited but never seen). Right → the skill is verified and counts as shown directly. Wrong → it goes back to learning, and the guesses built on it are withdrawn. A spot-check never awards a medal.
@@ -415,7 +415,7 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 - Done test: `node --test test/review-gates.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D2.)
 
-### Slice 12: Nightly hands spaced review to the gates
+### Slice 12: Nightly hands spaced review to the gates (#13)
 Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 
 - **Ships:** The nightly author stops spending quest budget on review stages, and the export shows review health so starvation is visible: due, overdue, oldest overdue, gate items and spot-checks in the last 7 days, and unverified inferred topics.
@@ -439,7 +439,7 @@ Area: `review` · Design: [D2](#d2-review-gates-built-into-quests)
 - Done test: `node --test test/quest-size.test.mjs test/server.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D2.)
 
-### Slice 13: See which areas have been explored
+### Slice 13: See which areas have been explored (#14)
 Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 
 - **Ships:** The nightly export shows coverage by area: for every subject, how many of its areas (Marble domains) have been touched by real graded answers or direct mastery, which are untouched, and up to 3 ready starter topics near the target age for each untouched area.
@@ -463,7 +463,7 @@ Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 - Done test: `node --test test/coverage.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D5.)
 
-### Slice 14: Nightly quests visit new areas
+### Slice 14: Nightly quests visit new areas (#15)
 Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 
 - **Ships:** Every nightly quest brings in at least one untouched area. The publisher reports which areas a quest touches and warns when it adds no untouched area while some exist. `LESSONS.md` asks for one stretch stage from `coverage.untouched` per quest, rotating subjects with math and science first.
@@ -485,7 +485,7 @@ Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 - Done test: `node --test test/coverage.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D5.)
 
-### Slice 15: Play wanders into new areas
+### Slice 15: Play wanders into new areas (#16)
 Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 
 - **Ships:** Free Play (outside quests) mixes in topics from untouched areas: ready topics in unseen areas get a frontier score bonus, and the "Something different" choice picks an untouched area first.
@@ -506,7 +506,7 @@ Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 - Done test: `node --test test/coverage.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D5.)
 
-### Slice 16: Parent report shows coverage by area
+### Slice 16: Parent report shows coverage by area (#17)
 Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 
 - **Ships:** `/parent` gets a "Coverage by area" section: per subject, areas explored out of total, with the untouched areas listed, so a parent can see breadth at a glance.
