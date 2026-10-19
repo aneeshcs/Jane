@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 2/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 3/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -122,7 +122,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 |---|---|---|---|
 | 1 | Quests fit in about eight minutes | quests | #2 ✅ |
 | 2 | A finished quest stays finished | integrity | #3 ✅ |
-| 3 | Publishing never changes a finished quest | integrity | #4 |
+| 3 | Publishing never changes a finished quest | integrity | #4 ✅ |
 | 4 | Asked for a percent? Write a percent | grading | #5 |
 | 5 | Pack authors declare the answer form | grading | #6 |
 | 6 | Mastery takes real answers, not a thumbs-up | medals | #7 |
@@ -190,7 +190,7 @@ Area: `integrity` · Design: [D6](#d6-finished-quests-are-locked)
 - Done test: `node --test test/quest-lock.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D6.)
 
-### Slice 3: Publishing never changes a finished quest (#4)
+### Slice 3: Publishing never changes a finished quest (#4) — ✅ done
 Area: `integrity` · Design: [D6](#d6-finished-quests-are-locked)
 
 - **Ships:** The nightly author can't add material to a finished quest: `publish-lessons.mjs` refuses (exit 4) to overwrite `lessons:<date>` or write `boost:<date>` for a completed quest, and says to put the new material in the next quest. `--force` does not override this.
@@ -583,4 +583,9 @@ One entry per slice once its done test passes: what shipped, the done test and i
 ### Slice 2 (#3) ✅
 - Shipped: New E.completeQuest stores a completion snapshot (stages + total) and the quest medal once; worker questCheck uses it. questInfo reads the snapshot for done quests (100%, original stages only); E.questLocked makes a done quest's pack serve nothing (packQ). migrate marks pre-snapshot finished quests legacy (they report 100% over the stages that were played). parent.js and export use stage topicIds instead of indexes.
 - Done test: `node --test test/quest-lock.test.mjs && npm test`: 4/4 new cases pass, 17/17 in npm test. Also checked on a read-only copy of the live record: the finished quest that showed 86% now reports 100% (9 of its 10 stages: the added stage is ignored).
+- Deferred / discovered: -
+
+### Slice 3 (#4) ✅
+- Shipped: publish-lessons.mjs reads progress read-only up front and refuses (exit 4, nothing written) to overwrite lessons:<date> or write boost:<date> for a finished quest; --force does not override; --dry-run reports it too; --offline skips it. Republishing a started, unfinished quest warns for each answered stage that changed or was removed. LESSONS.md has a new 'Finished quests are locked' section; NIGHTLY.md step 5 and the script header document exit 4.
+- Done test: `node --test test/publish-lock.test.mjs && npm test`: 4/4 new cases pass, 21/21 in npm test.
 - Deferred / discovered: -

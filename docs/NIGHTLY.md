@@ -80,7 +80,9 @@ node publish-lessons.mjs packs/2026-10-18.json             # → KV lessons:2026
 node publish-lessons.mjs boost.json                        # at the cap → KV boost:<quest date>
 # Node server / Docker: add --local (or set STORAGE=file) to every command; it reads and writes DATA_DIR instead of KV.
 ```
-Nothing is written if the pack is invalid (the script exits 1 and lists every problem).
+Nothing is written if the pack is invalid (the script exits 1 and lists every problem). **Never change a finished
+quest:** the publisher refuses to overwrite or boost one (exit 4, even with `--force`). New material goes in the next
+quest.
 
 ## 6. In the morning
 When the kid opens the app and today's quest hasn't been started (and fewer than 3 are active), Jane plays the animated

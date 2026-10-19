@@ -84,6 +84,13 @@ A quest is **active** once started and until finished. At most **3** can be acti
   quest strip and applies the trims/hints right away. Trim only stages with lots left (see `remainingStages`), never
   the boss below 3.
 
+## Finished quests are locked
+Once the learner finishes a quest, it is done for good: it shows 100% and its medal in the app, the Quests tab, the
+parent report and the export, from a snapshot taken when it finished. Its pack serves no more items.
+`publish-lessons.mjs` **refuses** (exit code **4**, nothing written) to overwrite `lessons:<date>` or write
+`boost:<date>` for a finished quest, even with `--force`. **Put new material in the next quest.** Republishing a
+started, unfinished quest still works, but the publisher warns for every stage that already has answers and changed.
+
 ## How to plan tomorrow's quest (rules)
 0. Check `quests.nextStep` first: at the cap, write a boost (above), not a quest.
 Run `node export-progress.mjs` and read `weakSpots` first. Then:
@@ -236,6 +243,7 @@ node publish-lessons.mjs my-pack.json --date 2026-10-18       # override the dat
 node publish-lessons.mjs boost.json                           # catch-up boost (when 3 quests are active)
 node publish-lessons.mjs packs/x.json --force                 # publish a new quest even at the cap (avoid)
 ```
+A finished quest is locked: the script exits with code 4 and writes nothing (see "Finished quests are locked").
 The script exits with code 1 and lists every problem if the pack is invalid, for example an unknown topic id, an
 mc answer that isn't one of the choices, or a missing hint or explanation. Nothing is written in that case.
 
