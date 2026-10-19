@@ -38,6 +38,7 @@ async function send(v){if(!v||$('pcard').classList.contains('busy'))return;$('pc
  if(r.questDone)setTimeout(()=>questMedal(r.questDone),r.medal?2600:300);
  if(r.miniDone&&!r.reveal){chips(r.state);return miniEnd(r);}
  if(r.correct){const big=!!(r.mastered||r.levelUp||r.medal);if(!(window.FX&&FX.good($('pcard'),big)))confetti(big?80:30);if(r.medal)reveal(r.medal,r.inferred);else if(r.mastered)banner(`🏆 Mastered!<br><small>${esc(r.mastered)}</small>${r.inferred?`<br><small>+${r.inferred} skills lit up on your map!</small>`:''}`);else if(r.levelUp)banner('⬆ Level '+r.levelUp+'!');}
+ else if(r.formNudge){/* right value, wrong form: a gentle nudge, no shake */}
  else if(window.FX&&!FX.reduced()){FX.bad($('pcard'));}else{$('pcard').classList.remove('shake');void $('pcard').offsetWidth;$('pcard').classList.add('shake');}
  if(r.boss){$('bossbar').querySelector('.boss')?.classList.add('shake');}
  if(r.askChoice){chips(r.state);return ask(r.jane);}

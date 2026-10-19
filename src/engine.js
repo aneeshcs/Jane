@@ -183,7 +183,23 @@ export function next(S,g,pack,now){
   S.sinceReview=mode==='review'?0:S.sinceReview+1;S.itemsServed++;S.recent=[...S.recent.slice(-9),id];
   S.current=buildItem(S,g,id,mode,pack,now);return S.current;}
 // ---------- grading ----------
-function grade(it,ans,isBonus){const a=String(ans??'').trim();if(isBonus){const g=parseNum(a),e=parseNum(it.bonus.a);return Math.abs(g-e)<1e-6;}
+// Answer form: when a question asks for a percent, a decimal, a fraction or a whole number, only that form counts.
+// The right value in another form is a gentle nudge ('wrongForm'), never a miss.
+export const FORMS=['percent','decimal','fraction','whole'];
+export function formOf(it,isBonus){const q=String((isBonus?it.bonus?.q:it.q)||'');if(!isBonus&&FORMS.includes(it.form))return it.form;
+  if(/\bas an? percent|\bpercent\?|\bin percent/i.test(q))return 'percent';if(/\bas an? decimal/i.test(q))return 'decimal';if(/\bas an? fraction|\bwhat fraction\b/i.test(q))return 'fraction';
+  if(isBonus)return null;return /^-?\d+$/.test(String(it.answer??'').trim())?'whole':null;}
+const pctWord=a=>String(a).replace(/\s*percent\s*$/i,'%');
+export function formOk(a,form){a=pctWord(String(a).trim());if(form==='percent')return /%\s*$/.test(a);if(form==='decimal')return !/[\/%]/.test(a);
+  if(form==='fraction')return /\//.test(a);if(form==='whole')return !/[\/%]/.test(a)&&!/\.\d*[1-9]/.test(a);return true;}
+// value right? then form right? (percent asked: "27" for 27% is also the right value, just missing its % sign)
+function formCheck(a,x,e,tol,form){if(!form)return null;if(!isNaN(x)&&Math.abs(x-e)<=tol)return formOk(a,form)?null:'wrongForm';
+  if(form==='percent'&&!/%/.test(a)&&!isNaN(x)&&Math.abs(x/100-e)<=tol)return 'wrongForm';return null;}
+const FORM_EX={percent:'like 50%',decimal:'like 0.5',fraction:'like 3/4',whole:'like 7'};
+const FORM_NAME={percent:'a percent',decimal:'a decimal',fraction:'a fraction',whole:'a whole number'};
+function nudgeText(it,isBonus){const f=formOf(it,isBonus),n=it.nudges||0,exp=isBonus?it.bonus.a:it.answer;
+  return n>=3?`Right value! Write it as ${FORM_NAME[f]}, like this: ${exp} ✍️`:`Right value! Now write it as ${FORM_NAME[f]} (${FORM_EX[f]}). ✍️`;}
+function grade(it,ans,isBonus){const a=String(ans??'').trim();if(isBonus){const g=parseNum(pctWord(a)),e=parseNum(it.bonus.a);if(Math.abs(g-e)<1e-6)return formCheck(a,g,e,1e-6,formOf(it,true))||true;return formCheck(a,g,e,1e-6,formOf(it,true))||false;}
   if(it.type==='self')return a;
   if(it.type==='order')return a.split('|').map(norm).join('|')===it.answer.split('|').map(norm).join('|');
   if(it.type==='match'){const m=Object.fromEntries(a.split('|').map(x=>x.split('=')).map(([l,r])=>[norm(l),norm(r||'')]));return it.pairs.every(([l,r])=>m[norm(l)]===norm(r));}
@@ -192,10 +208,13 @@ function grade(it,ans,isBonus){const a=String(ans??'').trim();if(isBonus){const 
   if(it.type==='fracbar'){const x=parseNum(a),e=parseNum(it.answer);return !isNaN(x)&&Math.abs(x-e)<1e-6;}
   if(it.type==='picture')return norm(a)===norm(it.answer);
   if(it.type==='mc')return norm(a)===norm(it.answer)||(/^[a-d]$/i.test(a)&&it.choices[a.toLowerCase().charCodeAt(0)-97]===it.answer);
-  if(it.kind==='math'){if(it.cmp)return a.replace(/\s/g,'')===it.answer;const x=parseNum(a),e=parseNum(it.answer);if(isNaN(x)||Math.abs(x-e)>1e-6)return false;
+  if(it.kind==='math'){if(it.cmp)return a.replace(/\s/g,'')===it.answer;const x=parseNum(pctWord(a)),e=parseNum(it.answer);const fc=formCheck(a,x,e,1e-6,formOf(it));if(fc)return fc;if(isNaN(x)||Math.abs(x-e)>1e-6)return false;
     if(it.needSimplest){const m=a.match(/^(\d+)\s*\/\s*(\d+)$/);if(m&&gcd(+m[1],+m[2])>1)return 'notSimplest';}return true;}
   if(it.creative){if(fuzzyEq(it.answer,a))return true;if((it.notAnswers||[]).some(b=>fuzzyEq(b,a)))return false;return (it.accept||[]).some(x=>fuzzyEq(x,a))||creativeOk(it,a)?'creative':false;}
-  if(it.numeric){const m0=a.replace(/[$,]/g,'').match(/^\s*(-?\d+(?:\.\d+)?(?:\s*\/\s*\d+)?|-?\.\d+)\s*[a-z%][a-z %.]*$/i);const x=parseNum(m0?m0[1]:a.replace(/[$,]/g,'').replace(/\s*(cups?|grams?|g|weeks?|hours?|hrs?|dollars?|cookies?|years?)\.?$/i,'')),e=parseNum(it.answer);return !isNaN(x)&&Math.abs(x-e)<=(it.tol??1e-6);}
+  if(it.numeric){const a2=pctWord(a).replace(/[$,]/g,''),pc=/%\s*$/.test(a2);const m0=a2.match(/^\s*(-?\d+(?:\.\d+)?(?:\s*\/\s*\d+)?|-?\.\d+)\s*[a-z%][a-z %.]*$/i);
+    let x=parseNum(m0?m0[1]:a2.replace(/\s*(cups?|grams?|g|weeks?|hours?|hrs?|dollars?|cookies?|years?)\.?$/i,''));if(pc&&m0)x/=100;const e=parseNum(it.answer),tol=it.tol??1e-6;
+    const ex=/%\s*$/.test(String(it.answer))||formOf(it)==='percent';if(ex&&!pc&&!isNaN(x)&&Math.abs(x/100-e)<=tol)return 'wrongForm';
+    const fc=formCheck(m0?m0[1]+(pc?'%':''):a2,x,e,tol,formOf(it));if(fc)return fc;return !isNaN(x)&&Math.abs(x-e)<=tol;}
   return [it.answer,...(it.accept||[])].some(x=>norm(x)===norm(a)||(it.fuzzy&&it.kind==='pack'&&fuzzyEq(x,a)));}
 const praise=['Amazing, {name}! 🎉','You nailed it! 🌟','Brilliant thinking! 🧠','Wow, superstar! ⭐','That\'s exactly right! 🙌','You\'re on fire! 🔥'];
 const comfort=['Ooh, so close! Let\'s think it through together.','Good try! Mistakes help our brains grow. 🌱','Not quite — but I love that you tried!'];
@@ -206,6 +225,8 @@ export function submit(S,g,answer,now){const it=S.current;if(!it)return{error:'n
     return finish(S,{done:true,correct:true,card:true,jane:{why:'Now you know WHY it works! 🧠 +2',learn:'Nice! Now you try one. 🧠 +2',powerup:'Powered up! 🔋 Go get that boss! +2'}[it.card]||'Cool fact unlocked! 🤩 +2'},ev,true);}
   const rec=S.ts[it.topicId]??={st:'learning',how:'direct',c:0,w:0,lvl:it.lvl||3,streak:0};rec.c??=0;rec.w??=0;rec.streak??=0;
   const ok=grade(it,answer,isBonus);const logE={topicId:it.topicId,topic:t.name,subject:t.subject,mode:it.mode,format:it.format,qtype:it.ptype||it.kind,pack:it.packKey?it.packKey.split(':')[0]:undefined,mini:it.mini||undefined,level:it.lvl,stage:it.stage,question:isBonus?it.bonus.q:it.q,expected:isBonus?it.bonus.a:(it.type==='self'?'(self-check)':it.answer),given:String(answer),correct:it.type==='self'?answer==='yes':ok===true||ok==='creative',creative:ok==='creative'||undefined,try:it.tries+1,elapsedSec:Math.round((now-it.issued)/1000)};
+  if(ok==='wrongForm'){it.nudges=(it.nudges||0)+1;const jane=nudgeText(it,isBonus);ev.push({event:'formNudge',formNudge:true,topicId:it.topicId,topic:t.name,subject:t.subject,question:logE.question,expected:logE.expected,given:logE.given,form:formOf(it,isBonus),pack:logE.pack});
+    return finish(S,{correct:false,retry:true,formNudge:true,jane},ev);}
   ev.push(logE);
   if(isBonus){if(ok){S.points+=15;S.stars++;r.jane='BONUS! You\'re a decimal wizard! 🧙‍♂️ +15 points and a ⭐';r.correct=true;}else{r.jane=`Good try! ${it.bonus.a} is the decimal. Tip: divide the top number by the bottom number.`;r.reveal=it.bonus.a;r.correct=false;}
     r.done=true;S.current=null;return finish(S,r,ev);}

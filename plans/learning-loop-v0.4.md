@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 3/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 4/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -123,7 +123,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 1 | Quests fit in about eight minutes | quests | #2 ✅ |
 | 2 | A finished quest stays finished | integrity | #3 ✅ |
 | 3 | Publishing never changes a finished quest | integrity | #4 ✅ |
-| 4 | Asked for a percent? Write a percent | grading | #5 |
+| 4 | Asked for a percent? Write a percent | grading | #5 ✅ |
 | 5 | Pack authors declare the answer form | grading | #6 |
 | 6 | Mastery takes real answers, not a thumbs-up | medals | #7 |
 | 7 | Legendary medals come from a real boss fight | medals | #8 |
@@ -216,7 +216,7 @@ Area: `integrity` · Design: [D6](#d6-finished-quests-are-locked)
 - Done test: `node --test test/publish-lock.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D6.)
 
-### Slice 4: Asked for a percent? Write a percent (#5)
+### Slice 4: Asked for a percent? Write a percent (#5) — ✅ done
 Area: `grading` · Design: [D4](#d4-answer-in-the-asked-form)
 
 - **Ships:** When a question asks for a percent, a decimal or a whole number, only that form counts. The right value in another form (0.27 for "as a percent", 52/100 for "as a decimal", 12/4 for a whole number) gets a gentle "Right value! Now write it as a percent (like 27%)" nudge. The nudge is not a miss: no try used, no heart, no streak lost.
@@ -589,3 +589,8 @@ One entry per slice once its done test passes: what shipped, the done test and i
 - Shipped: publish-lessons.mjs reads progress read-only up front and refuses (exit 4, nothing written) to overwrite lessons:<date> or write boost:<date> for a finished quest; --force does not override; --dry-run reports it too; --offline skips it. Republishing a started, unfinished quest warns for each answered stage that changed or was removed. LESSONS.md has a new 'Finished quests are locked' section; NIGHTLY.md step 5 and the script header document exit 4.
 - Done test: `node --test test/publish-lock.test.mjs && npm test`: 4/4 new cases pass, 21/21 in npm test.
 - Deferred / discovered: -
+
+### Slice 4 (#5) ✅
+- Shipped: engine: formOf/formOk/formCheck; grade() returns 'wrongForm' for math items, numeric pack items and the decimal bonus when the value is right but the form isn't (incl. 27 for a percent). submit() answers with a kind nudge ('Right value! Now write it as a percent (like 50%). ✍️'), no try/streak/points/Leitner change; the 3rd nudge on an item also shows the expected answer. Nudges are logged as {event:'formNudge'} so reports never count them as answers or misses. app.js: no shake on a nudge.
+- Done test: `node --test test/answer-form.test.mjs && npm test`: 6/6 new cases pass, 27/27 in npm test.
+- Deferred / discovered: No generator prompt needed rewording: they already say 'as a percent' / 'as a decimal' / 'What fraction'. The nudge examples are generic (like 50%) so the first nudge never gives the answer away.
