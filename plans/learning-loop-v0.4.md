@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 15/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 16/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -136,7 +136,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 14 | See which areas have been explored | coverage | #14 ✅ |
 | 15 | Nightly quests visit new areas | coverage | #15 ✅ |
 | 16 | Play wanders into new areas | coverage | #16 ✅ |
-| 17 | Parent report shows coverage by area | coverage | #17 |
+| 17 | Parent report shows coverage by area | coverage | #17 ✅ |
 
 ### Slice 1: Quests fit in about eight minutes (#2) — ✅ done
 Area: `quests` · Design: [D1](#d1-shorter-quests)
@@ -550,7 +550,7 @@ Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 - Done test: `node --test test/coverage.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D5.)
 
-### Slice 17: Parent report shows coverage by area (#17)
+### Slice 17: Parent report shows coverage by area (#17) — ✅ done
 Area: `coverage` · Design: [D5](#d5-coverage-rotate-in-untouched-areas)
 
 - **Ships:** `/parent` gets a "Coverage by area" section: per subject, areas explored out of total, with the untouched areas listed, so a parent can see breadth at a glance.
@@ -653,4 +653,9 @@ One entry per slice once its done test passes: what shipped, the done test and i
 ### Slice 16 (#16) ✅
 - Shipped: Engine: seenAreas() (shared with src/coverage.js, which now re-exports it) and focusScore() (the old score() plus +10 AREA_BONUS for ready topics in unseen areas, below the +40 pack bonus); pickFocus scores each candidate once and takes {unseen:true}; choose('different') tries an unseen area in another subject, then any unseen area, then the old pick. LESSONS.md Coverage note.
 - Done test: `node --test test/coverage.test.mjs && npm test`: 11/11 (3 new: +10 for an otherwise-equal unseen-area topic with Math.random stubbed, 'different' lands in the one unseen area, all areas seen → same pick as before), 74/74 in npm test.
+- Deferred / discovered: -
+
+### Slice 17 (#17) ✅
+- Shipped: parentData adds `coverage` {seen, total, subjects: [{name, total, seen, domains: [{name, seen, answered, mastered, topics}]}]} from src/coverage.js with the 14-day logs. /parent gets a 'Coverage' tab and a 'Coverage by area' section: per subject, areas explored out of total with a bar, explored areas named, untouched areas as chips. Also fixed the stale 'about 15-20% review' line in 'Tonight's quest focus'. Owner was delegate; executed directly in this run.
+- Done test: `node --test test/server.test.mjs && npm test`: 5/5 (new 'parent report includes coverage': embedded data has Mathematics total 12 and Science total 19), 75/75 in npm test. Sandbox screenshot (synthetic data) taken locally as 05-parent-coverage-by-area.png; not uploaded to the public issue.
 - Deferred / discovered: -

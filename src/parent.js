@@ -1,5 +1,5 @@
 // Parent report data (read-only). Rendered client-side by public/parent.js.
-import * as E from './engine.js';
+import * as E from './engine.js';import {coverage as areaCoverage} from './coverage.js';
 const DAY=864e5;
 export const ptDate=(ms)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
 const CAP=120; // seconds counted per answer (longer = idle)
@@ -46,7 +46,10 @@ export function parentData({S,g,now,today,logs,packs,tomorrowPack,boosts}){
   // log + medals
   const log=answers.map(l=>({ts:l.ts,day:l.day,subject:l.subject,topic:l.topic,mode:l.mode,qtype:l.qtype||'',q:l.question,exp:l.expected,given:l.given,ok:!!l.correct,try:l.try,secs:l.elapsedSec,lm:!!l.learningMoment,regraded:l.regraded||null,creative:!!l.creative,stage:l.stage}));
   const medals=E.trophies(S,g).medals;
-  return{name:E.learner().name,grade:E.learner().grade,today,generated:now,head,perDay,growth,subjects:Object.values(subjects),struggles,wins,terms:Object.values(terms).sort((a,b)=>b.count-a.count),quests,tonight,reviews,inferredDue,log,medals,placement:S.placement};}
+  // coverage by area (Marble domains) from records + the 14-day logs (LESSONS.md "Coverage")
+  const cv=areaCoverage(S,g,all,{age:E.learner().age,now});
+  const coverage={seen:cv.seen,total:cv.total,subjects:cv.subjects.map(s=>({name:s.name,total:s.total,seen:s.seen,domains:s.domains.map(d=>({name:d.name,seen:d.seen,answered:d.answered,mastered:d.mastered,topics:d.topics}))}))};
+  return{coverage,name:E.learner().name,grade:E.learner().grade,today,generated:now,head,perDay,growth,subjects:Object.values(subjects),struggles,wins,terms:Object.values(terms).sort((a,b)=>b.count-a.count),quests,tonight,reviews,inferredDue,log,medals,placement:S.placement};}
 export function parentShell(data){const json=E.withName(JSON.stringify(data),JSON.stringify(data.name).slice(1,-1)).replace(/</g,'\\u003c');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parent report: ${String(data.name).replace(/[&<>"]/g,'')}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">

@@ -43,3 +43,8 @@ test('a pack publishes locally and shows as a new quest',async()=>{
 
 test('parent report renders with the learner name',async()=>{
   const r=await fetch(B+'/parent');assert.equal(r.status,200);const h=await r.text();assert.match(h,/Sam/);});
+
+test('parent report includes coverage',async()=>{const h=await (await fetch(B+'/parent')).text();
+  const D=JSON.parse(h.match(/<script id="data" type="application\/json">([\s\S]*?)<\/script>/)[1].replace(/\\u003c/g,'<'));
+  const sub=n=>D.coverage.subjects.find(s=>s.name===n);assert.equal(sub('Mathematics').total,12);assert.equal(sub('Science').total,19);
+  assert.equal(typeof D.coverage.seen,'number');assert.ok(sub('Mathematics').domains.every(d=>typeof d.seen==='boolean'));});
