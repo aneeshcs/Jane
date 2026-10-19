@@ -1,0 +1,448 @@
+{
+ "_note": "Synthetic fixture for test/rescore.test.mjs: made-up records, no real learner data.",
+ "ids": {
+  "self": "mt_cVp_nop-5L",
+  "one": "mt_ZpCcTU8j_o",
+  "two": "mt__AWSThGJ0d",
+  "three": "mt_HopZomN12L",
+  "leg": "mt__BbOjiY5A5",
+  "place": "mt_1z-gJBJFlM",
+  "inf": "mt_haNr13NIuN",
+  "old": "mt_VVx0hPPSKi",
+  "selfEarned": "mt_m3-eXac3aP"
+ },
+ "progress": {
+  "v": 2,
+  "name": "Explorer",
+  "points": 500,
+  "stars": 3,
+  "streak": 0,
+  "bestStreak": 5,
+  "solved": 20,
+  "badges": [],
+  "medals": [
+   {
+    "id": "mt_cVp_nop-5L",
+    "tier": "bronze",
+    "at": 1768068000000
+   },
+   {
+    "id": "mt_ZpCcTU8j_o",
+    "tier": "silver",
+    "at": 1768068000000
+   },
+   {
+    "id": "mt__AWSThGJ0d",
+    "tier": "silver",
+    "at": 1768068000000
+   },
+   {
+    "id": "mt_HopZomN12L",
+    "tier": "gold",
+    "at": 1768068000000
+   },
+   {
+    "id": "mt_HopZomN12L",
+    "tier": "gold",
+    "at": 1768068000005
+   },
+   {
+    "id": "mt__BbOjiY5A5",
+    "tier": "legendary",
+    "at": 1768068000000,
+    "boss": true
+   },
+   {
+    "id": "mt_1z-gJBJFlM",
+    "tier": "silver",
+    "at": 1768068000000
+   },
+   {
+    "id": "mt_VVx0hPPSKi",
+    "tier": "silver",
+    "at": 1768068000000
+   }
+  ],
+  "questMedals": [
+   {
+    "date": "2026-01-09",
+    "title": "Practice Quest",
+    "name": "Practice Medal",
+    "emoji": "💎",
+    "at": 1768068000000
+   },
+   {
+    "date": "2026-01-09",
+    "title": "Practice Quest",
+    "name": "Practice Medal",
+    "emoji": "💎",
+    "at": 1768068000009
+   }
+  ],
+  "firstDone": true,
+  "ts": {
+   "mt_cVp_nop-5L": {
+    "st": "mastered",
+    "how": "self",
+    "conf": 0.75,
+    "box": 1,
+    "due": 1768327200000,
+    "at": 1768068000000,
+    "c": 0,
+    "w": 0
+   },
+   "mt_ZpCcTU8j_o": {
+    "st": "mastered",
+    "how": "direct",
+    "conf": 0.9,
+    "box": 1,
+    "due": 1768327200000,
+    "at": 1768068000000,
+    "c": 1,
+    "w": 0
+   },
+   "mt__AWSThGJ0d": {
+    "st": "mastered",
+    "how": "direct",
+    "conf": 0.9,
+    "box": 1,
+    "due": 1768327200000,
+    "at": 1768068000000,
+    "c": 2,
+    "w": 0
+   },
+   "mt_HopZomN12L": {
+    "st": "mastered",
+    "how": "direct",
+    "conf": 0.9,
+    "box": 1,
+    "due": 1768327200000,
+    "at": 1768068000000,
+    "c": 3,
+    "w": 0
+   },
+   "mt__BbOjiY5A5": {
+    "st": "mastered",
+    "how": "direct",
+    "conf": 0.9,
+    "box": 1,
+    "due": 1768327200000,
+    "at": 1768068000000,
+    "c": 3,
+    "w": 0
+   },
+   "mt_1z-gJBJFlM": {
+    "st": "mastered",
+    "how": "direct",
+    "conf": 0.9,
+    "box": 1,
+    "due": 1768327200000,
+    "at": 1768068000000,
+    "c": 1,
+    "w": 0
+   },
+   "mt_haNr13NIuN": {
+    "st": "mastered",
+    "how": "inferred",
+    "conf": 0.81,
+    "box": 2,
+    "due": 1769796000000,
+    "at": 1768068000000
+   },
+   "mt_VVx0hPPSKi": {
+    "st": "mastered",
+    "how": "direct",
+    "conf": 0.9,
+    "box": 1,
+    "due": 1768327200000,
+    "at": 1768068000000,
+    "c": 4,
+    "w": 0
+   },
+   "mt_m3-eXac3aP": {
+    "st": "mastered",
+    "how": "self",
+    "conf": 0.9,
+    "box": 1,
+    "due": 1768327200000,
+    "at": 1768068000000,
+    "c": 2,
+    "w": 0
+   }
+  },
+  "current": null,
+  "focus": null,
+  "placement": {
+   "done": true,
+   "asked": 4,
+   "per": {},
+   "queue": []
+  },
+  "sinceReview": 0,
+  "sinceChoice": 0,
+  "recent": [],
+  "packSeen": {},
+  "itemsServed": 30,
+  "quests": {
+   "2026-01-09": {
+    "started": 1768068000000,
+    "done": 1768068000009,
+    "snap": {
+     "stages": [],
+     "total": 0
+    }
+   }
+  }
+ },
+ "logs": {
+  "2026-01-08": [
+   {
+    "ts": "2026-01-08T18:00:00.000Z",
+    "topicId": "mt_cVp_nop-5L",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "quest",
+    "qtype": "mc",
+    "question": "Could you explain it?",
+    "expected": "(self-check)",
+    "given": "yes",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-08T18:00:00.000Z",
+    "topicId": "mt_ZpCcTU8j_o",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "quest",
+    "qtype": "mc",
+    "question": "One?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-08T18:00:00.000Z",
+    "topicId": "mt__AWSThGJ0d",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "quest",
+    "qtype": "mc",
+    "question": "Two a?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-08T18:00:00.000Z",
+    "topicId": "mt__AWSThGJ0d",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "quest",
+    "qtype": "mc",
+    "question": "Two b?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-08T18:00:00.000Z",
+    "topicId": "mt_HopZomN12L",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "quest",
+    "qtype": "mc",
+    "question": "Three a?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-08T18:00:00.000Z",
+    "topicId": "mt_HopZomN12L",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "quest",
+    "qtype": "mc",
+    "question": "Hey {name}! Three a?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-08T18:00:00.000Z",
+    "topicId": "mt_HopZomN12L",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "quest",
+    "qtype": "mc",
+    "question": "Three b?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-08T18:00:00.000Z",
+    "topicId": "mt__BbOjiY5A5",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "quest",
+    "qtype": "mc",
+    "question": "Leg a?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-08T18:00:00.000Z",
+    "topicId": "mt__BbOjiY5A5",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "quest",
+    "qtype": "mc",
+    "question": "Leg b?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-08T18:00:00.000Z",
+    "topicId": "mt__BbOjiY5A5",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "boss",
+    "qtype": "mc",
+    "question": "Leg boss?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-08T18:00:00.000Z",
+    "topicId": "mt_1z-gJBJFlM",
+    "topic": "x",
+    "subject": "x",
+    "mode": "diagnostic",
+    "format": "explore",
+    "qtype": "mc",
+    "question": "Place?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-08T18:00:00.000Z",
+    "topicId": "mt_m3-eXac3aP",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "quest",
+    "qtype": "mc",
+    "question": "Earned a?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-08T18:00:00.000Z",
+    "topicId": "mt_ZpCcTU8j_o",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "guided",
+    "qtype": "mc",
+    "question": "Guided?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-08T18:01:00.000Z",
+    "event": "mastered",
+    "topicId": "mt_ZpCcTU8j_o"
+   }
+  ],
+  "2026-01-09": [
+   {
+    "ts": "2026-01-09T18:00:00.000Z",
+    "topicId": "mt_HopZomN12L",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "quest",
+    "qtype": "mc",
+    "question": "Three a?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-09T18:00:00.000Z",
+    "topicId": "mt_m3-eXac3aP",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "quest",
+    "qtype": "mc",
+    "question": "Earned b?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 1,
+    "elapsedSec": 9
+   },
+   {
+    "ts": "2026-01-09T18:00:00.000Z",
+    "topicId": "mt_ZpCcTU8j_o",
+    "topic": "x",
+    "subject": "x",
+    "mode": "learn",
+    "format": "quest",
+    "qtype": "mc",
+    "question": "One again?",
+    "expected": "a",
+    "given": "a",
+    "correct": true,
+    "try": 2,
+    "elapsedSec": 9
+   }
+  ]
+ }
+}

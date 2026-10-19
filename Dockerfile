@@ -16,7 +16,7 @@ FROM node:22-alpine
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=8787 DATA_DIR=/data STORAGE=file
 WORKDIR /app
 COPY --from=build /app/package.json /app/LICENSE /app/LICENSING.md /app/NOTICE /app/CHANGELOG.md /app/LESSONS.md ./
-COPY --from=build /app/lib-cli.mjs /app/export-progress.mjs /app/publish-lessons.mjs /app/backup-progress.mjs ./
+COPY --from=build /app/lib-cli.mjs /app/export-progress.mjs /app/publish-lessons.mjs /app/backup-progress.mjs /app/migrate-medals.mjs ./
 COPY --from=build /app/server ./server
 COPY --from=build /app/src ./src
 COPY --from=build /app/public ./public

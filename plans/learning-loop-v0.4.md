@@ -128,7 +128,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 6 | Mastery takes real answers, not a thumbs-up | medals | #7 ✅ |
 | 7 | Legendary medals come from a real boss fight | medals | #8 ✅ |
 | 8 | One trophy per achievement | medals | #9 ✅ |
-| 9 | Existing medals re-earned under the new rules | medals | #19 |
+| 9 | Existing medals re-earned under the new rules | medals | #19 ⏳ |
 | 10 | Review gates between quest stages | review | #10 |
 | 11 | Gates show on the quest path | review | #11 |
 | 12 | Gates spot-check guessed skills | review | #12 |
@@ -347,7 +347,7 @@ Area: `medals` · Design: [D3](#d3-honest-medals)
 - Done test: `node --test test/trophies.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D3.)
 
-### Slice 9: Existing medals re-earned under the new rules (#19)
+### Slice 9: Existing medals re-earned under the new rules (#19) — ⏳ built, live run pending approval
 Area: `medals` · Design: [D3](#d3-honest-medals)
 
 - **Ships:** Medals and mastery awarded under the old rules are recomputed once under the new ones (Q1, Kent: "Update all with new rules"). Topics that don't qualify lose mastery or their medal, legendary medals without a real boss fight drop to the topic's normal tier, and duplicates are collapsed. Every topic that loses mastery goes back into the review queue (due now), so review gates re-verify it.
@@ -614,3 +614,8 @@ One entry per slice once its done test passes: what shipped, the done test and i
 - Shipped: New E.trophies(S,g): topic medals keyed by topic id, quest medals keyed by quest date (earliest kept, highest tier kept), newest first, with per-tier counts. /api/trophies, the Play medal count and the parent report (list + head count) all use it. migrate collapses stored duplicates. completeQuest (slice 2) never adds a second quest medal.
 - Done test: `node --test test/trophies.test.mjs && npm test`: 4/4 new cases pass, 43/43 in npm test.
 - Deferred / discovered: Root cause: no stored duplicate exists in the live record or in any local backup (checked read-only), so it could not be reproduced. The only path that could add one was the old worker questCheck, which pushed a quest medal without checking for an existing one (now guarded in completeQuest). Dedupe at read time + migrate is the defensive fix. Medal counts on the live record are unchanged (29 topic medals + 2 quest medals).
+
+### Slice 9 (#19) ⏳
+- Shipped: E.rescore(S,g,logs): a pure, idempotent (S.rules = 2) re-score from the answer logs: first-try correct graded answers per topic (not self-checks, guided, bonus or form nudges; an identical question once per Pacific day, openers stripped). Self-check-only or < 2 first-try rights (and no placement first-try right) → loses mastery and becomes {how: inferred, reverify, box 0, due now}; < 3 → medal removed; legendary without a 3-answer boss fight → normal tier; duplicates collapsed; rec.ft back-filled. A self-check record that does have ≥ 2 graded first-try rights is kept as direct (it qualifies under the new rules). Topics with no log history fall back to their counts and are reported. New migrate-medals.mjs (--dry-run, --local, --backup <file> whose sha256 must match the current record, else exit 5; never touches sandbox keys); backup-progress.mjs prints the sha256; Dockerfile ships the script; LESSONS.md documents it.
+- Done test: `node --test test/rescore.test.mjs && npm test`: 9/9 new cases pass, 52/52 in npm test. Fixture dry-run (`node migrate-medals.mjs --local --dry-run` on test/fixtures): topic medals 8 → 3, mastery removed 2, legendary downgraded 1, duplicates removed 2. **Live dry-run (read-only, nothing written), aggregate counts only:** topic medals 29 → 14 (bronze 3 → 1, silver 13 → 6, gold 10 → 6, legendary 3 → 1); medals removed 15 (incl. 2 legendary); legendary downgraded 0; directly mastered 29 → 27; self-check mastered 9 → 0; mastery removed 11 (these 11 topics go back to review, due now); 1 self-check topic kept as direct (earned by graded answers); quest medals 2 → 2; duplicates 0; 5 topics without log history used the count fallback; 291 log entries over 4 days.
+- Deferred / discovered: **Open: the live run needs Kent's explicit go-ahead.** Run it after slices 10 and 12 are live: `node backup-progress.mjs` then `node migrate-medals.mjs --backup backups/<date>/progress-<time>.json`. Interpretation noted: a how:self record with ≥ 2 graded first-try rights is kept (as direct) rather than demoted, since it meets the new mastery rule.

@@ -229,6 +229,9 @@ single question: a stage with only 1 graded question can't master its topic. In 
 end after mastery. A "👍 Got it!" self-check never masters anything on its own (a graded check follows). A repeated
 identical question counts at most once per day, and guided practice doesn't count. A **medal** needs **3 first-try
 correct graded answers** on a directly mastered topic (placement answers master for placement, without a medal).
+Medals and mastery from before these rules are re-scored once with `node migrate-medals.mjs --dry-run` (shows
+before/after counts), then `node migrate-medals.mjs --backup <file>` (needs a fresh `node backup-progress.mjs`; add
+`--local` for the Node server). Topics that lose mastery become unverified and due now, so review gates re-check them.
 
 ## Example deep dive (Similes & Metaphors, for a topic that showed up in `weakSpots.goDeeper`)
 ```json
