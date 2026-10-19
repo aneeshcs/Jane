@@ -60,3 +60,7 @@ input,select{min-height:40px;transition:border-color .2s,box-shadow .2s}input:fo
 @media (min-width:700px) and (max-width:1024px){.wrap{padding:0 28px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 @media print{.sk{display:none}}
+
+/* coverage by area */
+.cov{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}.covs{border:1px solid var(--line);border-left:5px solid var(--c);border-radius:12px;padding:10px 12px;background:#fffdfa;display:grid;gap:6px;align-content:start}
+.covh{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.covbar{height:8px;border-radius:99px;background:#eef0f4;overflow:hidden}.covbar i{display:block;height:100%;background:var(--c)}.covu{align-items:flex-start}.covu .chip{font-size:.78rem;color:#555}

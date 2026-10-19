@@ -8,7 +8,7 @@ function pizza(n,eaten){const cx=100,cy=100,r=90;let s=`<svg viewBox="0 0 200 20
   if(!gone){const m=(a1+a2)/2;for(const k of[.45,.75])s+=`<circle cx="${cx+r*k*Math.cos(m+(k>.6?.12:-.08))}" cy="${cy+r*k*Math.sin(m+(k>.6?.12:-.08))}" r="${Math.min(9,40/n+4)}" fill="#d32f2f"/>`;}}
  return s+`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#bf6c00" stroke-width="8"/></svg>`;}
 function bar(n,sh){const w=190/n;let s='<svg viewBox="0 0 200 60">';for(let i=0;i<n;i++)s+=`<rect x="${5+i*w}" y="10" width="${w}" height="40" fill="${i<sh?'#8d6e63':'#ffccbc'}" stroke="#4e342e" stroke-width="2" rx="3"/>`;return s+'</svg>';}
-const FRAMES={card:'💡 Cool Card',explore:'🔍 Explorer Check',review:'🧠 Memory Check-in',boss:'👾 BOSS BATTLE',timed:'⏱️ Speed Round',mystery:'🕵️ Mystery',story:'📖 Story Quest',minigame:'🎲 Mini-game',quest:'🗡️ Quest',bonus:'⭐ Bonus',guided:'🧭 Practice'};
+const FRAMES={gate:'🗝️ Review Gate',card:'💡 Cool Card',explore:'🔍 Explorer Check',review:'🧠 Memory Check-in',boss:'👾 BOSS BATTLE',timed:'⏱️ Speed Round',mystery:'🕵️ Mystery',story:'📖 Story Quest',minigame:'🎲 Mini-game',quest:'🗡️ Quest',bonus:'⭐ Bonus',guided:'🧭 Practice'};
 const BOSSES=['🐉','👾','🦖','🐙','🤖','🧌'];
 function say(t){const b=$('jane');b.innerHTML=gl(t);b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop');}
 function confetti(n=40){for(let i=0;i<n;i++){const e=document.createElement('div');e.className='confetti';e.textContent=['🎉','⭐','🍕','✨','🎈','💜'][i%6];e.style.left=Math.random()*100+'vw';e.style.animationDuration=1.5+Math.random()*2+'s';document.body.appendChild(e);setTimeout(()=>e.remove(),4000);}}
@@ -16,7 +16,7 @@ function banner(t){const b=document.createElement('div');b.className='banner';b.
 function chips(s){$('pts').textContent='⭐ '+s.points+' pts';$('stars').textContent='🌟 '+s.stars;$('streak').textContent='🔥 '+s.streak;$('pct').textContent=`🗺️ ${s.progress.pct}%`;}
 let LN='Explorer';function setLearner(L){if(!L?.name||L.name===LN&&document.title.includes(LN))return;LN=L.name;document.querySelectorAll('.lname').forEach(e=>e.textContent=LN);document.title=`${LN}'s Learning Adventure with Jane`;}
 function render(s){st=s;if(s?.learner)setLearner(s.learner);chips(s);const p=s.item;clearInterval(timerInt);$('timer').innerHTML='';if(!p)return;
- const f=p.format||'quest';$('frame').className='framebar f-'+f;$('frame').textContent=FRAMES[f]||'🗡️ Quest';$('pcard').className='card '+f;
+ const f=p.format||'quest';$('frame').className='framebar f-'+f;$('frame').textContent=p.gate?(p.gate.spot?`🗝️ Gate! Quick check: show me you know this one (${p.gate.n}/${p.gate.of})`:`🗝️ Gate! Unlock it with something you learned before (${p.gate.n}/${p.gate.of})`):FRAMES[f]||'🗡️ Quest';$('pcard').className='card '+f;
  $('topic').textContent=`${ISL[p.topic.subject]?.e||'📚'} ${p.topic.name}${p.level?` · Lv ${p.level}`:''}`;
  PACKT=s.terms||{};glReset();if(p.blank)$('q').innerHTML=gl(p.q).replace(/_{2,}/,'<span class="blank" id="blankslot">❓</span>');else $('q').innerHTML=p.type==='card'?'':gl(p.q);$('ev').innerHTML='';
  $('vis').innerHTML=(p.vis?(p.vis.type==='pizza'?pizza(p.vis.slices,p.vis.eaten):bar(p.vis.parts,p.vis.shaded)):'')+(p.scene?sceneHTML(p.scene):'')+(p.tpl?tplHTML(p.tpl):'');
@@ -38,6 +38,7 @@ async function send(v){if(!v||$('pcard').classList.contains('busy'))return;$('pc
  if(r.questDone)setTimeout(()=>questMedal(r.questDone),r.medal?2600:300);
  if(r.miniDone&&!r.reveal){chips(r.state);return miniEnd(r);}
  if(r.correct){const big=!!(r.mastered||r.levelUp||r.medal);if(!(window.FX&&FX.good($('pcard'),big)))confetti(big?80:30);if(r.medal)reveal(r.medal,r.inferred);else if(r.mastered)banner(`🏆 Mastered!<br><small>${esc(r.mastered)}</small>${r.inferred?`<br><small>+${r.inferred} skills lit up on your map!</small>`:''}`);else if(r.levelUp)banner('⬆ Level '+r.levelUp+'!');}
+ else if(r.formNudge){/* right value, wrong form: a gentle nudge, no shake */}
  else if(window.FX&&!FX.reduced()){FX.bad($('pcard'));}else{$('pcard').classList.remove('shake');void $('pcard').offsetWidth;$('pcard').classList.add('shake');}
  if(r.boss){$('bossbar').querySelector('.boss')?.classList.add('shake');}
  if(r.askChoice){chips(r.state);return ask(r.jane);}
@@ -266,10 +267,13 @@ const INTER={
   checkBtn(()=>send(`${on.size}/${n}`));}};
 
 // ---------- quest strip, mini-sessions ----------
+// quest path: stage stones with 🗝️ review gates between them (locked = dim, open = gold)
+function qpath(Q,{cur=false,big=false}={}){const G=Object.fromEntries((Q.gates||[]).map(x=>[x.before,x]));
+ return `<div class="qpath${big?' big':''}">${Q.stages.map((x,i)=>`${i?'<i></i>':''}${G[i]?`<span class="qk ${G[i].state}" title="${G[i].state==='open'?'Gate open':'Review gate: answer something from before to pass'}">🗝️</span><i></i>`:''}<span class="qs ${x.complete?'done':cur&&i===Q.current?'cur':''} ${x.boss?'boss':''}" title="${esc(x.name)}">${x.complete&&!big?'✅':esc(x.emoji)}</span>`).join('')}</div>`;}
 function questStrip(s,p){const el=$('qstrip');if(!el)return;const Q=s.quest;
  if(p.mini){el.hidden=false;el.className='qstrip mini';el.innerHTML=`<span>🔍 Exploring: <b>${esc(p.topic.name)}</b> · ${p.mini.n} of ${p.mini.of}</span><button class="ghost sm" onclick="miniQuit()">🗺️ Back to map</button>`;return;}
- if(!Q||!Q.started||Q.completed||!String(p.ptype||'')){el.hidden=true;return;}
- el.hidden=false;el.className='qstrip';el.innerHTML=`<div class="qsh">${esc(Q.emoji)} <b>${esc(Q.title)}</b> <span class="small">Stage ${Math.min(Q.stages.length,Q.current+1)} of ${Q.stages.length}</span> <span class="qcap" title="active quests">🗺️ ${s.quests?.active||0}/${s.quests?.cap||3}</span></div>${s.quests?.boost?`<div class="boost">${esc(s.quests.boost.emoji)} ${gl(s.quests.boost.message||'')}</div>`:''}${s.quests?.paused?`<div class="boost lock">🗝️ Finish your quest to unlock the next one!</div>`:''}<div class="qpath">${Q.stages.map((x,i)=>`<span class="qs ${x.complete?'done':i===Q.current?'cur':''} ${x.boss?'boss':''}" title="${esc(x.name)}">${x.complete?'✅':esc(x.emoji)}</span>`).join('<i></i>')}</div>`;}
+ if(!Q||!Q.started||Q.completed||(!String(p.ptype||'')&&!p.gate)){el.hidden=true;return;}
+ el.hidden=false;el.className='qstrip';el.innerHTML=`<div class="qsh">${esc(Q.emoji)} <b>${esc(Q.title)}</b> <span class="small">Stage ${Math.min(Q.stages.length,Q.current+1)} of ${Q.stages.length}</span> <span class="qcap" title="active quests">🗺️ ${s.quests?.active||0}/${s.quests?.cap||3}</span></div>${s.quests?.boost?`<div class="boost">${esc(s.quests.boost.emoji)} ${gl(s.quests.boost.message||'')}</div>`:''}${s.quests?.paused?`<div class="boost lock">🗝️ Finish your quest to unlock the next one!</div>`:''}${qpath(Q,{cur:true})}`;}
 async function miniQuit(){const s=await api('/api/mini/quit',{});render(s);goMap(s.mini?.subject);}
 function goMap(sub){if(window._afterMini){render(window._afterMini);window._afterMini=null;}if(sub)zoomed=sub;document.querySelector('.tab[data-v=map]').click();}
 function miniEnd(r){const m=r.miniDone;$('f').style.display='none';$('mc').innerHTML='';
@@ -287,14 +291,14 @@ function questDot(s){const d=document.querySelector('.tab[data-v=quests] .dot');
 function questReveal(Q){const o=document.createElement('div');o.className='qreveal';
  o.innerHTML=`<div class="rays"></div><div class="qrbox"><div class="qrnew">✨ NEW QUEST! ✨</div><div class="chest"><div class="lid"></div><div class="base"><span class="lock">🔒</span></div><div class="glow"></div></div>
  <div class="scroll"><div class="rod"></div><div class="paper"><div class="qemo">${esc(Q.emoji)}</div><h2>${esc(Q.title)}</h2><p>${esc(Q.hook)}</p>
- <div class="qpath big">${Q.stages.map(x=>`<span class="qs ${x.boss?'boss':''}" title="${esc(x.name)}">${esc(x.emoji)}</span>`).join('<i></i>')}</div>
+ ${qpath(Q,{big:true})}
  <div class="small">${Q.stages.length} stages · boss finale · win the <b>${esc(Q.medal.emoji)} ${esc(Q.medal.name)}</b></div><button class="bigbtn" id="qstart">⚔️ Start the quest!</button></div><div class="rod"></div></div></div>`;
  document.body.appendChild(o);confetti(50);
  $('qstart').onclick=async()=>{const s=await api('/api/quest/start',{date:Q.date});if(s.error){o.remove();say(s.error);return;}o.classList.add('out');setTimeout(()=>o.remove(),400);document.querySelector('.tab[data-v=play]').click();render(s);questDot(s);say(`Let's go! Stage 1: ${Q.stages[0].name}! ${Q.stages[0].emoji}`);};}
 async function loadQuests(){const d=await api('/api/quests');const el=$('qlist');
  $('qcapline').innerHTML=`<b>🗺️ ${d.active}/${d.cap} active quests</b>${d.paused?' · 🗝️ Finish your quest to unlock the next one!':d.active>=d.cap?' · Finish one to unlock a new one!':''}`;
  el.innerHTML=d.quests.length?d.quests.map((q,i)=>`<div class="qcard ${q.today?'now':''} ${q.completed?'won':''}"><div class="qch"><span class="qemo">${esc(q.emoji)}</span><div><b>${esc(q.title)}</b>${q.today&&!q.started&&q.isQuest?'<span class="newtag">NEW!</span>':''}<div class="small">${q.waiting?'<span class="newtag" style="background:#78909c">🔒 Waiting</span> ':''}${q.today?'Today’s quest':new Date(q.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} · ${q.completed?'🏅 Won!':q.started?'In progress':q.isQuest?'Not started':'Adventure'}</div></div></div>
-  ${q.hook?`<p>${esc(q.hook)}</p>`:''}<div class="qpath">${q.stages.map(x=>`<span class="qs ${x.complete?'done':''} ${x.boss?'boss':''}" title="${esc(x.name)}">${x.complete?'✅':esc(x.emoji)}</span>`).join('<i></i>')}</div>
+  ${q.hook?`<p>${esc(q.hook)}</p>`:''}${qpath(q)}
   <div class="track"><i style="width:${q.pct}%;background:linear-gradient(90deg,#00e676,#ffd54f)"></i></div><div class="small">${q.done} / ${q.total} steps · ${q.pct}% ${q.completed?`· ${esc(q.medal.emoji)} ${esc(q.medal.name)}`:''}</div>
   ${q.boost?`<div class="boost">${esc(q.boost.emoji)} ${esc(q.boost.message||'')}</div>`:''}${q.waiting?'<div class="small">🗝️ Finish your quest to unlock this one!</div>':q.isQuest&&!q.completed&&(q.active||q.canStart)?`<button class="qgo" data-i="${i}">${q.started?(q.focus?'▶ Keep going':'▶ Play this quest'):'⚔️ Start'}</button>`:''}</div>`).join(''):'<p>No quests yet. Check back tomorrow! 🗺️</p>';
  el.querySelectorAll('.qgo').forEach(b=>b.onclick=async()=>{const q=d.quests[+b.dataset.i];if(!q.started)return questReveal(q);const s=await api('/api/quest/start',{date:q.date});document.querySelector('.tab[data-v=play]').click();if(s.error)return say(s.error);render(s);say(`Back to "${q.title}"! You've got this! 💪`);});}

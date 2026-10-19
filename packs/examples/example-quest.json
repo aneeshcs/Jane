@@ -111,18 +111,6 @@
      ]
     },
     {
-     "type": "mc",
-     "prompt": "\"You run like a cheetah.\" Simile or metaphor?",
-     "choices": [
-      "Simile",
-      "Metaphor",
-      "Neither"
-     ],
-     "answer": "Simile",
-     "hint": "Spot the word like.",
-     "explanation": "It uses like, so it's a simile."
-    },
-    {
      "type": "match",
      "prompt": "Match each sentence to its type!",
      "pairs": [
@@ -141,31 +129,6 @@
      ],
      "hint": "Look for like or as first.",
      "explanation": "\"As\" and \"like\" make similes. \"Time is money\" is a metaphor."
-    },
-    {
-     "type": "truefalse",
-     "seconds": 30,
-     "prompt": "Speed round! Is it a SIMILE?",
-     "statements": [
-      [
-       "Her eyes were stars.",
-       false
-      ],
-      [
-       "Cold as ice.",
-       true
-      ],
-      [
-       "He swims like a fish.",
-       true
-      ],
-      [
-       "My room is a pigsty.",
-       false
-      ]
-     ],
-     "hint": "Simile = like or as.",
-     "explanation": "Cold as ice and swims like a fish are similes. The others are metaphors."
     },
     {
      "type": "creative",
@@ -261,18 +224,6 @@
      "explanation": "A friend is a person, so it's who."
     },
     {
-     "type": "blank",
-     "prompt": "The ship, ___ was huge, sailed away.",
-     "choices": [
-      "which",
-      "who",
-      "when"
-     ],
-     "answer": "which",
-     "hint": "Is a ship a person or a thing?",
-     "explanation": "A ship is a thing, so it's which."
-    },
-    {
      "type": "match",
      "prompt": "Match each start to its ending!",
      "pairs": [
@@ -291,18 +242,6 @@
      ],
      "hint": "Wooden leg? Green wings? Full of gold? Who has which?",
      "explanation": "The pirate has a wooden leg, the parrot flaps green wings, the chest is full of gold!"
-    },
-    {
-     "type": "blank",
-     "prompt": "Finish it: The captain, ___ was brave, led us.",
-     "answer": "who",
-     "hint": "The captain is a person.",
-     "explanation": "Use who for people: the captain, who was brave.",
-     "choices": [
-      "who",
-      "which",
-      "where"
-     ]
     }
    ]
   },

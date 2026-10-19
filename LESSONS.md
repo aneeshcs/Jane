@@ -4,8 +4,9 @@ A lesson pack is the day's hand-written (or nightly-generated) content for the l
 (namespace `JANE_KV`) under the key `lessons:YYYY-MM-DD`, where the date is the **Pacific Time** calendar day.
 
 ## How the app uses it
-For every item, the engine picks a topic (spaced review ~15-20% → today's pack topics, interleaved with
-placement diagnostics → frontier topics), then chooses content in this order:
+For every item, the engine picks a topic (inside a started quest: review gates between stages, then the quest's
+stages; otherwise an occasional spaced review → today's pack topics, interleaved with placement diagnostics →
+frontier topics), then chooses content in this order:
 
 1. **Today's pack**: the next unanswered question for that topic (the intro card is shown before the topic's first question).
 2. **Procedural math generators** (fractions, decimals/percents, ×/÷, +/−, place value...) for Mathematics topics.
@@ -14,8 +15,8 @@ placement diagnostics → frontier topics), then chooses content in this order:
 4. **Self-check** (last resort): the topic's short `self` prompt, answered "Got it! / Sort of / Not yet".
    The raw Marble `assessmentPrompt` and `evidence` are never shown to the learner.
 
-Pack topics are served even if the map shows them as locked. Engine spaced reviews use generators or self-checks;
-a started quest replaces them with its own `review` stages. On the map, tapping a green (ready) or blue stone opens
+Pack topics are served even if the map shows them as locked. Engine spaced reviews use generators or kid MCQs; in a
+started quest they come through **review gates** between stages (below). On the map, tapping a green (ready) or blue stone opens
 its card with **Explore now!** (a 2-3 question mini-session on that topic, then back to the map); orange (review due)
 stones get **Practice now**.
 
@@ -24,8 +25,31 @@ A pack is one **quest**: a title, a short story hook, a path of **stages** (one 
 a **boss finale** (the last stage, `"format":"boss"`) and a special **quest medal**. When the learner opens the app and
 today's quest hasn't been started, they get the animated treasure-chest/scroll "New quest!" reveal with a Start button;
 the Quests tab (red dot = new quest) lists today's and past quests with progress. While a started quest is running,
-the app serves its stages in order (no placement diagnostics or engine reviews in between). Finishing every item of
+the app serves its stages in order (no placement diagnostics in between), with **review gates** before some stages. Finishing every item of
 every stage awards the quest medal (shown in Trophies). Old packs without `quest` still work as plain adventures.
+
+## Review gates (spaced review built into quests)
+*"You have to do something from the past to make it to the future."* In a started quest, a 🗝️ **gate** sits before
+stage 2, before the middle stage and before the boss (at most 3 per quest). To open it, the learner answers 1-2
+review items that the app picks **at runtime** from the due Leitner queue (most overdue first, topics shown directly
+before inferred ones; if nothing is due, a recently mastered topic that is due within 2 days; otherwise the gate is
+open for free). Gate answers move Leitner boxes like any review (a first-try right moves the topic up a box, a miss
+demotes it), and a gate opens once its items are answered, right or wrong, so it never strands the learner. Gates
+don't count toward quest progress. The nightly author doesn't pick gate items.
+
+**Spot-checks.** About 1 gate item in 3 (and every gate item when nothing is due) is a quick check of a skill the app
+only *inferred* and never saw: the one with the most dependent skills, then the lowest confidence. Right: the skill
+counts as shown directly (`verified`). Miss: it goes back to learning and the guesses built on it are withdrawn. A
+spot-check never awards a medal. The export's `unverifiedInferred` counts the inferred skills not checked yet.
+
+## Coverage (explore new areas)
+An **area** is a Marble domain (12 in Mathematics, 19 in Science, and so on). An area is **seen** when it has at least
+1 graded answer (not a self-check) in the exported days, or a topic shown directly with at least 1 correct answer.
+Inferred-only topics don't count. The export's `coverage` lists, per subject, how many areas are seen, and for every
+untouched area (`coverage.untouched`, math and science first) up to 3 ready **starter** topics closest to the target
+age (never more than 2 years below it). Each nightly quest adds one of them (rule 7 below).
+In free Play the app also wanders: ready topics in unseen areas get a small boost (+10, below the +40 for today's
+pack), and "Something different" tries an unseen area first.
 
 ## Teach → guided practice → graded → boss (required)
 Jane teaches first and tests second. Every quest follows this order, and `publish-lessons.mjs` fails a pack that doesn't:
@@ -40,7 +64,10 @@ Jane teaches first and tests second. Every quest follows this order, and `publis
    test with `"skill": "mt_..."` (default: the stage topic). Add `"powerup"` (≤ 30 words) to the boss stage: the app
    shows it as a **"Boss ahead! Here's your power-up"** recap card right before the first boss question (without it,
    the app builds one from the earlier learn card).
-5. **Fair bosses.** No boss answer past thousandths or with a decimal percent (3/16 = 0.1875, 18.75%): the publisher
+5. **Real bosses.** A boss stage has **at least 3 graded questions** (the publisher fails fewer). A **legendary**
+   medal needs 3 first-try right boss answers in one fight; one-question "bosses" don't exist anymore (non-math Play
+   items are never bosses).
+6. **Fair bosses.** No boss answer past thousandths or with a decimal percent (3/16 = 0.1875, 18.75%): the publisher
    fails it. Put such items in a guided stage instead, scaffolded (1/16 = half of 1/8 = 0.0625, so 3/16 = 3 × 0.0625).
 
 Stages the learner already finished, and mastered topics, are exempt (the publisher reads progress read-only;
@@ -84,12 +111,19 @@ A quest is **active** once started and until finished. At most **3** can be acti
   quest strip and applies the trims/hints right away. Trim only stages with lots left (see `remainingStages`), never
   the boss below 3.
 
+## Finished quests are locked
+Once the learner finishes a quest, it is done for good: it shows 100% and its medal in the app, the Quests tab, the
+parent report and the export, from a snapshot taken when it finished. Its pack serves no more items.
+`publish-lessons.mjs` **refuses** (exit code **4**, nothing written) to overwrite `lessons:<date>` or write
+`boost:<date>` for a finished quest, even with `--force`. **Put new material in the next quest.** Republishing a
+started, unfinished quest still works, but the publisher warns for every stage that already has answers and changed.
+
 ## How to plan tomorrow's quest (rules)
 0. Check `quests.nextStep` first: at the cap, write a boost (above), not a quest.
 Run `node export-progress.mjs` and read `weakSpots` first. Then:
 1. **Go deeper where the learner struggles.** Every topic in `weakSpots.goDeeper` (misses, hints, slow answers, failed
    reviews, "not yet / sort of" self-checks, "I'm stuck" taps and skips) gets a **deep dive** stage (`"deepDive": true`): a `learn`
-   (or "Why it works") card first, then 1-2 guided items, then **4-5 graded questions** in all that start one notch easier and climb back to the level they missed, using at
+   (or "Why it works") card first, then 1-2 guided items, then **3-4 graded questions** in all that start one notch easier and climb back to the level they missed, using at
    least 3 different formats. Easier-to-target steps = smaller numbers, one idea per step, the same trick in a new
    setting, then the original hard question last. Use `easierSteps` (hard prerequisites) for ideas. Topics marked
    `needsSupport` (the kid tapped "I'm stuck" or skipped) get the gentle version: start a full level down, and no boss on them
@@ -98,12 +132,20 @@ Run `node export-progress.mjs` and read `weakSpots` first. Then:
    frontier), short (2-3 questions), with a picture/template.
 3. **Never below the learner's level.** The target age and grade are settings (`LEARNER_AGE`, `LEARNER_GRADE` in `wrangler.toml`; the app is designed around ages ~8-12, upper elementary). No topics starting more than 2 years below the target age (the publisher warns), no
    baby wording. "Easier" means smaller steps, not younger content.
-4. **About 15-20% review.** Mark review stages `"review": true` (topics already mastered, especially `reviewDue` and
-   anything mastered yesterday). The publisher reports the review share of graded questions and warns outside 10-25%.
-   A first-try correct review answer moves the topic's memory box up; a miss brings the review back tomorrow.
+4. **Spaced review runs through the gates.** Don't spend quest budget on review stages: the app's review gates
+   (see "Review gates") pull due reviews and spot-checks from the Leitner queue at runtime. `"review": true` stages
+   still publish (for old packs) but get a warning. Watch the export's `reviewHealth` (`due`, `overdue`,
+   `oldestOverdueDays`, `gateItems7d`, `spotChecks7d`, `unverifiedInferred`) for review that isn't keeping up.
 5. **Make it interactive and illustrated.** Mix formats (the publisher warns if fewer than 3 interactive ones), add a
    `scene` or `template` to most stages, and drop in a **fun-fact** card or two.
-6. **Keep it short:** kid voice (below), boss last, **~8-9 stops and ~28 graded questions** (publisher warns above 30 graded or 9 stops). Spread them out: deep dives 4-5, stretch and review stages 1-3, boss 3-4.
+6. **Keep it short (enforced):** a quest is about **8 minutes**: **at most 16 graded questions** over **4-6 stages
+   (7 at most)**, boss last. The app adds up to 4 review-gate items on top (see "Review gates"), so the learner
+   answers about 20 questions. The publisher **fails** a quest above 16 graded questions or 7 stages, prints a time
+   estimate (graded × 25 s + cards × 10 s) and warns above 8 minutes. Spread them out: deep dives 3-4, stretch
+   stages 1-3, boss 3-4.
+7. **Visit a new area.** Include at least one stretch stage from `coverage.untouched` in the export (see
+   "Coverage"), rotating subjects with math and science first, using one of the listed `starters`. The publisher
+   prints "new areas: N" and **warns** (never fails) when a quest adds no untouched area while some are left.
 
 ## Writing style (required for every pack)
 Jane talks **to** the learner, never about them. Every prompt must be:
@@ -151,7 +193,7 @@ those words in the next quest (use them in a question, or add a fun-fact card).
 | type | what the learner does | fields (besides `prompt`, `hint`, `explanation`) |
 |---|---|---|
 | `mc` | taps one of 3 buttons | `choices`, `answer` (exactly one choice) |
-| `numeric` | types a number (12, 0.75, 3/8, "$20", "6 weeks") | `answer`, `tolerance?` |
+| `numeric` | types a number (12, 0.75, 3/8, 27%, "$20", "6 weeks") | `answer`, `tolerance?`, `form?` (`percent`/`decimal`/`fraction`/`whole`, see below) |
 | `text` | types a word (only when ONE word clearly fits) | `answer`, `acceptedAnswers?` (fuzzy: plural/singular, a/an/the, small typos) |
 | `creative` | types their own idea, graded generously: any sensible word/phrase counts, and Jane celebrates it | `answer` (your example), `acceptedAnswers?`, `notAnswers?` (e.g. the subject word), `block?`, `minLength?`(2), `maxWords?`(5), `celebrate?` ("{given}", "{answer}"), `placeholder?` |
 | `blank` | fill in the blank: prompt has `___`; tapped word flies into the gap (or typed if no choices; add `"creative": true` for any-sensible-answer) | `choices?`(2-4), `answer`, `acceptedAnswers?` |
@@ -165,6 +207,12 @@ those words in the next quest (use them in a question, or add a fun-fact card).
 | `fact` | "🤩 Fun fact!" card | `title`, `body`, `emoji?` |
 | `learn` | "🧠 Learn it" card: an idea plus a worked example, revealed one step per tap | `title`, `body` (≤ 30 words), `example: {prompt, steps}`, `emoji?` |
 Cards earn 2 points and never count for or against mastery.
+
+**Answer form.** When a question asks for a form ("as a percent", "as a decimal", "what fraction", or `"form"` on a
+`numeric` question), only that form counts: write the answer in it (`"27%"`, `"0.52"`, `"3/8"`). The right value in
+another form (0.27 for a percent, 52/100 for a decimal, 12/4 for a whole number) gets a gentle "Right value! Now
+write it as a percent" nudge, not a miss. The publisher fails a question whose prompt asks for one form and whose
+answer is written in another.
 
 **On any graded question:** `guided: true` + `steps` (guided practice: steps shown before answering; a miss is a
 learning moment), `steps` alone (used as "how to start" in the stuck help), `example: {prompt, steps}` (a similar
@@ -192,7 +240,7 @@ solved problem for the stuck help), `skill` (the topic a boss question tests).
       "topicId": "mt_hJW7hVflm3",            // a Marble topic id (public/tax.json or the export's frontier)
       "stage": { "name": "Simile Swamp", "emoji": "🐊" },   // required in quests: the stop on the path
       "format": "story",                     // quest | story | mystery | minigame | timed | boss | explore | guided
-      "deepDive": true,                      // weak area: learn/why card + guided + 4-5 graded steps, mastery needs 3 in a row
+      "deepDive": true,                      // weak area: learn/why card + guided + 3-4 graded steps, mastery needs 3 in a row
       "teaches": ["mt_lvaSGHwvQ5"],          // optional: skills this stage teaches/practises for the boss
       "powerup": "...",                      // boss stage only: the "Boss ahead!" recap (≤ 30 words)
       "review": false,                       // true = review stage for an already-mastered topic
@@ -203,8 +251,15 @@ solved problem for the stuck help), `skill` (the topic a boss question tests).
   ]
 }
 ```
-A pack topic is mastered after 2 first-try correct answers in a row (3 for `boss` and `deepDive`), or after all its
-graded questions if fewer. In a quest the stage still plays to the end after mastery.
+## Mastery and medals (honest)
+A pack topic is mastered after 2 first-try correct answers in a row (3 for `boss` and `deepDive`), and never from a
+single question: a stage with only 1 graded question can't master its topic. In a quest the stage still plays to the
+end after mastery. A "👍 Got it!" self-check never masters anything on its own (a graded check follows). A repeated
+identical question counts at most once per day, and guided practice doesn't count. A **medal** needs **3 first-try
+correct graded answers** on a directly mastered topic (placement answers master for placement, without a medal).
+Medals and mastery from before these rules are re-scored once with `node migrate-medals.mjs --dry-run` (shows
+before/after counts), then `node migrate-medals.mjs --backup <file>` (needs a fresh `node backup-progress.mjs`; add
+`--local` for the Node server). Topics that lose mastery become unverified and due now, so review gates re-check them.
 
 ## Example deep dive (Similes & Metaphors, for a topic that showed up in `weakSpots.goDeeper`)
 ```json
@@ -232,6 +287,7 @@ node publish-lessons.mjs my-pack.json --date 2026-10-18       # override the dat
 node publish-lessons.mjs boost.json                           # catch-up boost (when 3 quests are active)
 node publish-lessons.mjs packs/x.json --force                 # publish a new quest even at the cap (avoid)
 ```
+A finished quest is locked: the script exits with code 4 and writes nothing (see "Finished quests are locked").
 The script exits with code 1 and lists every problem if the pack is invalid, for example an unknown topic id, an
 mc answer that isn't one of the choices, or a missing hint or explanation. Nothing is written in that case.
 
@@ -244,8 +300,8 @@ The export contains `weakSpots` (per topic and per domain over the last 7 days, 
 needed a `hints`, final `misses`, `slow` answers > 30 s, `failedReviews`, `unsure` self-checks, a `weakScore`, plus
 `goDeeper` suggestions with easier prerequisite steps and `strengths` with `stretchTo` topics), `summary` (counts per state and subject), `stats`, `todayLog` (every answer plus `mastered`,
 `inferred` and `demoted` events), `learnedToday`, `frontier` (ready and learning topics, closest to the target age (`LEARNER_AGE`) first,
-with full topic details, prerequisites and unlocks), `reviewDue`, and the raw `progress` record.
-Write tomorrow's quest from `weakSpots`, `frontier` and `reviewDue` using the rules above, dry-run, fix every warning, then publish it.
+with full topic details, prerequisites and unlocks), `reviewDue`, `reviewHealth` (see rule 4), and the raw `progress` record.
+Write tomorrow's quest from `weakSpots` and `frontier` (the gates handle `reviewDue`) using the rules above, dry-run, fix every warning, then publish it.
 
 Both scripts call the repo's `wrangler` (Node 22; a portable Node in `~/.local/node-v22.20.0-linux-x64` is used if present), read the account and KV ids from `wrangler.toml`, and need `CLOUDFLARE_API_TOKEN` set in the environment (never commit it).
 

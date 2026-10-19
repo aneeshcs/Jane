@@ -37,7 +37,14 @@ test('a pack publishes locally and shows as a new quest',async()=>{
   const s=await api('/api/state');assert.equal(s.newQuest,true);assert.ok(s.quest?.title);
   const st=await api('/api/quest/start',{date:today});assert.equal(st.quest.title,s.quest.title);
   const ex=execFileSync(process.execPath,['export-progress.mjs','--local'],{cwd:ROOT,env:{...process.env,DATA_DIR:DATA},encoding:'utf8'});
-  assert.match(ex,/wrote .*exports/);});
+  assert.match(ex,/wrote .*exports/);
+  const xf=ex.match(/wrote (\S+\.json)/)[1];const X=JSON.parse(fs.readFileSync(path.isAbsolute(xf)?xf:path.join(ROOT,xf),'utf8'));
+  for(const k of ['due','overdue','oldestOverdueDays','gateItems7d','spotChecks7d','unverifiedInferred'])assert.equal(typeof X.reviewHealth?.[k],'number',k);});
 
 test('parent report renders with the learner name',async()=>{
   const r=await fetch(B+'/parent');assert.equal(r.status,200);const h=await r.text();assert.match(h,/Sam/);});
+
+test('parent report includes coverage',async()=>{const h=await (await fetch(B+'/parent')).text();
+  const D=JSON.parse(h.match(/<script id="data" type="application\/json">([\s\S]*?)<\/script>/)[1].replace(/\\u003c/g,'<'));
+  const sub=n=>D.coverage.subjects.find(s=>s.name===n);assert.equal(sub('Mathematics').total,12);assert.equal(sub('Science').total,19);
+  assert.equal(typeof D.coverage.seen,'number');assert.ok(sub('Mathematics').domains.every(d=>typeof d.seen==='boolean'));});

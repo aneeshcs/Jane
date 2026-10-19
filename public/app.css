@@ -200,3 +200,10 @@ main[hidden]{display:none!important}
 .ex{background:#fff;border-radius:14px;padding:8px 12px;margin:6px 0;text-align:left}.ex ol{margin:.3em 0 0 1.2em;padding:0}.ex li{margin:.25em 0;animation:pop .4s}
 .steps{margin-top:10px;background:#e8f5e9;border:3px solid #66bb6a;border-radius:16px;padding:8px 14px;font-size:1.15rem}.steps ol{margin:.3em 0 0 1.2em;padding:0}
 .k-learn{background:linear-gradient(135deg,#e8f5e9,#fffde7);border:4px solid #00c853}.k-learn .klbl{color:#2e7d32}.f-guided{background:#43a047!important;color:#fff}
+/* review gates (v0.4) */
+.qk{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;font-size:.95rem;background:#eceff1;border:2px dashed #90a4ae;filter:grayscale(1);opacity:.6}
+.qk.open{background:#fff8e1;border:2px solid #ffb300;filter:none;opacity:1}
+.qstrip .qk{width:22px;height:22px;font-size:.75rem}
+.framebar.f-gate{background:linear-gradient(90deg,#ffb300,#ffd54f);color:#3e2723}
+.card.gate{border-color:#ffb300;box-shadow:0 0 0 3px #ffe08255}
+

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Validate a lesson pack / quest JSON file and write it to KV as lessons:<date>.
-// Usage: node publish-lessons.mjs <pack.json> [--date YYYY-MM-DD] [--dry-run] [--force] [--local]
+// Usage: node publish-lessons.mjs <pack.json> [--date YYYY-MM-DD] [--dry-run] [--force] [--local] [--offline]
+// Exit codes: 1 invalid pack, 3 quest cap reached, 4 the quest is finished and locked (never overwritten, even with --force).
 //        --local (or STORAGE=file) publishes into the standalone server's DATA_DIR instead of Cloudflare KV.
 //        node publish-lessons.mjs <boost.json> [--dry-run]     (catch-up boost: file has "boostFor": "<quest date>")
 // A new quest is refused while 3 quests are active (started, unfinished) unless --force; publish a boost instead.
-import fs from 'fs';import {kvPut,kvGet,kvList,loadTax,activeQuests,QUEST_CAP,learnerConfig,LOCAL} from './lib-cli.mjs';import * as EN from './src/engine.js';
+import fs from 'fs';import {kvPut,kvGet,kvList,loadTax,activeQuests,QUEST_CAP,learnerConfig,LOCAL} from './lib-cli.mjs';import * as EN from './src/engine.js';import {coverage,seenAreas} from './src/coverage.js';
 // Learner settings from wrangler.toml [vars]. Packs may write {name}; the app fills it in. Prompts must talk to the learner as "you".
 EN.configure(learnerConfig());const LRN=EN.learner();
 const NAMES=[LRN.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'\\{name\\}','the learner'].join('|');
@@ -14,12 +15,17 @@ const args=process.argv.slice(2);const file=args.find(a=>!a.startsWith('--')&&ar
 const dateArg=args.includes('--date')?args[args.indexOf('--date')+1]:null,dry=args.includes('--dry-run'),force=args.includes('--force');
 if(!file){console.error('Usage: node publish-lessons.mjs <pack.json> [--date YYYY-MM-DD] [--dry-run]');process.exit(2);}
 const pack=JSON.parse(fs.readFileSync(file,'utf8'));if(dateArg)pack.date=dateArg;
+// Finished quests are locked (LESSONS.md "Finished quests are locked"): never overwrite or boost one, even with --force.
+// Reads the learner's progress read-only; --offline skips the lookup.
+let PROG=null;if(!args.includes('--offline'))try{PROG=kvGet('progress');}catch{}
+const LOCKED=4,lockedQuest=d=>!!PROG?.quests?.[d]?.done;
+const refuseLocked=d=>{console.error(`⛔ quest ${d} is finished and locked. Nothing was written: put new material in the next quest.`);process.exit(LOCKED);};
 const wcount=x=>String(x||'').trim().split(/\s+/).filter(Boolean).length;
 function checkTerms(terms,P,E,W){if(terms==null)return;if(typeof terms!=='object'||Array.isArray(terms)){E(P,'object {"word": "definition"} or {"word": {"d": "...", "e": "🎣"}}');return;}
   for(const [k,v] of Object.entries(terms)){const d=typeof v==='string'?v:v?.d;if(!k.trim()||typeof d!=='string'||!d.trim()){E(`${P}.${k}`,'needs a definition string');continue;}
     if(wcount(d)>15)W(`${P}.${k}`,`${wcount(d)} words (definitions ≤ 15)`);if(THIRD.test(d)||new RegExp(`(?:^|[^\\w{])(?:${NAMES})(?![\\w}])`,'i').test(d))W(`${P}.${k}`,YOU);if(v?.e!=null&&typeof v.e!=='string')E(`${P}.${k}.e`,'emoji string');}}
 // ---------- catch-up boost ----------
-if(pack.boostFor){const errs=[],warns=[];const E=(p,m)=>errs.push(`${p}: ${m}`),W=(p,m)=>warns.push(`${p}: ${m}`);
+if(pack.boostFor){if(lockedQuest(pack.boostFor))refuseLocked(pack.boostFor);const errs=[],warns=[];const E=(p,m)=>errs.push(`${p}: ${m}`),W=(p,m)=>warns.push(`${p}: ${m}`);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(pack.boostFor))E('boostFor','quest date YYYY-MM-DD');if(!pack.message)E('message','a short, fun encouragement is required');else if(wcount(pack.message)>25)W('message','≤ 25 words');
   const q=dry&&args.includes('--offline')?null:kvGet('lessons:'+pack.boostFor);if(!dry&&!q?.quest)E('boostFor',`no quest published at lessons:${pack.boostFor}`);
   const ids=new Set((q?.topics||[]).map(t=>t.topicId));
@@ -29,6 +35,7 @@ if(pack.boostFor){const errs=[],warns=[];const E=(p,m)=>errs.push(`${p}: ${m}`),
   if(warns.length)console.warn('⚠️  '+warns.join('\n  '));if(errs.length){console.error(`❌ ${errs.length} problem(s):\n  `+errs.join('\n  '));process.exit(1);}
   if(dry){console.log(`✅ valid boost for quest ${pack.boostFor} (dry run)`);process.exit(0);}
   kvPut('boost:'+pack.boostFor,pack);console.log(`✅ published${LOCAL?' (local)':''} boost:${pack.boostFor} — ${Object.keys(pack.trim||{}).length} trimmed stages, ${Object.keys(pack.hints||{}).length} extra hints`);process.exit(0);}
+if(pack.quest&&lockedQuest(pack.date))refuseLocked(pack.date);
 const tax=loadTax(),byId=Object.fromEntries(tax.topics.map(t=>[t.id,t])),errs=[],warns=[];const E=(p,m)=>errs.push(`${p}: ${m}`),W=(p,m)=>warns.push(`${p}: ${m}`);
 const str=(v,p,req=true)=>{if(v==null||v===''){if(req)E(p,'required string');return false;}if(typeof v!=='string'){E(p,'must be a string');return false;}return true;};
 const strs=(a,p,min,max)=>{if(!Array.isArray(a)||a.length<min||a.length>max||!a.every(x=>typeof x==='string'&&x.trim())){E(p,`${min}-${max} non-empty strings`);return false;}if(new Set(a).size!==a.length)E(p,'items must be unique');return true;};
@@ -60,14 +67,13 @@ function openEnded(q,Qp){const n=1+(q.accept?.length||0)+(q.acceptedAnswers?.len
   else if(n===1&&String(q.answer||'').split(' ').length<=2&&!/\d/.test(q.answer))W(Qp,'one-answer fill-in: is that the ONLY sensible word? If not, use mc/creative or add acceptedAnswers');}
 // Teach before test (LESSONS.md "Teach → practice → graded → boss"). Uses the learner's progress (read-only) when it can:
 // mastered topics and stages the learner already finished are exempt. --offline skips the lookup (nothing counts as mastered).
-let PROG=null;if(!args.includes('--offline'))try{PROG=kvGet('progress');}catch{}
 if(!PROG)console.warn('ℹ️  no learner progress available: treating every topic as new for the teach-before-test rules');
 const mastered=id=>PROG?.ts?.[id]?.st==='mastered';
 const stageDone=t=>!!PROG&&(t.questions||[]).every((q,j)=>CARDS.includes(q.type)||PROG.packSeen?.[`${pack.date}:${t.topicId}:${j}`]);
 const tooHard=a=>/\.\d{4,}/.test(String(a))||/\d\.\d+\s*%/.test(String(a)); // past thousandths, or a decimal percent: too hard for a boss
 function steps(v,P,req){if(v==null){if(req)E(P,'guided practice needs "steps": 1-4 short strings shown before answering');return;}if(!Array.isArray(v)||!v.length||v.length>6||!v.every(x=>typeof x==='string'&&x.trim()))E(P,'1-6 non-empty strings');else v.forEach((x,k)=>{if(wc(x)>18)W(`${P}[${k}]`,`${wc(x)} words (steps ≤ 18)`);});}
 const taught=new Set();
-const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0;const typesUsed=new Set();
+const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0,nCards=0;const typesUsed=new Set();
 (pack.topics||[]).forEach((t,i)=>{const P=`topics[${i}]`,tp=byId[t.topicId];if(!tp)E(P+'.topicId',`unknown Marble topic id "${t.topicId}"`);if(seen.has(t.topicId))E(P+'.topicId','duplicate');seen.add(t.topicId);
   if(t.format&&!FORMATS.includes(t.format))E(P+'.format','one of '+FORMATS.join('|'));
   if(t.intro){str(t.intro.title,P+'.intro.title');str(t.intro.story,P+'.intro.story');str(t.intro.emoji,P+'.intro.emoji',false);if(wc(t.intro.story)>25)W(P+'.intro.story',`${wc(t.intro.story)} words (aim ≤ 25)`);}
@@ -76,8 +82,9 @@ const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0;const typesUsed=new Se
   if(t.review!=null&&typeof t.review!=='boolean')E(P+'.review','true|false');if(t.deepDive!=null&&typeof t.deepDive!=='boolean')E(P+'.deepDive','true|false');
   if(!Array.isArray(t.questions)||!t.questions.length)E(P+'.questions','non-empty array required');const qs=t.questions||[];
   const graded=qs.filter(q=>!CARDS.includes(q.type)).length;if(!graded)E(P+'.questions','needs at least one graded question (not only cards)');
-  if(t.review)nReview+=graded;nGraded+=graded;nq+=qs.length;
-  if(t.deepDive){nDeep++;if(graded<4)E(P,`deep dive needs ≥ 4 graded questions (has ${graded})`);if(graded>5)W(P,`deep dive has ${graded} graded questions (aim 4-5 to keep quests short)`);if(!qs.some(q=>q.type==='why'||q.type==='learn'))E(P,'deep dive needs a "why" or "learn" card');
+  if(Q&&t.format==='boss'&&graded&&graded<3)E(P,`boss stage needs ≥ 3 graded questions (has ${graded}): a legendary medal means a real boss fight`);
+  if(t.review)nReview+=graded;nGraded+=graded;nq+=qs.length;nCards+=qs.length-graded;
+  if(t.deepDive){nDeep++;if(graded<3)E(P,`deep dive needs ≥ 3 graded questions (has ${graded})`);if(graded>4)W(P,`deep dive has ${graded} graded questions (aim 3-4 to keep quests short)`);if(!qs.some(q=>q.type==='why'||q.type==='learn'))E(P,'deep dive needs a "why" or "learn" card');
     if(new Set(qs.map(q=>q.type).filter(x=>!CARDS.includes(x))).size<3)W(P,'deep dive: mix at least 3 question types');}
   if(tp&&tp.ageRangeStart<LRN.age-2)W(P,`"${tp.name}" starts at age ${tp.ageRangeStart}: below the target level (${LRN.grade}, ~age ${LRN.age})`);
   // teach → guided practice → graded, for every new (not mastered) skill; boss stages only test what was taught, practised or mastered
@@ -104,7 +111,11 @@ const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0;const typesUsed=new Se
      case 'blank':if(!/_{3,}/.test(q.prompt||''))E(Qp+'.prompt','fill-in-the-blank prompt needs ___');if(!q.choices){acc(q,Qp);if(!q.creative)openEnded(q,Qp);}if(need()&&q.choices&&strs(q.choices,Qp+'.choices',2,4)&&!q.choices.includes(String(ans)))E(Qp+'.answer','must exactly match one of choices');break;
      case 'picture':if(!Array.isArray(q.choices)||q.choices.length<2||q.choices.length>4||!q.choices.every(c=>c&&typeof c.label==='string'&&typeof c.pic==='string'))E(Qp+'.choices','2-4 {label, pic} (pic = emoji or <svg>)');
        else{q.choices.forEach((c,k)=>scene(c.pic,`${Qp}.choices[${k}].pic`));if(need()&&!q.choices.some(c=>c.label===ans))E(Qp+'.answer','must equal one choice label');}break;
-     case 'numeric':if(need()&&!/^-?\d*\.?\d+(\s*\/\s*\d+)?$/.test(String(ans).trim()))E(Qp+'.answer','numeric answer like 12, 0.75 or 3/8');if(q.tolerance!=null&&!(q.tolerance>=0))E(Qp+'.tolerance','non-negative number');break;
+     case 'numeric':if(need()&&!/^-?\d*\.?\d+(\s*\/\s*\d+)?\s*%?$/.test(String(ans).trim()))E(Qp+'.answer','numeric answer like 12, 0.75, 3/8 or 27%');if(q.tolerance!=null&&!(q.tolerance>=0))E(Qp+'.tolerance','non-negative number');
+       // answer form (LESSONS.md "Answer form"): the prompt, the optional "form" and the answer must agree
+       if(q.form!=null&&!EN.FORMS.includes(q.form))E(Qp+'.form',EN.FORMS.join('|'));
+       else if(ans!=null&&ans!==''){const asked=q.form||EN.formOf({q:q.prompt,answer:'x'});if(asked&&!EN.formOk(String(ans),asked))E(Qp+'.answer',`answer form: the question asks for ${asked==='whole'?'a whole number':'a '+asked} but the answer is "${ans}"${asked==='percent'?' (write it like 27%)':''}`);}
+       break;
      case 'text':need();acc(q,Qp);openEnded(q,Qp);break;
      case 'creative':need();acc(q,Qp);for(const k of['notAnswers','block'])if(q[k]!=null&&!(Array.isArray(q[k])&&q[k].every(x=>typeof x==='string')))E(Qp+'.'+k,'array of strings');
        if(q.celebrate!=null&&typeof q.celebrate!=='string')E(Qp+'.celebrate','string ("{given}" = his answer, "{answer}" = your example)');if(q.minLength!=null&&!(Number.isInteger(q.minLength)&&q.minLength>=1))E(Qp+'.minLength','integer ≥ 1');
@@ -118,13 +129,28 @@ const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0;const typesUsed=new Se
      case 'numberline':if(!num(q.min)||!num(q.max)||!(q.max>q.min))E(Qp,'numeric min < max required');else{if(q.step!=null&&!(q.step>0))E(Qp+'.step','> 0');const a=parseNum(ans);if(!need()||isNaN(a))E(Qp+'.answer','number');else if(a<q.min||a>q.max)E(Qp+'.answer','must be on the line');
        else if(q.step&&Math.abs(Math.round((a-q.min)/q.step)*q.step+q.min-a)>1e-9)E(Qp+'.answer','must land on a step');if((q.max-q.min)/(q.step||1)>40)W(Qp,'more than 40 steps is hard to drag on a phone');}break;
      case 'fracbar':if(!Number.isInteger(q.parts)||q.parts<2||q.parts>12)E(Qp+'.parts','integer 2-12');else if(need()){const a=parseNum(ans);if(isNaN(a)||a<0||a>1)E(Qp+'.answer','fraction 0-1 like 3/4');else if(Math.abs(Math.round(a*q.parts)-a*q.parts)>1e-9)E(Qp+'.answer',`can't be shaded with ${q.parts} parts`);}break;}});});
-if(Q&&nGraded>30)W('size',`${nGraded} graded questions: quests should be ~28 (max 30), trim stages`);if(Q&&(pack.topics||[]).length>9)W('size',`${pack.topics.length} stops: aim for 8-9`);
-if(nGraded){const pct=Math.round(100*nReview/nGraded);if(pct<10||pct>25)W('review',`${pct}% of graded questions are review stages (aim 15-20%)`);}
+// Quest budget (LESSONS.md "Keep it short"): ≤ 16 graded pack questions + ≤ 4 review-gate items the app adds = ~20 answers, ~8 min; 4-6 stages, max 7.
+const MAX_GRADED=16,MAX_STAGES=7,estMin=Math.round((nGraded*25+nCards*10)/6)/10;
+if(Q&&nGraded>MAX_GRADED)E('size',`${nGraded} graded questions: too long (max ${MAX_GRADED}; the app adds up to 4 review-gate items, ~20 answers ≈ 8 min). Trim stages`);
+if(Q&&nGraded&&nGraded<10)W('size',`${nGraded} graded questions: aim for 12-16`);
+if(Q&&(pack.topics||[]).length>MAX_STAGES)E('size',`${pack.topics.length} stages: too long (max ${MAX_STAGES}, aim 4-6)`);
+if(Q&&estMin>8)W('size',`about ${estMin} min (aim ≤ 8): trim cards or questions`);
+// spaced review runs through the app's review gates now (LESSONS.md "Review gates"): review stages still publish, but spend quest budget
+const revStages=pack.topics.filter(t=>t.review).length;if(revStages)W('review',`${revStages} review stage${revStages>1?'s':''}: review runs through gates now, so spend the budget on new learning`);
+// Coverage (LESSONS.md "Coverage"): each quest should bring in at least one untouched area (Marble domain).
+// Frozen decision: no new area is a WARNING only, never an error. Uses the read-only progress; --offline skips it.
+let newAreas=null;if(Q&&PROG){const CG=EN.graph(tax),SP=EN.migrate(JSON.parse(JSON.stringify(PROG)),CG),seenA=seenAreas(SP,CG,[]),cov=coverage(SP,CG,[],{age:LRN.age});
+  const areas=[...new Set(pack.topics.filter(t=>byId[t.topicId]).map(t=>byId[t.topicId].subject+'|'+byId[t.topicId].domain))];newAreas=areas.filter(a=>!seenA.has(a));
+  if(!newAreas.length&&cov.untouched.length)W('coverage',`no new area: add one stretch stage from coverage.untouched, math and science first (e.g. ${cov.untouched.slice(0,3).map(u=>u.subject+' / '+u.domain).join(', ')})`);}
 const inter=[...typesUsed].filter(x=>!['mc','numeric','text'].includes(x));if(inter.length<3)W('formats',`only ${inter.length} interactive format(s) used; mix in order/match/picture/blank/numberline/fracbar/truefalse/why/fact`);
+if(Q&&PROG?.quests?.[pack.date]?.started){let prev=null;try{prev=kvGet('lessons:'+pack.date);}catch{}
+  for(const t of prev?.topics||[]){const answered=(t.questions||[]).some((q,j)=>PROG.packSeen?.[`${pack.date}:${t.topicId}:${j}`]);if(!answered)continue;
+    const nt=pack.topics.find(x=>x.topicId===t.topicId);if(!nt)W('started',`stage "${t.stage?.name||t.topicId}" already has answers and was removed: this changes the learner's quest progress`);
+    else if(JSON.stringify(nt.questions)!==JSON.stringify(t.questions))W('started',`stage "${t.stage?.name||t.topicId}" already has answers and its questions changed: this changes the learner's quest progress`);}}
 if(warns.length)console.warn(`⚠️  ${warns.length} warning(s) (see LESSONS.md):\n  `+warns.join('\n  '));
 if(errs.length){console.error(`❌ ${errs.length} problem(s) in ${file}:\n  `+errs.join('\n  '));process.exit(1);}
 if(Q&&!dry&&!force){const S=kvGet('progress');const A=activeQuests(S,pack.date).filter(d=>kvList('lessons:'+d).length);
   if(A.length>=QUEST_CAP){console.error(`⛔ ${A.length}/${QUEST_CAP} quests are active (${A.join(', ')}). Not publishing a new quest.\n   Publish a catch-up boost for the oldest one instead (see LESSONS.md "Quest cap"), or pass --force.`);process.exit(3);}}
-const sum=`${pack.topics.length} ${Q?'stages':'topics'}, ${nq} items (${nGraded} graded, ${nReview} review = ${nGraded?Math.round(100*nReview/nGraded):0}%, ${nDeep} deep dive${nDeep===1?'':'s'}), formats: ${[...typesUsed].join(', ')}`;
+const sum=`${pack.topics.length} ${Q?'stages':'topics'}, ${nq} items (~${estMin} min, ${nGraded} graded${nReview?`, ${nReview} in review stages`:''}, review via gates, ${nDeep} deep dive${nDeep===1?'':'s'}${newAreas?`, new areas: ${newAreas.length}${newAreas.length?` (${newAreas.map(a=>a.replace('|',' / ')).join(', ')})`:''}`:''}), formats: ${[...typesUsed].join(', ')}`;
 if(dry){console.log(`✅ valid${Q?` quest "${Q.title}"`:''}: ${sum} for ${pack.date} (dry run, nothing written)`);process.exit(0);}
 kvPut('lessons:'+pack.date,pack);console.log(`✅ published${LOCAL?' (local)':''} lessons:${pack.date}${Q?` quest "${Q.title}"`:''}: ${sum}`);

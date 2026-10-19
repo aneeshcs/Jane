@@ -42,7 +42,11 @@ The export includes:
 - **`termsLookedUp`**: glossary words the kid tapped.
 - **`quests`**: active quests, the cap (3) and `nextStep` (a new quest, or a catch-up boost).
 - **`frontier`**: ready and learning topics, closest to the target age first.
-- **`reviewDue`**: mastered topics whose spaced review is due.
+- **`reviewDue`**: mastered topics whose spaced review is due (the gates serve them; don't write review stages).
+- **`coverage`**: per subject, areas (Marble domains) seen out of total; `coverage.untouched` lists the unseen
+  areas (math and science first) with up to 3 `starters` near the target age.
+- **`reviewHealth`**: `due`, `overdue` (> 1 day late), `oldestOverdueDays`, `gateItems7d`, `spotChecks7d`,
+  `unverifiedInferred`: is spaced review keeping up?
 - **`summary`**, **`stats`** and the raw **`progress`** record.
 
 ## 3. Check the quest cap
@@ -53,6 +57,9 @@ At most **3 quests** can be active (started and unfinished) at a time. The routi
   message. `publish-lessons.mjs` also refuses to publish a new quest at the cap unless you pass `--force`.
 
 ## 4. Write the pack (rules in LESSONS.md)
+- **Visit a new area.** One stretch stage from `coverage.untouched` (a `starters` topic), rotating subjects with math
+  and science first. The publisher prints "new areas: N" and warns at 0 while untouched areas are left (a warning,
+  not an error).
 - **Teach → guided practice → graded → boss, always.** Every new or shaky skill starts with a `learn` card (idea + one
   worked example), then 1-2 `guided` questions with `steps`, then graded ones. The boss only tests skills taught or
   practised earlier in the quest (`teaches`) or already mastered, and gets a `powerup` recap. The publisher fails a
@@ -60,13 +67,14 @@ At most **3 quests** can be active (started and unfinished) at a time. The routi
 - **Gentle on stuck topics.** `weakSpots.needsSupport` (the kid tapped "I'm stuck" or skipped) → a gentle deep dive that
   starts a full level down (e.g. sixteenths via eighths, halving or money), no boss on that skill tomorrow, and
   `example`/`steps` on its questions. `weakSpots.requeued` lists skipped items the app brings back by itself, guided.
-- **Go deeper on struggles.** For every `goDeeper` topic, add a deep dive: a `learn` card and guided items first, then 4-5 graded
+- **Go deeper on struggles.** For every `goDeeper` topic, add a deep dive: a `learn` card and guided items first, then 3-4 graded
   questions that start one notch easier and climb back up, in at least 3 formats.
 - **Stretch strengths.** Add a new topic next to the strongest domains (`stretchTo`).
 - **Never below level.** Nothing starting more than 2 years below the target age, and no baby wording.
-- **About 15-20% spaced review.** Mark stages `"review": true`. Prefer `reviewDue` topics.
-- **Size.** About 28 graded questions over about 8-9 stops, ending with a boss stage. The publisher warns above 30
-  graded questions or 9 stops.
+- **No review stages.** Spaced review runs through the app's review gates, so spend every stage on new learning.
+  A `"review": true` stage still publishes, with a warning. Check `reviewHealth` in the export (below).
+- **Size (enforced).** About 8 minutes: at most 16 graded questions over 4-6 stages (7 at most), ending with a boss
+  stage. The app adds up to 4 review-gate items, so about 20 answers in all. The publisher fails a bigger quest.
 - **Kid voice.** Talk to the kid as "you", 15 words or fewer, fun, and write `{name}` instead of a real name.
 - **Creative answers.** Open questions use `creative` (any sensible answer is celebrated) or broad `acceptedAnswers`.
 - **Terms.** Define new words in the pack's `terms`, and reuse words the kid looked up.
@@ -80,7 +88,9 @@ node publish-lessons.mjs packs/2026-10-18.json             # → KV lessons:2026
 node publish-lessons.mjs boost.json                        # at the cap → KV boost:<quest date>
 # Node server / Docker: add --local (or set STORAGE=file) to every command; it reads and writes DATA_DIR instead of KV.
 ```
-Nothing is written if the pack is invalid (the script exits 1 and lists every problem).
+Nothing is written if the pack is invalid (the script exits 1 and lists every problem). **Never change a finished
+quest:** the publisher refuses to overwrite or boost one (exit 4, even with `--force`). New material goes in the next
+quest.
 
 ## 6. In the morning
 When the kid opens the app and today's quest hasn't been started (and fewer than 3 are active), Jane plays the animated
@@ -96,9 +106,12 @@ message and the trimmed or hinted stages apply right away. Preview either one in
   come due after roughly **10-40 days**, spread out so they don't all arrive at once.
 - **In normal play** the engine slips one due review into the session every so often: after the first few items, about
   every 9 items or by chance. It prefers topics the kid showed directly.
-- **In a quest** the quest's own `review` stages take the place of the engine's reviews. A first-try correct answer on a
-  due review stage moves the topic up a box, and a miss brings it back tomorrow. The nightly author picks these from
-  `reviewDue`, which is how the ~15-20% review share is kept.
+- **In a quest** reviews come through **review gates**: before stage 2, the middle stage and the boss, the learner
+  answers 1-2 items the app draws from the due queue at runtime (most overdue first). They count in Leitner exactly
+  like other reviews, so reviews keep flowing while quests run. About 1 gate item in 3 is a **spot-check** of an
+  inferred skill (right: it counts as shown directly; miss: back to learning). See LESSONS.md "Review gates".
+- **The nightly author doesn't write review stages.** If `reviewHealth.overdue` or `oldestOverdueDays` keeps growing,
+  the learner isn't reaching the gates (no quest played): mention it in the commit message rather than adding review stages.
 
 ## When the routine messages the parent
 Usually never. It stays quiet on a normal night. It only reaches out when something **fails** (the export or publish

@@ -21,15 +21,57 @@ export function graph(TAX){const byId={},pre={},post={};for(const t of TAX.topic
   return{topics:TAX.topics,byId,pre,post,boss};}
 export const blank=()=>({v:2,name:NAME,points:0,stars:0,streak:0,bestStreak:0,solved:0,badges:[],medals:[],firstDone:false,ts:{},current:null,
   focus:null,placement:{done:false,asked:0,per:{},queue:[]},sinceReview:0,sinceChoice:0,recent:[],packSeen:{},itemsServed:0});
-export function migrate(old,g){if(old&&old.v===2){if(!old.medals)backfillMedals(old,g);return old;}const S=blank();if(!old)return S;
+export function migrate(old,g){if(old&&old.v===2){if(!old.medals)backfillMedals(old,g);upgrade(old);return old;}const S=blank();if(!old)return S;
   for(const k of['points','stars','streak','bestStreak','solved','badges'])if(old[k]!=null)S[k]=old[k];
   S.firstDone=!!old.firstDone&&old.solved>0;
   for(const [id,t] of Object.entries(old.topics||{}))if(g.byId[id])S.ts[id]=t.mastered?{st:'mastered',how:'direct',conf:.9,box:0,due:Date.now()+DAY,c:t.correct,w:t.incorrect}:{st:'learning',how:'direct',c:t.correct,w:t.incorrect,lvl:old.level||3};
   backfillMedals(S,g);return S;}
+// additive schema upgrades for v2 records (idempotent): finished quests from before completion snapshots are marked legacy
+function upgrade(S){for(const q of Object.values(S.quests||{}))if(q?.done&&!q.snap&&!q.legacy)q.legacy=true;dedupeMedals(S);return S;}
+// one trophy per achievement: one medal per topic, one quest medal per quest date (the earliest is kept)
+const TIER_RANK={bronze:0,silver:1,gold:2,legendary:3};
+function dedupeBy(a,key){const m=new Map();for(const x of a||[]){const k=key(x),o=m.get(k);if(!o){m.set(k,{...x});continue;}
+  const keep=(x.at||0)<(o.at||0)?{...x}:o;if((TIER_RANK[x.tier]??-1)>(TIER_RANK[keep.tier]??-1)||(TIER_RANK[o.tier]??-1)>(TIER_RANK[keep.tier]??-1))keep.tier=(TIER_RANK[x.tier]??-1)>(TIER_RANK[o.tier]??-1)?x.tier:o.tier;m.set(k,keep);}
+  return[...m.values()].sort((a,b)=>(a.at||0)-(b.at||0));}
+function dedupeMedals(S){if(S.medals){const d=dedupeBy(S.medals,m=>m.id);if(d.length!==S.medals.length)S.medals=d;}if(S.questMedals){const d=dedupeBy(S.questMedals,m=>m.date);if(d.length!==S.questMedals.length)S.questMedals=d;}}
+// the trophy list (kid Trophies tab and parent report): deduped, newest first, with counts per tier
+export function trophies(S,g){const M=[...dedupeBy(S.medals,m=>m.id).map(m=>medalInfo(m,g)).filter(Boolean),
+  ...dedupeBy(S.questMedals,q=>q.date).map(q=>({id:'quest:'+q.date,tier:'quest',at:q.at,name:q.name,ic:q.emoji,subject:'Quest',domain:q.title,why:`finishing the quest "${q.title}"`}))].sort((a,b)=>b.at-a.at);
+  const counts={};M.forEach(m=>counts[m.tier]=(counts[m.tier]||0)+1);return{medals:M,counts};}
 // medals: one per directly-mastered topic (not inferred, not self-rated); boss wins are legendary
 export function tierOf(g,id,boss){return boss?'legendary':g.byId[id]?.tier||'bronze';}
 function backfillMedals(S,g){S.medals=[];for(const [id,r] of Object.entries(S.ts))if(r.st==='mastered'&&r.how==='direct'&&g.byId[id])S.medals.push({id,tier:tierOf(g,id,false),at:r.at||Date.now()});S.medals.sort((a,b)=>a.at-b.at);}
+// honest medals (LESSONS.md "Mastery and medals"): mastery needs ≥ 2 first-try correct graded answers, a medal ≥ 3.
+// A self-check never counts. A repeated identical question counts at most once per Pacific day. Guided practice doesn't count.
+export const MASTERY_MIN=2,MEDAL_MIN=3,BOSS_LEGEND=3;
+const ptDay=ms=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
+function countFt(rec,q,now){const k=ptDay(now)+'|'+String(q||'').slice(0,120);rec.ftQ??=[];if(rec.ftQ.includes(k))return false;rec.ftQ=[...rec.ftQ.slice(-7),k];rec.ft=(rec.ft||0)+1;return true;}
+function maybeMedal(S,g,id,boss,now){const r=S.ts[id];if(!r||r.st!=='mastered'||r.how!=='direct'||(r.ft||0)<MEDAL_MIN)return null;return award(S,g,id,boss,now);}
 function award(S,g,id,boss,now){S.medals??=[];if(S.medals.some(m=>m.id===id))return null;const m={id,tier:tierOf(g,id,boss),at:now,boss:boss||undefined};S.medals.push(m);return m;}
+// ---------- one-time re-score of old medals and mastery under the honest rules (slice 9, migrate-medals.mjs) ----------
+// Pure: returns a new record. logs = every answer-log entry (all days). Idempotent: S.rules >= 2 means already done.
+const OPENERS=/^(?:Hey \{name\}! |Hey [^!]{1,20}! |Quick one! |Ooh, try this! |Your turn! )/;
+export function rescore(S0,g,logs,now=Date.now()){const S=JSON.parse(JSON.stringify(S0));
+  const count=o=>({direct:Object.values(o.ts).filter(r=>r.st==='mastered'&&r.how==='direct').length,self:Object.values(o.ts).filter(r=>r.st==='mastered'&&r.how==='self').length,
+    inferred:Object.values(o.ts).filter(r=>r.st==='mastered'&&r.how==='inferred').length,medals:(o.medals||[]).length,
+    tiers:(o.medals||[]).reduce((a,m)=>(a[m.tier]=(a[m.tier]||0)+1,a),{}),legendary:(o.medals||[]).filter(m=>m.tier==='legendary').length,questMedals:(o.questMedals||[]).length});
+  const before=count(S);if((S.rules||0)>=2)return{S2:S,before,after:before,changes:[],already:true};
+  const ev={};for(const l of logs||[]){if(l.event||!l.topicId||l.expected==='(self-check)'||l.regraded==='neutral')continue;const e=ev[l.topicId]??={any:0,ft:new Set(),placed:false,boss:{}};e.any++;
+    if(l.try!==1||!l.correct||l.format==='guided'||l.stage==='bonus')continue;const day=ptDay(Date.parse(l.ts)||now);
+    e.ft.add(day+'|'+String(l.question||'').replace(OPENERS,'').slice(0,120));if(l.mode==='diagnostic')e.placed=true;if(l.format==='boss')e.boss[day]=(e.boss[day]||0)+1;}
+  const changes=[],lost=new Set(),fallback=[];
+  for(const [id,r] of Object.entries(S.ts)){if(r.st!=='mastered'||r.how==='inferred'||!g.byId[id])continue;const e=ev[id],fb=!e;if(fb)fallback.push(id);
+    const ft=fb?(r.c||0):e.ft.size;r.ft=Math.max(r.ft||0,ft);
+    const ok=fb?(r.how!=='self'&&ft>=MASTERY_MIN):(ft>=MASTERY_MIN||(r.how!=='self'&&e.placed));
+    if(ok){if(r.how==='self'){r.how='direct';changes.push({id,change:'self→direct'});}if(e?.placed)r.placed??=r.at||now;continue;}
+    lost.add(id);changes.push({id,change:'lost mastery',was:r.how,ft});Object.assign(r,{st:'mastered',how:'inferred',conf:.5,reverify:true,box:0,due:now});}
+  const medals=[];for(const m of S.medals||[]){const r=S.ts[m.id],e=ev[m.id];
+    if(lost.has(m.id)||!r||r.st!=='mastered'||r.how!=='direct'||(r.ft||0)<MEDAL_MIN){changes.push({id:m.id,change:'medal removed',tier:m.tier});continue;}
+    if(m.tier==='legendary'&&!Object.values(e?.boss||{}).some(n=>n>=BOSS_LEGEND)){const t=tierOf(g,m.id,false);changes.push({id:m.id,change:'legendary→'+t});medals.push({...m,tier:t,boss:undefined});continue;}
+    medals.push(m);}
+  S.medals=medals;const n0=S.medals.length+(S.questMedals||[]).length;dedupeMedals(S);const dup=n0-S.medals.length-(S.questMedals||[]).length;if(dup)changes.push({change:'duplicates removed',count:dup});
+  S.rules=2;S.rescoredAt=now;const after=count(S);
+  return{S2:S,before,after,changes,requeued:lost.size,fallback,duplicates:dup};}
 // ---------- topic states ----------
 export function stateOf(S,g,id,now){const r=S.ts[id];if(r?.st==='mastered')return r.due<=now?'review':'mastered';if(r?.st==='learning')return 'learning';
   return g.pre[id].every(e=>!e.h||S.ts[e.id]?.st==='mastered')?'ready':'locked';}
@@ -82,12 +124,12 @@ function creativeOk(it,a){const n=norm(a);if(!n||n.replace(/[^a-z]/g,'').length<
   const words=n.split(' ');if(words.length>(it.maxWords||5))return false;
   return words.every(w=>/[aeiouy]/.test(w)&&!/(.)\1\1/.test(w)&&w.length<=20&&!/[bcdfghjklmnpqrstvwxz]{5}/.test(w));}
 const norm=s=>String(s).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9.\/\s-]/g,'').replace(/\b(the|a|an)\b/g,'').replace(/\s+/g,' ').trim();
-function packQ(S,pack,id){if(!pack)return null;const t=pack.topics.find(x=>x.topicId===id);if(!t)return null;
+function packQ(S,pack,id){if(!pack||questLocked(S,pack))return null;const t=pack.topics.find(x=>x.topicId===id);if(!t)return null;
   for(let i=0;i<t.questions.length;i++){const k=`${pack.date}:${id}:${i}`;if(!S.packSeen[k]&&!t.questions[i]._skip)return{t,q:t.questions[i],i,key:k};}return null;}
 const OPEN=['Hey {name}! ','Quick one! ','Ooh, try this! ','Your turn! ',''];
 function opener(q){const o=pick(OPEN);return o&&q.split(' ').length+o.split(' ').length-1<=15?o+q:q;}
 function kidMcq(g,id){const t=g.byId[id];if(!t.kq)return null;const ch=[t.ka,...t.kw].sort(()=>Math.random()-.5);
-  return{kind:'quiz',type:'mc',q:opener(t.kq),choices:ch,answer:t.ka,hint:`Think it through. Which one makes the most sense?`,explain:`It's "${t.ka}".`};}
+  return{kind:'quiz',type:'mc',q:opener(t.kq),base:t.kq,choices:ch,answer:t.ka,hint:`Think it through. Which one makes the most sense?`,explain:`It's "${t.ka}".`};}
 function selfCheck(g,id){const t=g.byId[id];
   return{kind:'self',type:'self',q:t.self||`Hey {name}! Could you explain ${t.sn||t.name}?`,choices:['👍 Got it!','🤔 Sort of','🌱 Not yet']};}
 // interactive pack formats -> internal item. Answers stay server-side; the client only gets what it must render.
@@ -100,7 +142,7 @@ function packItem(pq,q){const graded=pq.t.questions.filter(x=>!CARD.includes(x.t
    case 'mc':return{...it,type:'mc',choices:q.choices,answer:q.answer};
    case 'picture':return{...it,type:'picture',choices:q.choices.map(c=>c.label),pics:q.choices.map(c=>c.pic),answer:q.answer};
    case 'blank':return q.choices?{...it,type:'mc',blank:true,choices:q.choices,answer:q.answer}:(q.creative?{...it,type:'input',blank:true,creative:true,answer:q.answer,accept:[...(q.accept||[]),...(q.acceptedAnswers||[])],notAnswers:q.notAnswers,block:q.block,celebrate:q.celebrate}:{...it,type:'input',blank:true,answer:q.answer,accept:[...(q.accept||[]),...(q.acceptedAnswers||[])],fuzzy:q.fuzzy!==false});
-   case 'numeric':return{...it,type:'input',numeric:true,answer:q.answer,tol:q.tolerance};
+   case 'numeric':return{...it,type:'input',numeric:true,answer:q.answer,tol:q.tolerance,form:q.form};
    case 'text':return{...it,type:'input',answer:q.answer,accept:[...(q.accept||[]),...(q.acceptedAnswers||[])],fuzzy:q.fuzzy!==false};
    case 'creative':return{...it,type:'input',creative:true,answer:q.answer,accept:[...(q.accept||[]),...(q.acceptedAnswers||[])],notAnswers:q.notAnswers,block:q.block,minLength:q.minLength,maxWords:q.maxWords,celebrate:q.celebrate,placeholder:q.placeholder||'Your idea!'};
    case 'order':return{...it,type:'order',items:shufNot(q.items),answer:q.items.join('|'),explain:q.explanation||q.items.join(' → ')};
@@ -141,20 +183,29 @@ export function buildItem(S,g,id,mode,pack,now){const t=g.byId[id],r=S.ts[id];le
       else{const p=genFair(k,lvl,sp,boss,now);
         it={kind:'math',type:'input',q:p.q,answer:p.a,cmp:p.cmp,needSimplest:p.needSimplest,hint:p.hint,explain:p.explain,vis:p.vis,bonus:p.bonus,lvl};
         if(guided){const so=solve(p.q);it.guided=true;it.steps=so?so.start:[p.hint];it.format='guided';it.bonus=null;}}}}
-  else it=kidMcq(g,id)||selfCheck(g,id);
+  else{it=kidMcq(g,id)||selfCheck(g,id);bossOk=false;} // a one-question MCQ or a self-check is never a boss
   if(!it.format)it.format=mode==='review'?'review':mode==='diagnostic'?'explore':g.boss.has(id)&&bossOk?'boss':(it.kind==='math'&&Math.random()<.25)?'timed':(it.type==='mc'?'minigame':'quest');
   if(it.type!=='card'){if(mode==='review')it.format='review';if(mode==='diagnostic')it.format='explore';}
   if(it.format==='timed'&&!it.timed)it.timed=it.kind==='math'?60:45;if(it.type==='card'){it.timed=null;it.format='card';}
   if(it.format==='boss'&&it.type!=='card')it.boss=it.kind==='quiz'?{max:1,hp:1}:{max:3,hp:3-Math.min(2,r?.streak||0)};
   return{...it,id:now+'-'+R(0,999),topicId:id,mode,tries:0,stage:'main',issued:now};}
 // ---------- next item ----------
-function score(S,g,id,packIds){const t=g.byId[id];let s=-Math.abs(t.ageRangeStart-TARGET_AGE)*4;if(packIds.has(id))s+=40;if(S.ts[id]?.st==='learning')s+=15;if(kindFor(t))s+=4;
+// Coverage (LESSONS.md "Coverage"): an area (Marble domain) is seen with a direct record that has a correct answer
+// (the engine has no logs; src/coverage.js adds logged graded answers). Ready topics in unseen areas get +10 (below +40 for the pack).
+export const AREA_BONUS=10;
+export function seenAreas(S,g,logs=[]){const seen=new Map();const k=t=>t.subject+'|'+t.domain;
+  for(const l of logs)if(l&&!l.event&&l.topicId&&l.expected!=='(self-check)'&&l.regraded!=='neutral'){const t=g.byId[l.topicId];if(t){const x=seen.get(k(t))||{answered:0};x.answered++;seen.set(k(t),x);}}
+  for(const [id,r] of Object.entries(S.ts||{})){const t=g.byId[id];if(t&&r.how==='direct'&&(r.c||0)>=1&&!seen.has(k(t)))seen.set(k(t),{answered:0});}
+  return seen;}
+export function focusScore(S,g,id,packIds=new Set(),seenA=null){const t=g.byId[id];let s=-Math.abs(t.ageRangeStart-TARGET_AGE)*4;if(packIds.has(id))s+=40;
+  if(seenA&&!seenA.has(t.subject+'|'+t.domain)&&S.ts[id]?.st!=='learning')s+=AREA_BONUS;if(S.ts[id]?.st==='learning')s+=15;if(kindFor(t))s+=4;
   if(t.ageRangeStart<8)s-=30;const recentSubs=S.recent.slice(-3).map(x=>g.byId[x]?.subject);if(recentSubs.filter(x=>x===t.subject).length>=2)s-=12;return s+Math.random()*6;}
-function pickFocus(S,g,pack,now,opt={}){const packIds=new Set((pack?.topics||[]).map(t=>t.topicId).filter(id=>g.byId[id]&&packQ(S,pack,id)));
+export function pickFocus(S,g,pack,now,opt={}){const packIds=new Set((pack?.topics||[]).map(t=>t.topicId).filter(id=>g.byId[id]&&packQ(S,pack,id)));
   let c=g.topics.filter(t=>{const s=stateOf(S,g,t.id,now);return s==='ready'||s==='learning';});
   if(opt.subject)c=c.filter(t=>t.subject===opt.subject);if(opt.notSubject)c=c.filter(t=>t.subject!==opt.subject&&t.subject!==opt.notSubject);if(opt.domain)c=c.filter(t=>t.domain===opt.domain);
   if(opt.minAge)c=c.filter(t=>t.ageRangeStart>=opt.minAge);if(opt.maxAge)c=c.filter(t=>t.ageRangeStart<=opt.maxAge);
-  if(!c.length)return null;c.sort((a,b)=>score(S,g,b.id,packIds)-score(S,g,a.id,packIds));return c[0].id;}
+  if(opt.unseen){const sa=seenAreas(S,g);c=c.filter(t=>!sa.has(t.subject+'|'+t.domain));}
+  if(!c.length)return null;const seenA=seenAreas(S,g),sc=new Map(c.map(t=>[t.id,focusScore(S,g,t.id,packIds,seenA)]));c.sort((a,b)=>sc.get(b.id)-sc.get(a.id));return c[0].id;}
 export function next(S,g,pack,now){
   if(!S.firstDone){S.firstDone=true;const it={kind:'math',type:'input',q:'Your pizza has 8 slices. You eat 3, your friend eats 2. What fraction is left?',answer:'3/8',
     hint:'Count the slices that are still on the plate: 8 − 3 − 2. Put that number over 8, the total slices.',explain:'8 − 3 − 2 = 3 slices left out of 8, so 3/8 of the pizza is left!',
@@ -167,6 +218,8 @@ export function next(S,g,pack,now){
   const due=g.topics.filter(t=>stateOf(S,g,t.id,now)==='review').sort((a,b)=>S.ts[a.id].due-S.ts[b.id].due);
   let id,mode;
   const qa=questActive(S,pack);
+  // review gates: before some later quest stages, 1-2 due reviews open the way (LESSONS.md "Review gates")
+  if(qa&&!id){const gi=gateItem(S,g,pack,due,now);if(gi){S.sinceReview=0;S.itemsServed++;S.recent=[...S.recent.slice(-9),gi.topicId];return S.current=gi;}}
   if(!qa&&due.length&&S.itemsServed>=3&&(S.sinceReview>=9||Math.random()<.08)){const direct=due.filter(t=>S.ts[t.id].how!=='inferred');id=(direct[0]||due[0]).id;mode='review';}
   const packNext=()=>{if(!pack)return null;
     if(pack.quest){const st=pack.topics.find(t=>g.byId[t.topicId]&&packQ(S,pack,t.topicId));return st?st.topicId:null;} // quests run stage by stage
@@ -180,8 +233,60 @@ export function next(S,g,pack,now){
   if(!id){id=g.topics[0].id;mode='learn';}
   S.sinceReview=mode==='review'?0:S.sinceReview+1;S.itemsServed++;S.recent=[...S.recent.slice(-9),id];
   S.current=buildItem(S,g,id,mode,pack,now);return S.current;}
+// ---------- review gates ----------
+// Gates sit before stage 2, the middle stage and the boss (max 3 per quest). Items come from the due Leitner queue at
+// runtime (most overdue first, directly shown before inferred), are graded as normal reviews, and a gate opens once
+// its items are answered (right, learning moment or skipped). Gates never count toward quest progress.
+// Spot-checks: about 1 gate item in 3 (and every gate item when nothing is due) checks a skill that was only inferred
+// and never verified, picked by most dependents, then lowest confidence. Right -> shown directly; miss -> learning,
+// and the guesses built on it are withdrawn (failUp). A spot-check never awards a medal.
+export const GATE_MAX=3,GATE_ITEMS=2;
+export function gateStages(n){return[...new Set([1,Math.floor(n/2),n-1])].filter(k=>k>0&&k<n).sort((a,b)=>a-b).slice(0,GATE_MAX);}
+const gateRec=(S,pack)=>{const q=(S.quests??={})[pack.date]??={};return q.gates??={};};
+export const unverified=(S,id)=>{const r=S.ts[id];return !!r&&r.st==='mastered'&&r.how==='inferred'&&!r.verified;};
+export function spotPick(S,g,used=new Set()){return g.topics.filter(t=>unverified(S,t.id)&&!used.has(t.id))
+  .sort((a,b)=>(g.post[b.id]?.length||0)-(g.post[a.id]?.length||0)||(S.ts[a.id].conf??1)-(S.ts[b.id].conf??1)||a.id.localeCompare(b.id))[0]?.id||null;}
+function gatePick(S,g,pack,due,now,used){const inf=id=>S.ts[id].how==='inferred'?1:0;
+  const c=due.filter(t=>!used.has(t.id)).sort((a,b)=>inf(a.id)-inf(b.id)||S.ts[a.id].due-S.ts[b.id].due);if(c.length)return c[0].id;
+  // soon-due fallback: a directly mastered topic in box 0-1 due within 2 days
+  const soon=g.topics.filter(t=>{const r=S.ts[t.id];return r?.st==='mastered'&&r.how!=='inferred'&&(r.box||0)<=1&&r.due<=now+2*DAY&&!used.has(t.id);}).sort((a,b)=>S.ts[a.id].due-S.ts[b.id].due);
+  return soon[0]?.id||null;}
+function gateItem(S,g,pack,due,now){if(!pack?.quest)return null;const k=pack.topics.findIndex(t=>g.byId[t.topicId]&&packQ(S,pack,t.topicId));if(k<1)return null;
+  const st=pack.topics[k];if(!gateStages(pack.topics.length).includes(k))return null;if(st.questions.some((q,j)=>S.packSeen[`${pack.date}:${st.topicId}:${j}`]))return null;
+  const G=gateRec(S,pack),gk=G[k]??={before:k,items:[],right:0,n:0,open:false};if(gk.open)return null;
+  const used=new Set(Object.values(G).flatMap(x=>x.items||[]));
+  const nSpot=g.topics.filter(t=>unverified(S,t.id)&&!used.has(t.id)).length;
+  if(gk.of==null){const avail=due.filter(t=>!used.has(t.id)).length;gk.of=avail>2||(avail>0&&nSpot)?GATE_ITEMS:avail>0?1:nSpot?Math.min(GATE_ITEMS,nSpot):(gatePick(S,g,pack,[],now,used)?1:0);}
+  if(gk.n>=gk.of){gk.open=true;return null;}
+  const served=Object.values(G).reduce((a,x)=>a+(x.items?.length||0),0),dueLeft=due.some(t=>!used.has(t.id));
+  let id=nSpot&&(!dueLeft||served%3===2)?spotPick(S,g,used):null;if(!id)id=gatePick(S,g,pack,due,now,used);if(!id){gk.open=true;gk.of=gk.n;return null;}
+  const it=buildItem(S,g,id,'review',null,now);gk.items.push(id);
+  return{...it,format:'gate',timed:null,boss:null,bonus:null,spot:unverified(S,id)||undefined,gate:{k,n:gk.n+1,of:gk.of,date:pack.date}};}
+function spotDone(S,g,it,x,now){const rec=S.ts[it.topicId],t=g.byId[it.topicId];if(!rec)return;
+  if(x.r.correct){const box=rec.box0??rec.box;rec.st='mastered';rec.how='direct';rec.verified=now;rec.box=box||0;rec.due=now+BOXES[rec.box]*DAY;delete rec.box0;
+    x.ev.push({event:'verified',topicId:it.topicId,topic:t.name,subject:t.subject});}
+  else{rec.st='learning';rec.how='direct';rec.box=0;delete rec.box0;const n=failUp(S,g,it.topicId);x.ev.push({event:'spotMiss',topicId:it.topicId,topic:t.name,subject:t.subject,withdrawn:n});}
+  x.r.spot={verified:!!x.r.correct};}
+function gateDone(S,it,r){const q=S.quests?.[it.gate.date];const gk=q?.gates?.[it.gate.k];if(!gk)return;gk.n++;if(r.correct&&!it.tries)gk.right++;if(gk.n>=gk.of)gk.open=true;r.gate={k:it.gate.k,n:gk.n,of:gk.of,open:gk.open};
+  if(gk.open)r.jane=(r.jane?r.jane+' ':'')+'🗝️ Gate open! On to the next stop!';}
 // ---------- grading ----------
-function grade(it,ans,isBonus){const a=String(ans??'').trim();if(isBonus){const g=parseNum(a),e=parseNum(it.bonus.a);return Math.abs(g-e)<1e-6;}
+// Answer form: when a question asks for a percent, a decimal, a fraction or a whole number, only that form counts.
+// The right value in another form is a gentle nudge ('wrongForm'), never a miss.
+export const FORMS=['percent','decimal','fraction','whole'];
+export function formOf(it,isBonus){const q=String((isBonus?it.bonus?.q:it.q)||'');if(!isBonus&&FORMS.includes(it.form))return it.form;
+  if(/\bas an? percent|\bpercent\?|\bin percent/i.test(q))return 'percent';if(/\bas an? decimal/i.test(q))return 'decimal';if(/\bas an? fraction|\bwhat fraction\b/i.test(q))return 'fraction';
+  if(isBonus)return null;return /^-?\d+$/.test(String(it.answer??'').trim())?'whole':null;}
+const pctWord=a=>String(a).replace(/\s*percent\s*$/i,'%');
+export function formOk(a,form){a=pctWord(String(a).trim());if(form==='percent')return /%\s*$/.test(a);if(form==='decimal')return !/[\/%]/.test(a);
+  if(form==='fraction')return /\//.test(a);if(form==='whole')return !/[\/%]/.test(a)&&!/\.\d*[1-9]/.test(a);return true;}
+// value right? then form right? (percent asked: "27" for 27% is also the right value, just missing its % sign)
+function formCheck(a,x,e,tol,form){if(!form)return null;if(!isNaN(x)&&Math.abs(x-e)<=tol)return formOk(a,form)?null:'wrongForm';
+  if(form==='percent'&&!/%/.test(a)&&!isNaN(x)&&Math.abs(x/100-e)<=tol)return 'wrongForm';return null;}
+const FORM_EX={percent:'like 50%',decimal:'like 0.5',fraction:'like 3/4',whole:'like 7'};
+const FORM_NAME={percent:'a percent',decimal:'a decimal',fraction:'a fraction',whole:'a whole number'};
+function nudgeText(it,isBonus){const f=formOf(it,isBonus),n=it.nudges||0,exp=isBonus?it.bonus.a:it.answer;
+  return n>=3?`Right value! Write it as ${FORM_NAME[f]}, like this: ${exp} ✍️`:`Right value! Now write it as ${FORM_NAME[f]} (${FORM_EX[f]}). ✍️`;}
+function grade(it,ans,isBonus){const a=String(ans??'').trim();if(isBonus){const g=parseNum(pctWord(a)),e=parseNum(it.bonus.a);if(Math.abs(g-e)<1e-6)return formCheck(a,g,e,1e-6,formOf(it,true))||true;return formCheck(a,g,e,1e-6,formOf(it,true))||false;}
   if(it.type==='self')return a;
   if(it.type==='order')return a.split('|').map(norm).join('|')===it.answer.split('|').map(norm).join('|');
   if(it.type==='match'){const m=Object.fromEntries(a.split('|').map(x=>x.split('=')).map(([l,r])=>[norm(l),norm(r||'')]));return it.pairs.every(([l,r])=>m[norm(l)]===norm(r));}
@@ -190,25 +295,34 @@ function grade(it,ans,isBonus){const a=String(ans??'').trim();if(isBonus){const 
   if(it.type==='fracbar'){const x=parseNum(a),e=parseNum(it.answer);return !isNaN(x)&&Math.abs(x-e)<1e-6;}
   if(it.type==='picture')return norm(a)===norm(it.answer);
   if(it.type==='mc')return norm(a)===norm(it.answer)||(/^[a-d]$/i.test(a)&&it.choices[a.toLowerCase().charCodeAt(0)-97]===it.answer);
-  if(it.kind==='math'){if(it.cmp)return a.replace(/\s/g,'')===it.answer;const x=parseNum(a),e=parseNum(it.answer);if(isNaN(x)||Math.abs(x-e)>1e-6)return false;
+  if(it.kind==='math'){if(it.cmp)return a.replace(/\s/g,'')===it.answer;const x=parseNum(pctWord(a)),e=parseNum(it.answer);const fc=formCheck(a,x,e,1e-6,formOf(it));if(fc)return fc;if(isNaN(x)||Math.abs(x-e)>1e-6)return false;
     if(it.needSimplest){const m=a.match(/^(\d+)\s*\/\s*(\d+)$/);if(m&&gcd(+m[1],+m[2])>1)return 'notSimplest';}return true;}
   if(it.creative){if(fuzzyEq(it.answer,a))return true;if((it.notAnswers||[]).some(b=>fuzzyEq(b,a)))return false;return (it.accept||[]).some(x=>fuzzyEq(x,a))||creativeOk(it,a)?'creative':false;}
-  if(it.numeric){const m0=a.replace(/[$,]/g,'').match(/^\s*(-?\d+(?:\.\d+)?(?:\s*\/\s*\d+)?|-?\.\d+)\s*[a-z%][a-z %.]*$/i);const x=parseNum(m0?m0[1]:a.replace(/[$,]/g,'').replace(/\s*(cups?|grams?|g|weeks?|hours?|hrs?|dollars?|cookies?|years?)\.?$/i,'')),e=parseNum(it.answer);return !isNaN(x)&&Math.abs(x-e)<=(it.tol??1e-6);}
+  if(it.numeric){const a2=pctWord(a).replace(/[$,]/g,''),pc=/%\s*$/.test(a2);const m0=a2.match(/^\s*(-?\d+(?:\.\d+)?(?:\s*\/\s*\d+)?|-?\.\d+)\s*[a-z%][a-z %.]*$/i);
+    let x=parseNum(m0?m0[1]:a2.replace(/\s*(cups?|grams?|g|weeks?|hours?|hrs?|dollars?|cookies?|years?)\.?$/i,''));if(pc&&m0)x/=100;const e=parseNum(it.answer),tol=it.tol??1e-6;
+    const ex=/%\s*$/.test(String(it.answer))||formOf(it)==='percent';if(ex&&!pc&&!isNaN(x)&&Math.abs(x/100-e)<=tol)return 'wrongForm';
+    const fc=formCheck(m0?m0[1]+(pc?'%':''):a2,x,e,tol,formOf(it));if(fc)return fc;return !isNaN(x)&&Math.abs(x-e)<=tol;}
   return [it.answer,...(it.accept||[])].some(x=>norm(x)===norm(a)||(it.fuzzy&&it.kind==='pack'&&fuzzyEq(x,a)));}
 const praise=['Amazing, {name}! 🎉','You nailed it! 🌟','Brilliant thinking! 🧠','Wow, superstar! ⭐','That\'s exactly right! 🙌','You\'re on fire! 🔥'];
 const comfort=['Ooh, so close! Let\'s think it through together.','Good try! Mistakes help our brains grow. 🌱','Not quite — but I love that you tried!'];
-export function submit(S,g,answer,now){const it=S.current;if(!it)return{error:'no item'};const ev=[],r={};const isBonus=it.stage==='bonus';const t=g.byId[it.topicId];
+export function submit(S,g,answer,now){const it=S.current,rec=it?.spot&&S.ts[it.topicId];if(rec&&rec.box0==null)rec.box0=rec.box||0;
+  const x=submit0(S,g,answer,now);if(it?.spot&&x.r?.done)spotDone(S,g,it,x,now);if(it?.gate&&x.r?.done)gateDone(S,it,x.r);return x;}
+function submit0(S,g,answer,now){const it=S.current;if(!it)return{error:'no item'};const ev=[],r={};const isBonus=it.stage==='bonus';const t=g.byId[it.topicId];
   // "idk", "skip", "help", "don't show this"... opens the stuck help instead of being graded wrong
   if((it.type==='input'||isBonus)&&isStuck(answer))return stuck(S,g,now,String(answer));
   if(it.type==='card'){if(it.packKey)S.packSeen[it.packKey]=1;S.points+=2;S.current=null;ev.push({event:'card',card:it.card,topicId:it.topicId,topic:t.name,title:it.q});
     return finish(S,{done:true,correct:true,card:true,jane:{why:'Now you know WHY it works! 🧠 +2',learn:'Nice! Now you try one. 🧠 +2',powerup:'Powered up! 🔋 Go get that boss! +2'}[it.card]||'Cool fact unlocked! 🤩 +2'},ev,true);}
   const rec=S.ts[it.topicId]??={st:'learning',how:'direct',c:0,w:0,lvl:it.lvl||3,streak:0};rec.c??=0;rec.w??=0;rec.streak??=0;
   const ok=grade(it,answer,isBonus);const logE={topicId:it.topicId,topic:t.name,subject:t.subject,mode:it.mode,format:it.format,qtype:it.ptype||it.kind,pack:it.packKey?it.packKey.split(':')[0]:undefined,mini:it.mini||undefined,level:it.lvl,stage:it.stage,question:isBonus?it.bonus.q:it.q,expected:isBonus?it.bonus.a:(it.type==='self'?'(self-check)':it.answer),given:String(answer),correct:it.type==='self'?answer==='yes':ok===true||ok==='creative',creative:ok==='creative'||undefined,try:it.tries+1,elapsedSec:Math.round((now-it.issued)/1000)};
+  if(ok==='wrongForm'){it.nudges=(it.nudges||0)+1;const jane=nudgeText(it,isBonus);ev.push({event:'formNudge',formNudge:true,topicId:it.topicId,topic:t.name,subject:t.subject,question:logE.question,expected:logE.expected,given:logE.given,form:formOf(it,isBonus),pack:logE.pack});
+    return finish(S,{correct:false,retry:true,formNudge:true,jane},ev);}
   ev.push(logE);
   if(isBonus){if(ok){S.points+=15;S.stars++;r.jane='BONUS! You\'re a decimal wizard! 🧙‍♂️ +15 points and a ⭐';r.correct=true;}else{r.jane=`Good try! ${it.bonus.a} is the decimal. Tip: divide the top number by the bottom number.`;r.reveal=it.bonus.a;r.correct=false;}
     r.done=true;S.current=null;return finish(S,r,ev);}
   if(it.type==='self'){S.current=null;r.done=true;rec.last=now;
-    if(answer==='yes'){S.points+=5;r.correct=true;setMastered(S,g,it.topicId,'self',.75,now,ev);inferDown(S,g,it.topicId,.75,now,ev);r.jane=`Awesome, I believe in you! ⭐ +5 points. "${t.sn||t.name}" goes on your map!`;}
+    if(answer==='yes'&&it.mode==='review'&&rec.st==='mastered'){S.points+=5;r.correct=true;r.jane=`Awesome! ⭐ +5 points.`;}
+    else if(answer==='yes'){S.points+=5;r.correct=true;rec.st='learning';rec.how='direct';rec.selfYes=now;if(it.mode!=='diagnostic'&&!S.mini)S.focus=it.topicId;
+      r.jane=`Awesome, I believe in you! ⭐ +5 points. Show me with a quick question!`;}
     else{rec.st='learning';rec.how='direct';r.correct=false;S.points+=2;r.jane=answer==='kinda'?`Thanks for being honest! We'll practise "${t.sn||t.name}" together. +2 points for honesty 💜`:`No worries — that's what I'm here for! 🌱 +2 points for honesty.`;
       if(answer==='no'){const p=probeDown(S,g,it.topicId);if(p&&it.mode!=='diagnostic')S.focus=p;}}
     if(it.mode==='diagnostic')placementResult(S,g,it.topicId,answer==='yes');
@@ -216,23 +330,26 @@ export function submit(S,g,answer,now){const it=S.current;if(!it)return{error:'n
     return finish(S,r,ev);}
   if(ok==='notSimplest'){it.tries++;return finish(S,{correct:false,retry:true,jane:'Yes, that\'s the right amount! Can you simplify it even more? 🤏'},ev);}
   if(it.packKey&&(ok||it.tries>=1))S.packSeen[it.packKey]=1;
-  if(ok){rec.c++;rec.last=now;const fast=it.timed&&(now-it.issued)/1000<=it.timed;const pts=(it.tries?5:10+(it.lvl||3)*2)+(fast?5:0)+(it.format==='boss'?5:0);
+  if(ok){rec.c++;rec.last=now;if(!it.tries&&!it.guided)countFt(rec,it.base||it.q,now);
+    if(it.format==='boss'){const d=ptDay(now);if(rec.bossDay!==d){rec.bossDay=d;rec.bossRun=0;}rec.bossRun=it.tries?0:(rec.bossRun||0)+1;}const fast=it.timed&&(now-it.issued)/1000<=it.timed;const pts=(it.tries?5:10+(it.lvl||3)*2)+(fast?5:0)+(it.format==='boss'?5:0);
     S.points+=pts;S.streak++;S.bestStreak=Math.max(S.bestStreak,S.streak);S.solved++;if(S.streak%3===0)S.stars++;r.correct=true;
     r.jane=`${pick(praise)} +${pts} points${fast?' (speed bonus ⚡)':''}${S.streak>=3?` — ${S.streak} in a row!`:''}`;
     if(ok==='creative'){const g0=String(answer).trim();r.creative=true;r.jane=(it.celebrate||'Nice! "{given}" works! "{answer}" is the classic one, but your idea is great too. 🎨').replace(/\{given\}/g,g0).replace(/\{answer\}/g,it.answer)+` +${pts} points`;}
     if(it.guided){guidedDone(S,it);r.guided=true;r.jane+=' Practice done! ✅';}
     else if(it.packReview&&rec.st==='mastered'){if(!it.tries&&rec.due<=now+DAY){rec.box=Math.min(4,(rec.box||0)+1);rec.due=now+BOXES[rec.box]*DAY;r.jane+=' Memory check passed! 🧠';}}
     else if(it.mode==='review'){if(it.practice){}else if(!it.tries){rec.box=Math.min(4,(rec.box||0)+1);rec.due=now+BOXES[rec.box]*DAY;r.jane+=` Memory check passed — see you in ${BOXES[rec.box]} days, "${t.sn||t.name}"! 🧠`;}else rec.due=now+DAY;}
-    else if(it.mode==='diagnostic'){if(!it.tries){setMastered(S,g,it.topicId,'direct',.9,now,ev);const n=inferDown(S,g,it.topicId,.9,now,ev);const md=award(S,g,it.topicId,false,now);if(md)r.medal=md;r.mastered=t.sn||t.name;r.inferred=n;
+    else if(it.mode==='diagnostic'){if(!it.tries){setMastered(S,g,it.topicId,'direct',.9,now,ev);rec.placed=now;const n=inferDown(S,g,it.topicId,.9,now,ev);r.mastered=t.sn||t.name;r.inferred=n;
         if(n)r.jane+=` That tells me you already know ${n} earlier skill${n>1?'s':''} — I lit them up on your map! 🗺️`;}
       else{rec.st='learning';rec.how='direct';}placementResult(S,g,it.topicId,!it.tries);}
     else if(!it.tries){rec.streak=(rec.streak||0)+1;if(it.kind==='math'&&(rec.lvl||3)<5){rec.lvl=(rec.lvl||3)+1;r.levelUp=rec.lvl;}
-      const need=it.kind==='quiz'?1:it.kind==='pack'?Math.min(it.format==='boss'||it.deep?3:2,it.packN):it.format==='boss'?3:it.kind==='math'?3:2;if(it.boss)r.boss={max:it.boss.max,hp:Math.max(0,it.boss.max-rec.streak)};
-      if(rec.streak>=need){setMastered(S,g,it.topicId,'direct',.9,now,ev);const n=inferDown(S,g,it.topicId,.9,now,ev);S.badges.push(t.sn||t.name);const md=award(S,g,it.topicId,it.format==='boss',now);if(md)r.medal=md;r.mastered=t.sn||t.name;r.inferred=n;S.focus=null;
+      const need=it.kind==='quiz'?MASTERY_MIN:it.kind==='pack'?Math.max(MASTERY_MIN,Math.min(it.format==='boss'||it.deep?3:2,it.packN)):it.format==='boss'?3:it.kind==='math'?3:2;if(it.boss)r.boss={max:it.boss.max,hp:Math.max(0,it.boss.max-rec.streak)};
+      if(!(rec.st==='mastered'&&rec.how==='direct')&&rec.streak>=need&&(rec.ft||0)>=MASTERY_MIN){setMastered(S,g,it.topicId,'direct',.9,now,ev);const n=inferDown(S,g,it.topicId,.9,now,ev);S.badges.push(t.sn||t.name);r.mastered=t.sn||t.name;r.inferred=n;S.focus=null;
         r.jane+=it.format==='boss'?` 💥 You defeated the ${t.domain} BOSS! "${t.sn||t.name}" mastered! 🏆`:` You MASTERED "${t.sn||t.name}"! 🏆`;}}
+    // legendary only for a real boss fight: ≥ 3 first-try right boss answers on this skill in one day
+    if(!it.tries){const md=maybeMedal(S,g,it.topicId,it.format==='boss'&&(rec.bossRun||0)>=BOSS_LEGEND,now);if(md)r.medal=md;}
     if(it.bonus){it.stage='bonus';it.tries=0;r.bonus=it.bonus.q;r.jane+=' Want a bonus challenge?';}else{r.done=true;S.current=null;}
     return finish(S,r,ev);}
-  it.tries++;S.streak=0;
+  it.tries++;S.streak=0;if(it.format==='boss')rec.bossRun=0;
   if(it.tries===1){r.retry=true;r.hint=it.hint;r.correct=false;r.jane=`${pick(comfort)} Here's a hint: ${it.hint}`;return finish(S,r,ev);}
   rec.streak=0;rec.last=now;r.correct=false;r.reveal=it.answer;
   if(it.kind==='pack'){/* learning moment: show the answer kindly, small points, no big penalty */rec.learn=(rec.learn||0)+1;S.points+=2;r.learningMoment=true;logE.learningMoment=true;
@@ -261,7 +378,8 @@ export function stuck(S,g,now,given){const it=S.current;if(!it)return{error:'no 
   const ev=[{event:'stuck',step:it.stuckStep,topicId:it.topicId,topic:t?.name,subject:t?.subject,mode:it.mode,format:it.format,level:it.lvl,question:it.stage==='bonus'?it.bonus?.q:it.q,given:given||undefined,pack:it.packKey?it.packKey.split(':')[0]:undefined}];
   return{r:{stuck:helpFor(it),jane:['','Hey, want a hint? 💡','Let\'s do one together! 👀','No worries! You can skip this one for now. ⏭️'][it.stuckStep]},ev};}
 // "Skip for now": no heart, no lost streak, no boss miss. The item comes back tomorrow, easier (guided), and the topic is flagged for support.
-export function skip(S,g,pack,now){const it=S.current;if(!it)return{error:'no item'};const t=g.byId[it.topicId],ev=[];
+export function skip(S,g,pack,now){const it=S.current,x=skip0(S,g,pack,now);if(it?.spot&&S.ts[it.topicId])delete S.ts[it.topicId].box0;if(it?.gate&&x.r?.done)gateDone(S,it,x.r);return x;}
+function skip0(S,g,pack,now){const it=S.current;if(!it)return{error:'no item'};const t=g.byId[it.topicId],ev=[];
   if(it.stage==='bonus'){S.current=null;return finish(S,{done:true,skipped:true,jane:'No problem! Here\'s a new one. 😊'},ev,true);}
   const sp=sup(S,it.topicId);sp.skipped++;sp.at=now;sp.teachDue=true;(sp.avoid??=[]).push({q:it.q,until:now+DAY});sp.avoid=sp.avoid.filter(x=>x.until>now).slice(-8);
   ev.push({event:'skipped',topicId:it.topicId,topic:t?.name,subject:t?.subject,mode:it.mode,format:it.format,level:it.lvl,question:it.q,expected:it.answer,stuckStep:it.stuckStep||0,pack:it.packKey?it.packKey.split(':')[0]:undefined});
@@ -278,23 +396,34 @@ function finish(S,r,ev,noChoice){if(r.done&&!noChoice&&!S.mini){S.sinceChoice++;
 export function choose(S,g,c,pack,now){const cur=S.focus&&g.byId[S.focus];let msg='Keep going — you\'re doing great!',id=null;
   if(c==='harder'){id=pickFocus(S,g,pack,now,{subject:cur?.subject,minAge:(cur?.ageRangeStart||10)+1});msg='Ooh, a challenge! Let\'s go! 🚀';}
   else if(c==='easier'){if(cur&&S.ts[S.focus]?.lvl>1)S.ts[S.focus].lvl--;else id=pickFocus(S,g,pack,now,{subject:cur?.subject,maxAge:(cur?.ageRangeStart||10)-1});msg='Great choice — practice makes perfect!';}
-  else if(c==='different'){id=pickFocus(S,g,pack,now,{notSubject:cur?.subject||'Mathematics'});msg=id?`Something new: ${g.byId[id].sn||g.byId[id].name}! 🎨`:msg;}
+  else if(c==='different'){const ns={notSubject:cur?.subject||'Mathematics'};id=pickFocus(S,g,pack,now,{...ns,unseen:true})||pickFocus(S,g,pack,now,{unseen:true})||pickFocus(S,g,pack,now,ns);msg=id?`Something new: ${g.byId[id].sn||g.byId[id].name}! 🎨`:msg;}
   else if(c==='fractions'){id=pickFocus(S,g,pack,now,{domain:'Fractions'});msg='Back to fractions! 🍕';}
   if(id)S.focus=id;S.current=null;return{jane:msg};}
 export function publicItem(it,g){if(!it)return null;const t=g.byId[it.topicId];const b=it.stage==='bonus';
-  return{id:it.id,topicId:it.topicId,topic:{name:t.sn||t.name,subject:t.subject,domain:t.domain,ic:t.ic},q:b?it.bonus.q:it.q,type:b?'input':it.type,choices:b?null:it.choices,vis:it.vis,ptype:it.ptype,creative:it.creative,placeholder:it.placeholder,pics:it.pics,items:it.items,left:it.left,right:it.right,statements:it.statements,line:it.line,parts:it.parts,blank:it.blank,card:it.card,body:it.body,emoji:it.emoji,scene:it.scene,tpl:it.tpl,mini:it.mini,stage:it.stage,mode:it.mode,format:b?'bonus':it.format,intro:b?null:it.intro,timed:b?null:it.timed,boss:it.boss,level:it.lvl,issued:it.issued,title:it.title,example:it.example,guided:b?undefined:it.guided,steps:b||!it.guided?undefined:it.steps,requeued:it.requeued,help:helpFor(it)};}
+  return{id:it.id,topicId:it.topicId,topic:{name:t.sn||t.name,subject:t.subject,domain:t.domain,ic:t.ic},q:b?it.bonus.q:it.q,type:b?'input':it.type,choices:b?null:it.choices,vis:it.vis,ptype:it.ptype,creative:it.creative,placeholder:it.placeholder,pics:it.pics,items:it.items,left:it.left,right:it.right,statements:it.statements,line:it.line,parts:it.parts,blank:it.blank,card:it.card,body:it.body,emoji:it.emoji,scene:it.scene,tpl:it.tpl,mini:it.mini,stage:it.stage,mode:it.mode,format:b?'bonus':it.format,intro:b?null:it.intro,timed:b?null:it.timed,boss:it.boss,level:it.lvl,issued:it.issued,title:it.title,example:it.example,guided:b?undefined:it.guided,steps:b||!it.guided?undefined:it.steps,requeued:it.requeued,gate:it.gate?{n:it.gate.n,of:it.gate.of,k:it.gate.k,spot:!!it.spot}:undefined,help:helpFor(it)};}
 export function medalInfo(m,g){const t=g.byId[m.id];if(!t)return null;return{id:m.id,tier:m.tier,at:m.at,boss:!!m.boss,name:t.sn||t.name,ic:t.ic,subject:t.subject,domain:t.domain,why:t.kq?`${t.kq} → ${t.ka}`:t.self};}
 // upgrade an in-flight old-style self-check (raw assessmentPrompt) to the kid-friendly item, keeping its mode
 export function refresh(S,g,pack,now){const c=S.current;if(c&&c.kind==='self'&&/Yes, I can/.test(c.choices?.[0]||'')&&g.byId[c.topicId]){S.current=buildItem(S,g,c.topicId,c.mode,pack,now);return true;}return false;}
 
 // ---------- quests ----------
 export function questActive(S,pack){if(!pack?.quest)return false;const q=S.quests?.[pack.date];return !!(q?.started&&!q.done);}
+// a finished quest is locked: its pack serves nothing more, and its progress is read from the completion snapshot
+export const questLocked=(S,pack)=>!!(pack?.quest&&S.quests?.[pack.date]?.done);
 export function questInfo(S,g,pack){if(!pack)return null;const Q=pack.quest||{},rec=S.quests?.[pack.date]||{};
-  const stages=pack.topics.map((t,i)=>{const live=t.questions.map((q,j)=>[q,j]).filter(([q])=>!q._skip),n=live.length,d=live.filter(([,j])=>S.packSeen[`${pack.date}:${t.topicId}:${j}`]).length,tp=g.byId[t.topicId];
-    return{name:t.stage?.name||t.intro?.title||tp?.sn||t.topicId,emoji:t.stage?.emoji||t.intro?.emoji||tp?.ic||'⭐',n,done:d,complete:d>=n,boss:t.format==='boss',deep:!!t.deepDive,review:!!t.review};});
+  const seen=(t,j)=>S.packSeen[`${pack.date}:${t.topicId}:${j}`];
+  let stages=pack.topics.map((t,i)=>{const live=t.questions.map((q,j)=>[q,j]).filter(([q])=>!q._skip),n=live.length,d=live.filter(([,j])=>seen(t,j)).length,tp=g.byId[t.topicId];
+    return{topicId:t.topicId,name:t.stage?.name||t.intro?.title||tp?.sn||t.topicId,emoji:t.stage?.emoji||t.intro?.emoji||tp?.ic||'⭐',n,done:d,complete:d>=n,boss:t.format==='boss',deep:!!t.deepDive,review:!!t.review};});
+  if(pack.quest&&rec.done){const snap=rec.snap?Object.fromEntries(rec.snap.stages.map(x=>[x.topicId,x.n])):null;
+    stages=stages.filter(st=>snap?st.topicId in snap:st.done>0||st.complete).map(st=>{const n=snap?snap[st.topicId]:st.n;return{...st,n,done:n,complete:true};});}
   const total=stages.reduce((a,s)=>a+s.n,0),done=stages.reduce((a,s)=>a+s.done,0);
+  const gates=pack.quest?gateStages(pack.topics.length).filter(k=>k<stages.length).map(k=>{const r=rec.gates?.[k];return{before:k,state:r?.open?'open':'locked',items:r?.n||0,of:r?.of??null,right:r?.right||0};}):[];
   return{date:pack.date,isQuest:!!pack.quest,title:Q.title||pack.title||('Adventure '+pack.date),hook:Q.hook||'',emoji:Q.emoji||'🗺️',medal:Q.medal||{name:(pack.title||'Adventure')+' medal',emoji:'🏅'},
-    stages,current:stages.findIndex(s=>!s.complete),total,done,pct:total?Math.round(100*done/total):0,started:rec.started||null,completed:rec.done||null};}
+    stages,gates,current:stages.findIndex(s=>!s.complete),total,done,pct:total?Math.round(100*done/total):0,started:rec.started||null,completed:rec.done||null};}
+// called after an answer: when every stage is done, the quest is finished once and for all (snapshot + quest medal)
+export function completeQuest(S,g,pack,now){if(!pack?.quest)return null;S.quests??={};const q=S.quests[pack.date]??={};if(q.done)return null;
+  const qi=questInfo(S,g,pack);if(!qi.total||qi.done<qi.total)return null;
+  q.started??=now;q.done=now;q.snap={stages:qi.stages.map(st=>({topicId:st.topicId,n:st.n})),total:qi.total};if(S.questFocus===pack.date)S.questFocus=null;
+  const m={date:pack.date,title:qi.title,name:qi.medal.name,emoji:qi.medal.emoji,at:now};S.questMedals??=[];if(!S.questMedals.some(x=>x.date===pack.date))S.questMedals.push(m);return m;}
 // ---------- map mini-sessions ("Explore now!" on green/blue stones, "Practice now" on orange ones) ----------
 export function startMini(S,g,id,pack,now){const s=stateOf(S,g,id,now);if(!['ready','learning','review'].includes(s))return{error:'That stone is not open yet!'};
   const t=g.byId[id],math=!!kindFor(t),review=s==='review';

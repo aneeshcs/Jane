@@ -1,5 +1,5 @@
 // Parent report data (read-only). Rendered client-side by public/parent.js.
-import * as E from './engine.js';
+import * as E from './engine.js';import {coverage as areaCoverage} from './coverage.js';
 const DAY=864e5;
 export const ptDate=(ms)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
 const CAP=120; // seconds counted per answer (longer = idle)
@@ -16,8 +16,8 @@ export function parentData({S,g,now,today,logs,packs,tomorrowPack,boosts}){
   const recs=Object.entries(S.ts).filter(([id,r])=>r.st==='mastered'&&g.byId[id]);
   const growth=days.map(d=>({date:d,direct:recs.filter(([,r])=>r.how!=='inferred'&&r.at&&ptDate(r.at)<=d).length,all:recs.filter(([,r])=>r.at&&ptDate(r.at)<=d).length}));
   const week=perDay.slice(-7);
-  const head={pct:sm.pct,done:sm.done,total:sm.total,tot:sm.tot,direct:recs.filter(([,r])=>r.how!=='inferred').length,points:S.points,stars:S.stars,streak:S.streak,bestStreak:S.bestStreak,solved:S.solved,
-    medals:(S.medals||[]).length+(S.questMedals||[]).length,today:perDay.find(p=>p.date===today)||{answers:0,minutes:0,first:0,firstRight:0},
+  const head={pct:sm.pct,done:sm.done,total:sm.total,tot:sm.tot,direct:recs.filter(([,r])=>r.how!=='inferred').length,verified:recs.filter(([,r])=>r.verified).length,unverifiedInferred:recs.filter(([id])=>E.unverified(S,id)).length,points:S.points,stars:S.stars,streak:S.streak,bestStreak:S.bestStreak,solved:S.solved,
+    medals:E.trophies(S,g).medals.length,today:perDay.find(p=>p.date===today)||{answers:0,minutes:0,first:0,firstRight:0},
     week:{minutes:week.reduce((a,p)=>a+p.minutes,0),answers:week.reduce((a,p)=>a+p.answers,0),first:week.reduce((a,p)=>a+p.first,0),firstRight:week.reduce((a,p)=>a+p.firstRight,0),days:week.filter(p=>p.answers).length}};
   // subjects → domains → topics
   const subjects={};for(const t of g.topics){const s=st(t.id),r=S.ts[t.id];const sub=subjects[t.subject]??={name:t.subject,total:0,c:{mastered:0,review:0,ready:0,learning:0,locked:0},domains:{}};sub.total++;sub.c[s]++;
@@ -37,7 +37,7 @@ export function parentData({S,g,now,today,logs,packs,tomorrowPack,boosts}){
   // quests
   const quests=Object.values(packs).filter(Boolean).sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{const pp=boosts[p.date]?E.applyBoost(p,boosts[p.date]):p;const qi=E.questInfo(S,g,pp);
     const A=answers.filter(l=>l.pack===p.date);
-    return{...qi,stages:qi.stages.map((s,i)=>{const id=pp.topics[i].topicId,a=A.filter(l=>l.topicId===id),f=a.filter(l=>l.try===1);return{...s,topic:g.byId[id]?.name,first:f.length,firstRight:f.filter(l=>l.correct).length,lm:a.filter(l=>l.learningMoment||(l.try>=2&&!l.correct)).length};}),
+    return{...qi,stages:qi.stages.map((s,i)=>{const id=s.topicId,a=A.filter(l=>l.topicId===id),f=a.filter(l=>l.try===1);return{...s,topic:g.byId[id]?.name,first:f.length,firstRight:f.filter(l=>l.correct).length,lm:a.filter(l=>l.learningMoment||(l.try>=2&&!l.correct)).length};}),
       boost:pp.boost||null,questMedal:(S.questMedals||[]).find(m=>m.date===p.date)||null};});
   const tonight=tomorrowPack?{date:tomorrowPack.date,title:tomorrowPack.quest?.title||tomorrowPack.title,hook:tomorrowPack.quest?.hook||'',stages:tomorrowPack.topics.map(t=>({name:t.stage?.name||g.byId[t.topicId]?.name,deep:!!t.deepDive,review:!!t.review,boss:t.format==='boss'}))}:null;
   // upcoming reviews
@@ -45,8 +45,11 @@ export function parentData({S,g,now,today,logs,packs,tomorrowPack,boosts}){
   const inferredDue=recs.filter(([,r])=>r.how==='inferred'&&r.due<=now+7*DAY).length;
   // log + medals
   const log=answers.map(l=>({ts:l.ts,day:l.day,subject:l.subject,topic:l.topic,mode:l.mode,qtype:l.qtype||'',q:l.question,exp:l.expected,given:l.given,ok:!!l.correct,try:l.try,secs:l.elapsedSec,lm:!!l.learningMoment,regraded:l.regraded||null,creative:!!l.creative,stage:l.stage}));
-  const medals=[...(S.medals||[]).map(m=>E.medalInfo(m,g)).filter(Boolean),...(S.questMedals||[]).map(q=>({tier:'quest',name:q.name,ic:q.emoji,subject:'Quest',domain:q.title,at:q.at}))].sort((a,b)=>b.at-a.at);
-  return{name:E.learner().name,grade:E.learner().grade,today,generated:now,head,perDay,growth,subjects:Object.values(subjects),struggles,wins,terms:Object.values(terms).sort((a,b)=>b.count-a.count),quests,tonight,reviews,inferredDue,log,medals,placement:S.placement};}
+  const medals=E.trophies(S,g).medals;
+  // coverage by area (Marble domains) from records + the 14-day logs (LESSONS.md "Coverage")
+  const cv=areaCoverage(S,g,all,{age:E.learner().age,now});
+  const coverage={seen:cv.seen,total:cv.total,subjects:cv.subjects.map(s=>({name:s.name,total:s.total,seen:s.seen,domains:s.domains.map(d=>({name:d.name,seen:d.seen,answered:d.answered,mastered:d.mastered,topics:d.topics}))}))};
+  return{coverage,name:E.learner().name,grade:E.learner().grade,today,generated:now,head,perDay,growth,subjects:Object.values(subjects),struggles,wins,terms:Object.values(terms).sort((a,b)=>b.count-a.count),quests,tonight,reviews,inferredDue,log,medals,placement:S.placement};}
 export function parentShell(data){const json=E.withName(JSON.stringify(data),JSON.stringify(data.name).slice(1,-1)).replace(/</g,'\\u003c');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parent report: ${String(data.name).replace(/[&<>"]/g,'')}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">

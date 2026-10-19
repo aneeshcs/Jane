@@ -3,7 +3,7 @@
 // Usage: node export-progress.mjs [--out file.json] [--date YYYY-MM-DD] [--days 7] [--local]   (default out: exports/progress-<date>.json;
 //        with --local or STORAGE=file it reads the standalone server's DATA_DIR and writes DATA_DIR/exports/)
 // Adds weakSpots (per topic + per domain: misses, hints, slow answers, failed reviews, unsure self-checks), strengths and goDeeper suggestions.
-import fs from 'fs';import path from 'path';import {kvGet,loadTax,ptDate,DIR,activeQuests,QUEST_CAP,learnerConfig,outDir} from './lib-cli.mjs';import * as E from './src/engine.js';
+import fs from 'fs';import path from 'path';import {kvGet,loadTax,ptDate,DIR,activeQuests,QUEST_CAP,learnerConfig,outDir} from './lib-cli.mjs';import * as E from './src/engine.js';import {coverage as areaCoverage} from './src/coverage.js';
 E.configure(learnerConfig());const L=E.learner();
 const args=process.argv.slice(2),opt=k=>args.includes(k)?args[args.indexOf(k)+1]:null;
 const date=opt('--date')||ptDate(),out=opt('--out')||path.join(outDir('exports'),`progress-${date}.json`);
@@ -15,6 +15,12 @@ const full=(t,extra={})=>({...t,state:E.stateOf(S,g,t.id,now),record:S.ts[t.id]|
   prerequisites:g.pre[t.id].map(e=>({id:e.id,name:g.byId[e.id].name,strength:e.h?'hard':'soft',state:E.stateOf(S,g,e.id,now)})),
   unlocks:g.post[t.id].map(e=>({id:e.id,name:g.byId[e.id].name,strength:e.h?'hard':'soft'})),...extra});
 const sm=E.summary(S,g,now);delete sm.codes;
+// review health: due/overdue Leitner reviews and how much review the gates actually served (last --days days)
+const DAY=864e5,dueRecs=reviewDueIds(),oldest=dueRecs.length?Math.min(...dueRecs.map(id=>S.ts[id].due)):now;
+function reviewDueIds(){return g.topics.filter(t=>E.stateOf(S,g,t.id,now)==='review').map(t=>t.id);}
+const reviewHealth={due:dueRecs.length,overdue:dueRecs.filter(id=>S.ts[id].due<=now-DAY).length,oldestOverdueDays:Math.max(0,Math.floor((now-oldest)/DAY)),
+  gateItems7d:logs.filter(l=>!l.event&&l.format==='gate'&&l.try===1).length,spotChecks7d:logs.filter(l=>l.event==='verified'||l.event==='spotMiss').length,
+  unverifiedInferred:Object.keys(S.ts).filter(id=>g.byId[id]&&E.unverified(S,id)).length};
 const near=t=>Math.abs(t.ageRangeStart-L.age);
 const frontier=g.topics.filter(t=>['ready','learning'].includes(E.stateOf(S,g,t.id,now))).sort((a,b)=>near(a)-near(b)).map(t=>full(t));
 const reviewDue=g.topics.filter(t=>E.stateOf(S,g,t.id,now)==='review').sort((a,b)=>S.ts[a.id].due-S.ts[b.id].due).map(t=>full(t,{dueAt:new Date(S.ts[t.id].due).toISOString(),box:S.ts[t.id].box}));
@@ -50,7 +56,7 @@ const weakSpots={window:`${dayList[dayList.length-1]}..${date}`,rules:{slowSec:S
 // ---------- quests (cap 3 active) + glossary lookups ----------
 const A=activeQuests(S);const qinfo=d=>{const p=kvGet('lessons:'+d);if(!p?.quest)return null;const b=kvGet('boost:'+d);const pp=b?E.applyBoost(p,b):p;const qi=E.questInfo(S,g,pp);
   return{date:d,title:qi.title,startedAt:new Date(S.quests[d].started).toISOString(),done:qi.done,total:qi.total,pct:qi.pct,boosted:!!b,
-    remainingStages:qi.stages.map((s,i)=>({i,topicId:pp.topics[i].topicId,name:s.name,left:s.n-s.done,boss:s.boss})).filter(s=>s.left>0)};};
+    remainingStages:qi.stages.map((s,i)=>({i,topicId:s.topicId,name:s.name,left:s.n-s.done,boss:s.boss})).filter(s=>s.left>0)};};
 const activeList=A.map(qinfo).filter(Boolean);
 const quests={active:activeList.length,cap:QUEST_CAP,atCap:activeList.length>=QUEST_CAP,list:activeList,completed:Object.entries(S.quests||{}).filter(([,q])=>q.done).map(([d])=>d),
   nextStep:activeList.length>=QUEST_CAP?`AT CAP: do not publish a new quest. Publish a catch-up boost for ${activeList[0].date} ("${activeList[0].title}", ${activeList[0].pct}% done).`:`OK to publish a new quest (${activeList.length}/${QUEST_CAP} active).`};
@@ -58,6 +64,9 @@ const tl={};for(const l of logs)if(l.event==='term'){const k=l.term.toLowerCase(
 const termsLookedUp=Object.values(tl).map(x=>({...x,topics:[...x.topics]})).sort((a,b)=>b.count-a.count);
 const res={exportedAt:new Date(now).toISOString(),date,timezone:'America/Los_Angeles',learner:S.name,summary:sm,
   stats:{points:S.points,stars:S.stars,streak:S.streak,bestStreak:S.bestStreak,solved:S.solved,badges:S.badges,placement:S.placement},
+  unverifiedInferred:reviewHealth.unverifiedInferred, // inferred skills a gate spot-check has not confirmed yet
+  coverage:areaCoverage(S,g,logs,{age:L.age,now}), // areas (Marble domains) seen per subject + starters for untouched ones (LESSONS.md "Coverage")
+  reviewHealth, // spaced review runs through quest gates now: watch for starvation here (LESSONS.md "Review gates")
   todaysPack:pack?{date:pack.date,title:pack.title,topicIds:pack.topics.map(t=>t.topicId)}:null,
   quests,termsLookedUp,weakSpots,todayLog:log,learnedToday:log.filter(l=>l.event==='mastered'),
   frontier,reviewDue,progress:S};
