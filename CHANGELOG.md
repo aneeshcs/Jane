@@ -19,7 +19,7 @@ Dates are Pacific Time.
 ## [0.4.0] - 2026-10-19
 
 The learning loop: shorter quests, review built into quests, honest medals and wider coverage
-(plan: [plans/learning-loop-v0.4.md](plans/learning-loop-v0.4.md)).
+(plan: [plans/archive/learning-loop-v0.4.md](plans/archive/learning-loop-v0.4.md)).
 
 ### Added
 - **🗝️ Review gates.** In a started quest, a gate sits before stage 2, the middle stage and the boss (max 3). The

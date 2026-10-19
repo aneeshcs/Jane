@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 16/17 slices done. Tracking issue: #18.
+**Status:** ✅ done, 17/17 slices. Shipped in v0.4.0 and v0.4.1 (PRs #20, #21); the live medal re-score ran on 2026-10-19. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -128,7 +128,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | 6 | Mastery takes real answers, not a thumbs-up | medals | #7 ✅ |
 | 7 | Legendary medals come from a real boss fight | medals | #8 ✅ |
 | 8 | One trophy per achievement | medals | #9 ✅ |
-| 9 | Existing medals re-earned under the new rules | medals | #19 ⏳ |
+| 9 | Existing medals re-earned under the new rules | medals | #19 ✅ |
 | 10 | Review gates between quest stages | review | #10 ✅ |
 | 11 | Gates show on the quest path | review | #11 ✅ |
 | 12 | Gates spot-check guessed skills | review | #12 ✅ |
@@ -347,7 +347,7 @@ Area: `medals` · Design: [D3](#d3-honest-medals)
 - Done test: `node --test test/trophies.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D3.)
 
-### Slice 9: Existing medals re-earned under the new rules (#19) — ⏳ built, live run pending approval
+### Slice 9: Existing medals re-earned under the new rules (#19) — ✅ done
 Area: `medals` · Design: [D3](#d3-honest-medals)
 
 - **Ships:** Medals and mastery awarded under the old rules are recomputed once under the new ones (Q1, Kent: "Update all with new rules"). Topics that don't qualify lose mastery or their medal, legendary medals without a real boss fight drop to the topic's normal tier, and duplicates are collapsed. Every topic that loses mastery goes back into the review queue (due now), so review gates re-verify it.
@@ -658,4 +658,9 @@ One entry per slice once its done test passes: what shipped, the done test and i
 ### Slice 17 (#17) ✅
 - Shipped: parentData adds `coverage` {seen, total, subjects: [{name, total, seen, domains: [{name, seen, answered, mastered, topics}]}]} from src/coverage.js with the 14-day logs. /parent gets a 'Coverage' tab and a 'Coverage by area' section: per subject, areas explored out of total with a bar, explored areas named, untouched areas as chips. Also fixed the stale 'about 15-20% review' line in 'Tonight's quest focus'. Owner was delegate; executed directly in this run.
 - Done test: `node --test test/server.test.mjs && npm test`: 5/5 (new 'parent report includes coverage': embedded data has Mathematics total 12 and Science total 19), 75/75 in npm test. Sandbox screenshot (synthetic data) taken locally as 05-parent-coverage-by-area.png; not uploaded to the public issue.
+- Deferred / discovered: -
+
+### Slice 9 (#19) ✅ live run
+- Shipped: Kent approved the live run with one change: legendary medals already awarded are always kept, and their topics keep mastery. This is the default policy of `migrate-medals.mjs` (documented in LESSONS.md and the script header); `--no-keep-legendary` gives the strict re-score. Released in v0.4.1.
+- Done test: `npm test` 79/79 (new: the default keeps legendary medals and their mastery, and strict mode still downgrades). Live dry-run, then a backup and the real run with the backup fingerprint; the run matched the dry-run exactly. Aggregate counts only: topic medals 29 → 16 (legendary 3 → 3, gold 10 → 6, silver 13 → 6, bronze 3 → 1); mastered directly 29 → 28; self-check mastered 9 → 0; 10 topics lost mastery and are due in review now; 1 self-check topic kept as direct; quest medals 2 → 2. After the run, points, solved, quest medals, quest states (plus an additive legacy flag on finished quests) and the in-flight quest position were unchanged, and the app loads.
 - Deferred / discovered: -
