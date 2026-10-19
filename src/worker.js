@@ -30,8 +30,7 @@ export default{async fetch(req,env){E.configure(env);const u=new URL(req.url),P=
    quest:pack?.quest?E.questInfo(S,g,pack):null,newQuest:!!(todayPack?.quest&&!qrec(today).started&&!paused()),
    quests:{active:activeQ().length,cap:QUEST_CAP,paused:paused(),oldest:(()=>{const d=activeQ()[0];return d?{date:d,title:PC[d].quest.title,emoji:PC[d].quest.emoji||'🗺️',pct:E.questInfo(S,g,PC[d]).pct}:null;})(),boost:pack?.boost||null},
    terms:pack?.terms||null,mini:S.mini?{topicId:S.mini.topicId,subject:S.mini.ret}:null};};
- const questCheck=r=>{if(!pack?.quest)return;const qi=E.questInfo(S,g,pack);S.quests??={};const q=S.quests[pack.date]??={};if(q.done||qi.done<qi.total)return;
-   q.started??=now;q.done=now;if(S.questFocus===pack.date)S.questFocus=null;const m={date:pack.date,title:qi.title,name:qi.medal.name,emoji:qi.medal.emoji,at:now};(S.questMedals??=[]).push(m);r.questDone=m;ev.push({event:'questDone',date:pack.date,quest:qi.title});};
+ const questCheck=r=>{const m=E.completeQuest(S,g,pack,now);if(m){r.questDone=m;ev.push({event:'questDone',date:pack.date,quest:m.title});}};
  if(P==='/parent'){ // read-only: returns before any KV write
    const ds=[...Array(14)].map((_,i)=>ptDate(now-(13-i)*864e5));const logs={};await Promise.all(ds.map(async d=>logs[d]=(await KV.get(K('log:'+d),'json'))||[]));
    const qp={};for(const d of recent)if(PC[d]?.quest)qp[d]=PC[d];const boosts={};await Promise.all(Object.keys(qp).map(async d=>boosts[d]=await KV.get('boost:'+d,'json')));

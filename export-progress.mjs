@@ -50,7 +50,7 @@ const weakSpots={window:`${dayList[dayList.length-1]}..${date}`,rules:{slowSec:S
 // ---------- quests (cap 3 active) + glossary lookups ----------
 const A=activeQuests(S);const qinfo=d=>{const p=kvGet('lessons:'+d);if(!p?.quest)return null;const b=kvGet('boost:'+d);const pp=b?E.applyBoost(p,b):p;const qi=E.questInfo(S,g,pp);
   return{date:d,title:qi.title,startedAt:new Date(S.quests[d].started).toISOString(),done:qi.done,total:qi.total,pct:qi.pct,boosted:!!b,
-    remainingStages:qi.stages.map((s,i)=>({i,topicId:pp.topics[i].topicId,name:s.name,left:s.n-s.done,boss:s.boss})).filter(s=>s.left>0)};};
+    remainingStages:qi.stages.map((s,i)=>({i,topicId:s.topicId,name:s.name,left:s.n-s.done,boss:s.boss})).filter(s=>s.left>0)};};
 const activeList=A.map(qinfo).filter(Boolean);
 const quests={active:activeList.length,cap:QUEST_CAP,atCap:activeList.length>=QUEST_CAP,list:activeList,completed:Object.entries(S.quests||{}).filter(([,q])=>q.done).map(([d])=>d),
   nextStep:activeList.length>=QUEST_CAP?`AT CAP: do not publish a new quest. Publish a catch-up boost for ${activeList[0].date} ("${activeList[0].title}", ${activeList[0].pct}% done).`:`OK to publish a new quest (${activeList.length}/${QUEST_CAP} active).`};

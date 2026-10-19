@@ -37,7 +37,7 @@ export function parentData({S,g,now,today,logs,packs,tomorrowPack,boosts}){
   // quests
   const quests=Object.values(packs).filter(Boolean).sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{const pp=boosts[p.date]?E.applyBoost(p,boosts[p.date]):p;const qi=E.questInfo(S,g,pp);
     const A=answers.filter(l=>l.pack===p.date);
-    return{...qi,stages:qi.stages.map((s,i)=>{const id=pp.topics[i].topicId,a=A.filter(l=>l.topicId===id),f=a.filter(l=>l.try===1);return{...s,topic:g.byId[id]?.name,first:f.length,firstRight:f.filter(l=>l.correct).length,lm:a.filter(l=>l.learningMoment||(l.try>=2&&!l.correct)).length};}),
+    return{...qi,stages:qi.stages.map((s,i)=>{const id=s.topicId,a=A.filter(l=>l.topicId===id),f=a.filter(l=>l.try===1);return{...s,topic:g.byId[id]?.name,first:f.length,firstRight:f.filter(l=>l.correct).length,lm:a.filter(l=>l.learningMoment||(l.try>=2&&!l.correct)).length};}),
       boost:pp.boost||null,questMedal:(S.questMedals||[]).find(m=>m.date===p.date)||null};});
   const tonight=tomorrowPack?{date:tomorrowPack.date,title:tomorrowPack.quest?.title||tomorrowPack.title,hook:tomorrowPack.quest?.hook||'',stages:tomorrowPack.topics.map(t=>({name:t.stage?.name||g.byId[t.topicId]?.name,deep:!!t.deepDive,review:!!t.review,boss:t.format==='boss'}))}:null;
   // upcoming reviews

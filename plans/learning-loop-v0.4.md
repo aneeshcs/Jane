@@ -1,6 +1,6 @@
 # Learning loop v0.4: shorter quests, review gates, honest medals
 
-**Status:** in progress on branch `feat/learning-loop-v0.4`, 1/17 slices done. Tracking issue: #18.
+**Status:** in progress on branch `feat/learning-loop-v0.4`, 2/17 slices done. Tracking issue: #18.
 
 Method: slice discipline (every slice ships something, names the files it touches, has a real done test and an owner, and carries an `Execute` brief). During execution, read only the current slice's brief plus the design section it points to.
 
@@ -121,7 +121,7 @@ Dependencies: 5 needs 4; 9 needs 6-8, and its live run waits for 10 and 12; 11, 
 | # | Slice | Area | Issue |
 |---|---|---|---|
 | 1 | Quests fit in about eight minutes | quests | #2 ✅ |
-| 2 | A finished quest stays finished | integrity | #3 |
+| 2 | A finished quest stays finished | integrity | #3 ✅ |
 | 3 | Publishing never changes a finished quest | integrity | #4 |
 | 4 | Asked for a percent? Write a percent | grading | #5 |
 | 5 | Pack authors declare the answer form | grading | #6 |
@@ -166,7 +166,7 @@ Area: `quests` · Design: [D1](#d1-shorter-quests)
 - Done test: `node --test test/quest-size.test.mjs && npm test`
 - Decisions frozen: design sections and resolved open questions apply as written. (Design D1.)
 
-### Slice 2: A finished quest stays finished (#3)
+### Slice 2: A finished quest stays finished (#3) — ✅ done
 Area: `integrity` · Design: [D6](#d6-finished-quests-are-locked)
 
 - **Ships:** Once a quest is finished it stays at 100% with its medal everywhere (kid app, Quests tab, parent report, export), even if its pack changes later. A finished quest's pack never serves new items.
@@ -579,3 +579,8 @@ One entry per slice once its done test passes: what shipped, the done test and i
 - Shipped: publish-lessons.mjs enforces the quest budget: error above 16 graded questions or 7 stages, warning below 10 graded, a time estimate (graded × 25 s + cards × 10 s) in the summary with a warning above 8 min; deep dives need 3-4 graded questions. The example quest is trimmed to 16 graded (≈ 7.5 min). LESSONS.md rule 6 and NIGHTLY.md Size updated. New shared test/helpers.mjs.
 - Done test: `node --test test/quest-size.test.mjs && npm test`: 4/4 new cases pass, 13/13 in npm test.
 - Deferred / discovered: Already-published packs are not re-validated by the app (grandfathered): the engine plays whatever is in KV.
+
+### Slice 2 (#3) ✅
+- Shipped: New E.completeQuest stores a completion snapshot (stages + total) and the quest medal once; worker questCheck uses it. questInfo reads the snapshot for done quests (100%, original stages only); E.questLocked makes a done quest's pack serve nothing (packQ). migrate marks pre-snapshot finished quests legacy (they report 100% over the stages that were played). parent.js and export use stage topicIds instead of indexes.
+- Done test: `node --test test/quest-lock.test.mjs && npm test`: 4/4 new cases pass, 17/17 in npm test. Also checked on a read-only copy of the live record: the finished quest that showed 86% now reports 100% (9 of its 10 stages: the added stage is ignored).
+- Deferred / discovered: -

@@ -21,11 +21,13 @@ export function graph(TAX){const byId={},pre={},post={};for(const t of TAX.topic
   return{topics:TAX.topics,byId,pre,post,boss};}
 export const blank=()=>({v:2,name:NAME,points:0,stars:0,streak:0,bestStreak:0,solved:0,badges:[],medals:[],firstDone:false,ts:{},current:null,
   focus:null,placement:{done:false,asked:0,per:{},queue:[]},sinceReview:0,sinceChoice:0,recent:[],packSeen:{},itemsServed:0});
-export function migrate(old,g){if(old&&old.v===2){if(!old.medals)backfillMedals(old,g);return old;}const S=blank();if(!old)return S;
+export function migrate(old,g){if(old&&old.v===2){if(!old.medals)backfillMedals(old,g);upgrade(old);return old;}const S=blank();if(!old)return S;
   for(const k of['points','stars','streak','bestStreak','solved','badges'])if(old[k]!=null)S[k]=old[k];
   S.firstDone=!!old.firstDone&&old.solved>0;
   for(const [id,t] of Object.entries(old.topics||{}))if(g.byId[id])S.ts[id]=t.mastered?{st:'mastered',how:'direct',conf:.9,box:0,due:Date.now()+DAY,c:t.correct,w:t.incorrect}:{st:'learning',how:'direct',c:t.correct,w:t.incorrect,lvl:old.level||3};
   backfillMedals(S,g);return S;}
+// additive schema upgrades for v2 records (idempotent): finished quests from before completion snapshots are marked legacy
+function upgrade(S){for(const q of Object.values(S.quests||{}))if(q?.done&&!q.snap&&!q.legacy)q.legacy=true;return S;}
 // medals: one per directly-mastered topic (not inferred, not self-rated); boss wins are legendary
 export function tierOf(g,id,boss){return boss?'legendary':g.byId[id]?.tier||'bronze';}
 function backfillMedals(S,g){S.medals=[];for(const [id,r] of Object.entries(S.ts))if(r.st==='mastered'&&r.how==='direct'&&g.byId[id])S.medals.push({id,tier:tierOf(g,id,false),at:r.at||Date.now()});S.medals.sort((a,b)=>a.at-b.at);}
@@ -82,7 +84,7 @@ function creativeOk(it,a){const n=norm(a);if(!n||n.replace(/[^a-z]/g,'').length<
   const words=n.split(' ');if(words.length>(it.maxWords||5))return false;
   return words.every(w=>/[aeiouy]/.test(w)&&!/(.)\1\1/.test(w)&&w.length<=20&&!/[bcdfghjklmnpqrstvwxz]{5}/.test(w));}
 const norm=s=>String(s).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9.\/\s-]/g,'').replace(/\b(the|a|an)\b/g,'').replace(/\s+/g,' ').trim();
-function packQ(S,pack,id){if(!pack)return null;const t=pack.topics.find(x=>x.topicId===id);if(!t)return null;
+function packQ(S,pack,id){if(!pack||questLocked(S,pack))return null;const t=pack.topics.find(x=>x.topicId===id);if(!t)return null;
   for(let i=0;i<t.questions.length;i++){const k=`${pack.date}:${id}:${i}`;if(!S.packSeen[k]&&!t.questions[i]._skip)return{t,q:t.questions[i],i,key:k};}return null;}
 const OPEN=['Hey {name}! ','Quick one! ','Ooh, try this! ','Your turn! ',''];
 function opener(q){const o=pick(OPEN);return o&&q.split(' ').length+o.split(' ').length-1<=15?o+q:q;}
@@ -289,12 +291,22 @@ export function refresh(S,g,pack,now){const c=S.current;if(c&&c.kind==='self'&&/
 
 // ---------- quests ----------
 export function questActive(S,pack){if(!pack?.quest)return false;const q=S.quests?.[pack.date];return !!(q?.started&&!q.done);}
+// a finished quest is locked: its pack serves nothing more, and its progress is read from the completion snapshot
+export const questLocked=(S,pack)=>!!(pack?.quest&&S.quests?.[pack.date]?.done);
 export function questInfo(S,g,pack){if(!pack)return null;const Q=pack.quest||{},rec=S.quests?.[pack.date]||{};
-  const stages=pack.topics.map((t,i)=>{const live=t.questions.map((q,j)=>[q,j]).filter(([q])=>!q._skip),n=live.length,d=live.filter(([,j])=>S.packSeen[`${pack.date}:${t.topicId}:${j}`]).length,tp=g.byId[t.topicId];
-    return{name:t.stage?.name||t.intro?.title||tp?.sn||t.topicId,emoji:t.stage?.emoji||t.intro?.emoji||tp?.ic||'⭐',n,done:d,complete:d>=n,boss:t.format==='boss',deep:!!t.deepDive,review:!!t.review};});
+  const seen=(t,j)=>S.packSeen[`${pack.date}:${t.topicId}:${j}`];
+  let stages=pack.topics.map((t,i)=>{const live=t.questions.map((q,j)=>[q,j]).filter(([q])=>!q._skip),n=live.length,d=live.filter(([,j])=>seen(t,j)).length,tp=g.byId[t.topicId];
+    return{topicId:t.topicId,name:t.stage?.name||t.intro?.title||tp?.sn||t.topicId,emoji:t.stage?.emoji||t.intro?.emoji||tp?.ic||'⭐',n,done:d,complete:d>=n,boss:t.format==='boss',deep:!!t.deepDive,review:!!t.review};});
+  if(pack.quest&&rec.done){const snap=rec.snap?Object.fromEntries(rec.snap.stages.map(x=>[x.topicId,x.n])):null;
+    stages=stages.filter(st=>snap?st.topicId in snap:st.done>0||st.complete).map(st=>{const n=snap?snap[st.topicId]:st.n;return{...st,n,done:n,complete:true};});}
   const total=stages.reduce((a,s)=>a+s.n,0),done=stages.reduce((a,s)=>a+s.done,0);
   return{date:pack.date,isQuest:!!pack.quest,title:Q.title||pack.title||('Adventure '+pack.date),hook:Q.hook||'',emoji:Q.emoji||'🗺️',medal:Q.medal||{name:(pack.title||'Adventure')+' medal',emoji:'🏅'},
     stages,current:stages.findIndex(s=>!s.complete),total,done,pct:total?Math.round(100*done/total):0,started:rec.started||null,completed:rec.done||null};}
+// called after an answer: when every stage is done, the quest is finished once and for all (snapshot + quest medal)
+export function completeQuest(S,g,pack,now){if(!pack?.quest)return null;S.quests??={};const q=S.quests[pack.date]??={};if(q.done)return null;
+  const qi=questInfo(S,g,pack);if(!qi.total||qi.done<qi.total)return null;
+  q.started??=now;q.done=now;q.snap={stages:qi.stages.map(st=>({topicId:st.topicId,n:st.n})),total:qi.total};if(S.questFocus===pack.date)S.questFocus=null;
+  const m={date:pack.date,title:qi.title,name:qi.medal.name,emoji:qi.medal.emoji,at:now};S.questMedals??=[];if(!S.questMedals.some(x=>x.date===pack.date))S.questMedals.push(m);return m;}
 // ---------- map mini-sessions ("Explore now!" on green/blue stones, "Practice now" on orange ones) ----------
 export function startMini(S,g,id,pack,now){const s=stateOf(S,g,id,now);if(!['ready','learning','review'].includes(s))return{error:'That stone is not open yet!'};
   const t=g.byId[id],math=!!kindFor(t),review=s==='review';
