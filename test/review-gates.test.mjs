@@ -50,3 +50,7 @@ test('a missed spot-check sends the skill back to learning, withdraws the guesse
   assert.equal(x.r.done,true);assert.equal(S.ts[X].st,'learning');assert.equal(S.ts[X].how,'direct');assert.equal(S.ts[X].box,0);
   assert.equal(S.ts[Y],undefined,'inferred dependent withdrawn (failUp)');const m=x.ev.find(e=>e.event==='spotMiss');assert.ok(m);assert.equal(m.topicId,X);assert.ok(m.withdrawn>=1);
   assert.equal(S.quests[D].gates[1].n,1,'counts toward the gate');});
+test('a gate behind the learner (its stage already started, e.g. a quest begun before gates) shows as open, not locked',()=>{const {S,pack}=setup({n:7});
+  for(const [j] of pack.topics[1].questions.entries())S.packSeen[`${D}:${pack.topics[1].topicId}:${j}`]=1;for(const [j] of pack.topics[0].questions.entries())S.packSeen[`${D}:${pack.topics[0].topicId}:${j}`]=1;
+  const q=E.questInfo(S,g,pack);const g1=q.gates.find(x=>x.before===1);assert.equal(g1.state,'open');assert.equal(g1.passed,true);
+  assert.equal(q.gates.find(x=>x.before===3).state,'locked','gates ahead stay locked');assert.notEqual(E.next(S,g,pack,now).gate?.k,1,'no gate served behind the learner');});
