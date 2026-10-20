@@ -40,7 +40,14 @@ test('a pack publishes locally and shows as a new quest',async()=>{
   const ex=execFileSync(process.execPath,['export-progress.mjs','--local'],{cwd:ROOT,env:{...process.env,DATA_DIR:DATA},encoding:'utf8'});
   assert.match(ex,/wrote .*exports/);
   const xf=ex.match(/wrote (\S+\.json)/)[1];const X=JSON.parse(fs.readFileSync(path.isAbsolute(xf)?xf:path.join(ROOT,xf),'utf8'));
-  for(const k of ['due','overdue','oldestOverdueDays','gateItems7d','spotChecks7d','unverifiedInferred'])assert.equal(typeof X.reviewHealth?.[k],'number',k);});
+  for(const k of ['due','overdue','oldestOverdueDays','gateItems7d','spotChecks7d','unverifiedInferred','reviewsServed7d','gatesOpened7d','gatesAhead'])assert.equal(typeof X.reviewHealth?.[k],'number',k);
+  assert.equal(typeof X.reviewHealth.lastPlayed,'string');assert.equal(X.reviewHealth.note,'ok','answers in the window and nothing due');});
+
+test('export reviewHealth says "not played since …" when there are no answers in the window',()=>{
+  const D2=fs.mkdtempSync(path.join(os.tmpdir(),'jane-rh-'));
+  const ex=execFileSync(process.execPath,['export-progress.mjs','--local'],{cwd:ROOT,env:{...process.env,DATA_DIR:D2},encoding:'utf8'});
+  const xf=ex.match(/wrote (\S+\.json)/)[1];const X=JSON.parse(fs.readFileSync(path.isAbsolute(xf)?xf:path.join(ROOT,xf),'utf8'));
+  assert.match(X.reviewHealth.note,/^not played since .*: gates not reached yet$/);assert.equal(X.reviewHealth.reviewsServed7d,0);assert.equal(X.reviewHealth.lastPlayed,null);});
 
 test('parent report renders with the learner name',async()=>{
   const r=await fetch(B+'/parent');assert.equal(r.status,200);const h=await r.text();assert.match(h,/Sam/);});

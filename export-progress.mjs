@@ -21,6 +21,12 @@ function reviewDueIds(){return g.topics.filter(t=>E.stateOf(S,g,t.id,now)==='rev
 const reviewHealth={due:dueRecs.length,overdue:dueRecs.filter(id=>S.ts[id].due<=now-DAY).length,oldestOverdueDays:Math.max(0,Math.floor((now-oldest)/DAY)),
   gateItems7d:logs.filter(l=>!l.event&&l.format==='gate'&&l.try===1).length,spotChecks7d:logs.filter(l=>l.event==='verified'||l.event==='spotMiss').length,
   unverifiedInferred:Object.keys(S.ts).filter(id=>g.byId[id]&&E.unverified(S,id)).length};
+// v0.5: tell "not reached yet" (no play) from "broken" (play, reviews due, none served)
+{const ans=logs.filter(l=>!l.event&&l.try===1),lastTs=Math.max(0,...ans.map(l=>Date.parse(l.ts)||0),...(ans.length?[]:Object.values(S.ts).map(r=>r.last||0)));
+  Object.assign(reviewHealth,{reviewsServed7d:ans.filter(l=>l.mode==='review').length,
+    gatesOpened7d:new Set(logs.filter(l=>!l.event&&l.format==='gate').map(l=>l.pack+':'+(l.gate??'?'))).size, // gates (incl. warm-ups) that served review items
+    gatesAhead:0,lastPlayed:lastTs?new Date(lastTs).toISOString():null,daysSinceLastPlay:lastTs?Math.floor((now-lastTs)/DAY):null});
+  reviewHealth.note=!ans.length?`not played since ${lastTs?ptDate(lastTs):'ever'}: gates not reached yet`:!reviewHealth.reviewsServed7d&&reviewHealth.due?'played but no reviews served: check the gates':'ok';}
 const near=t=>Math.abs(t.ageRangeStart-L.age);
 const frontier=g.topics.filter(t=>['ready','learning'].includes(E.stateOf(S,g,t.id,now))).sort((a,b)=>near(a)-near(b)).map(t=>full(t));
 const reviewDue=g.topics.filter(t=>E.stateOf(S,g,t.id,now)==='review').sort((a,b)=>S.ts[a.id].due-S.ts[b.id].due).map(t=>full(t,{dueAt:new Date(S.ts[t.id].due).toISOString(),box:S.ts[t.id].box}));
@@ -58,6 +64,7 @@ const A=activeQuests(S);const qinfo=d=>{const p=kvGet('lessons:'+d);if(!p?.quest
   return{date:d,title:qi.title,startedAt:new Date(S.quests[d].started).toISOString(),done:qi.done,total:qi.total,pct:qi.pct,boosted:!!b,
     remainingStages:qi.stages.map((s,i)=>({i,topicId:s.topicId,name:s.name,left:s.n-s.done,boss:s.boss})).filter(s=>s.left>0)};};
 const activeList=A.map(qinfo).filter(Boolean);
+reviewHealth.gatesAhead=A.reduce((a,d)=>{const p=kvGet('lessons:'+d);return a+(p?.quest?E.questInfo(S,g,p).gates.filter(x=>x.state==='locked').length:0);},0); // stage gates not reached yet in active quests
 const quests={active:activeList.length,cap:QUEST_CAP,atCap:activeList.length>=QUEST_CAP,list:activeList,completed:Object.entries(S.quests||{}).filter(([,q])=>q.done).map(([d])=>d),
   nextStep:activeList.length>=QUEST_CAP?`AT CAP: do not publish a new quest. Publish a catch-up boost for ${activeList[0].date} ("${activeList[0].title}", ${activeList[0].pct}% done).`:`OK to publish a new quest (${activeList.length}/${QUEST_CAP} active).`};
 const tl={};for(const l of logs)if(l.event==='term'){const k=l.term.toLowerCase();const x=tl[k]??={term:l.term,count:0,topics:new Set()};x.count++;if(l.topic)x.topics.add(l.topic);}

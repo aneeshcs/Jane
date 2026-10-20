@@ -140,7 +140,9 @@ Run `node export-progress.mjs` and read `weakSpots` first. Then:
 4. **Spaced review runs through the gates.** Don't spend quest budget on review stages: the app's review gates
    (see "Review gates") pull due reviews and spot-checks from the Leitner queue at runtime. `"review": true` stages
    still publish (for old packs) but get a warning. Watch the export's `reviewHealth` (`due`, `overdue`,
-   `oldestOverdueDays`, `gateItems7d`, `spotChecks7d`, `unverifiedInferred`) for review that isn't keeping up.
+   `oldestOverdueDays`, `gateItems7d`, `spotChecks7d`, `unverifiedInferred`, `reviewsServed7d`, `gatesOpened7d`,
+   `gatesAhead`, `lastPlayed`, `daysSinceLastPlay`, `note`) for review that isn't keeping up. `note` says whether the
+   learner just hasn't played (`not played since …`) or played without getting reviews (`played but no reviews served`).
 5. **Make it interactive and illustrated.** Mix formats (the publisher warns if fewer than 3 interactive ones), add a
    `scene` or `template` to most stages, and drop in a **fun-fact** card or two.
 6. **Keep it short (enforced):** a quest is about **8 minutes**: **at most 16 graded questions** over **4-6 stages

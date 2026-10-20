@@ -46,7 +46,11 @@ The export includes:
 - **`coverage`**: per subject, areas (Marble domains) seen out of total; `coverage.untouched` lists the unseen
   areas (math and science first) with up to 3 `starters` near the target age.
 - **`reviewHealth`**: `due`, `overdue` (> 1 day late), `oldestOverdueDays`, `gateItems7d`, `spotChecks7d`,
-  `unverifiedInferred`: is spaced review keeping up?
+  `unverifiedInferred`, `reviewsServed7d` (first-try review answers, gates and Play), `gatesOpened7d` (gates and
+  warm-ups that served items), `gatesAhead` (stage gates not reached yet in the active quest), `lastPlayed`,
+  `daysSinceLastPlay` and a plain **`note`**: `ok`; `not played since <date>: gates not reached yet` (nothing is
+  broken, the learner hasn't played); or `played but no reviews served: check the gates` (a real problem: tell the
+  parent). Is spaced review keeping up?
 - **`summary`**, **`stats`** and the raw **`progress`** record.
 
 ## 3. Check the quest cap
