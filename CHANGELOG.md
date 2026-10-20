@@ -5,6 +5,38 @@ Dates are Pacific Time.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-20
+
+### Fixed
+- **Due reviews reach the learner in every quest session.** Reviews in a quest came only from the stage gates, and
+  Play inside a quest serves no reviews of its own, so a session that stopped between gates (or a quest that ran
+  over several days) could pass with no review at all. Now the first time the learner continues a quest each day,
+  a 🔥 **warm-up** gate serves 1-2 due reviews (spot-check rules apply) at the next item boundary, never in the middle
+  of a question (#25).
+- **The gate budget matches the frozen "at most 4 gate items".** Gates could serve 3 × 2 = 6 items in one quest; warm-up
+  and stage gates together now serve at most 4 per quest per day, and a gate reached after that opens for free (#25).
+
+### Added
+- **`reviewHealth` tells "not reached yet" from "broken":** `reviewsServed7d`, `gatesOpened7d`, `gatesAhead`,
+  `lastPlayed`, `daysSinceLastPlay` and a `note` (`ok` / `not played since <date>: gates not reached yet` /
+  `played but no reviews served: check the gates`). Answer logs record the gate key (#26).
+- **`publish-lessons.mjs --refresh --date <quest date>`:** the nightly refreshes the quest in progress instead of
+  starting another. Reached stages and the quest block must stay unchanged (exit **6**, nothing written); the size
+  budget counts the remaining stages. `export-progress.mjs` says `REFRESH: …` with the exact commands, lists
+  `lockedStages` / `refreshableStages` and writes the stored pack to `exports/quest-<date>.json` to start from (#28).
+
+### Changed
+- **One active quest at a time** (replaces the cap of 3). A quest pack published while the current quest is
+  unfinished waits hidden: no "New quest!" reveal, not listed, can't be started (409). When the current quest is
+  finished, the newest waiting pack becomes the new quest. The Quests tab shows the current quest big, a secret
+  "Next up: ???" card and the finished quests; the `x/3` counter is gone. The parent report marks queued quests (#27).
+- `publish-lessons.mjs` refuses a new quest while one is in progress (exit **3**, prints the refresh command), also in
+  dry runs. Republishing a started quest gets the refresh checks (the v0.4 warning is now an error) (#28).
+
+### Removed
+- **Catch-up boosts** and the quest cap (`QUEST_CAP`): the publisher refuses `boostFor` files (exit 1). A `boost:<date>`
+  key published earlier still applies in the app (#28).
+
 ## [0.4.2] - 2026-10-19
 
 ### Added
@@ -173,7 +205,8 @@ First public release.
 - Runs on Cloudflare Workers (or `npm run dev` locally) only; the standalone Node server is planned for v0.2.
   `prototype/` is the early math-only version, not the full app.
 
-[Unreleased]: https://github.com/kentlangley/Jane/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/kentlangley/Jane/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/kentlangley/Jane/releases/tag/v0.5.0
 [0.4.2]: https://github.com/kentlangley/Jane/releases/tag/v0.4.2
 [0.4.1]: https://github.com/kentlangley/Jane/releases/tag/v0.4.1
 [0.4.0]: https://github.com/kentlangley/Jane/releases/tag/v0.4.0

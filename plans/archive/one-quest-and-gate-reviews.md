@@ -1,6 +1,6 @@
 # One quest at a time, and reviews that reach the learner (v0.5)
 
-**Status:** in progress on branch `feat/one-quest-and-gate-reviews`, 4/4 slices done. Tracking issue: #29.
+**Status:** ✅ done, 4/4 slices. Shipped in v0.5.0. Tracking issue: #29.
 
 ## Why
 - **Reviews.** The nightly export said the review gates served 0 review items in the last 7 days while many

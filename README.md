@@ -7,7 +7,7 @@ container) with file-based storage, and it is built on the open
 [Marble Skill Taxonomy](https://github.com/withmarbleapp/os-taxonomy): 1,590 micro-topics across 8 subjects,
 linked by 3,221 prerequisite edges.
 
-> **v0.4.2.** It's a child's learning app, so all personal data is excluded from the repo, and every path has a clear
+> **v0.5.0.** It's a child's learning app, so all personal data is excluded from the repo, and every path has a clear
 > license (see [LICENSING.md](LICENSING.md)). What's next: [Roadmap](#roadmap). Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## Philosophy
@@ -213,6 +213,11 @@ See [CHANGELOG.md](CHANGELOG.md) for what's shipped.
 **v0.4** (shipped)
 - **Learning loop:** shorter quests, 🗝️ review gates with spot-checks, honest medals (and a one-time re-score tool,
   `migrate-medals.mjs`), answer-form nudges ("write it as a percent"), locked finished quests, and coverage of new areas.
+
+**v0.5** (shipped)
+- **One quest at a time** (a newer quest waits as "Next up: ???"), the nightly **refreshes** the current quest's
+  unreached stages (`publish-lessons.mjs --refresh`), a daily 🔥 **warm-up** so due reviews reach the learner in every
+  quest session, and a `reviewHealth` note that tells "not played yet" from "broken".
 
 **Next**
 - **Generated Learn-it cards for non-math topics** (today Play mode generates them for math; packs cover the rest).

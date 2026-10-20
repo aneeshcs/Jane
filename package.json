@@ -1,6 +1,6 @@
 {
   "name": "jane",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "private": true,
   "description": "Jane: an adaptive learning app for kids, built on the Marble Skill Taxonomy. Runs on Cloudflare Workers or as a standalone Node server.",
   "type": "module",
@@ -18,7 +18,7 @@
     "deploy:dry": "./deploy.sh --dry-run --outdir .wrangler/dist",
     "export": "node export-progress.mjs",
     "export:local": "node export-progress.mjs --local",
-    "publish:dry": "node publish-lessons.mjs packs/examples/example-quest.json --dry-run",
+    "publish:dry": "node publish-lessons.mjs packs/examples/example-quest.json --dry-run --offline",
     "backup": "node backup-progress.mjs",
     "backup:local": "node backup-progress.mjs --local"
   },
