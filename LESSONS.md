@@ -37,6 +37,11 @@ open for free). Gate answers move Leitner boxes like any review (a first-try rig
 demotes it), and a gate opens once its items are answered, right or wrong, so it never strands the learner. Gates
 don't count toward quest progress. The nightly author doesn't pick gate items.
 
+**Warm-up and daily budget.** The first time the learner continues a started quest each day, a 🔥 **warm-up** of 1-2
+due reviews comes first (after any question already on screen, never in the middle of one). Warm-up and gates
+together serve **at most 4 review items per quest per day**; a gate reached after that opens for free. So reviews
+reach the learner every day they play, even when a session stops between gates or a quest runs over several days.
+
 **Spot-checks.** About 1 gate item in 3 (and every gate item when nothing is due) is a quick check of a skill the app
 only *inferred* and never saw: the one with the most dependent skills, then the lowest confidence. Right: the skill
 counts as shown directly (`verified`). Miss: it goes back to learning and the guesses built on it are withdrawn. A

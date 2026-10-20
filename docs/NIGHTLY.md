@@ -109,7 +109,9 @@ message and the trimmed or hinted stages apply right away. Preview either one in
 - **In a quest** reviews come through **review gates**: before stage 2, the middle stage and the boss, the learner
   answers 1-2 items the app draws from the due queue at runtime (most overdue first). They count in Leitner exactly
   like other reviews, so reviews keep flowing while quests run. About 1 gate item in 3 is a **spot-check** of an
-  inferred skill (right: it counts as shown directly; miss: back to learning). See LESSONS.md "Review gates".
+  inferred skill (right: it counts as shown directly; miss: back to learning). Each day the learner continues a
+  quest starts with a 🔥 warm-up of 1-2 reviews, and gates serve at most 4 review items per quest per day. See
+  LESSONS.md "Review gates".
 - **The nightly author doesn't write review stages.** If `reviewHealth.overdue` or `oldestOverdueDays` keeps growing,
   the learner isn't reaching the gates (no quest played): mention it in the commit message rather than adding review stages.
 

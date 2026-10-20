@@ -1,6 +1,6 @@
 # One quest at a time, and reviews that reach the learner (v0.5)
 
-**Status:** planned, 0/4 slices done. Tracking issue: #29.
+**Status:** in progress on branch `feat/one-quest-and-gate-reviews`, 1/4 slices done. Tracking issue: #29.
 
 ## Why
 - **Reviews.** The nightly export said the review gates served 0 review items in the last 7 days while many
@@ -45,12 +45,12 @@
 ## Slices
 | # | Slice | Area | Issue |
 |---|---|---|---|
-| 1 | Reviews reach the learner in every quest session | review | #25 |
+| 1 | Reviews reach the learner in every quest session | review | #25 ✅ |
 | 2 | The export tells "not reached yet" from "broken" | review | #26 |
 | 3 | One active quest at a time | quests | #27 |
 | 4 | The nightly refreshes the unreached stages | quests | #28 |
 
-### Slice 1: Reviews reach the learner in every quest session (#25)
+### Slice 1: Reviews reach the learner in every quest session (#25) — ✅ done
 - **Ships:** The first time a learner continues a quest each day, 1-2 due reviews come first (a warm-up gate),
   and gates never add more than 4 review items per quest per day. A session that stops between stage gates still
   gets reviews.
@@ -137,4 +137,8 @@ and the current quest's position unchanged; only the intended quest-state view c
 quest queued). gitleaks clean.
 
 ## Progress log
-_No slices done yet._
+
+### Slice 1 (#25) ✅
+- Shipped: Warm-up gate: the first item boundary of each Pacific day in a resumed, started quest serves 1-2 due reviews (spot-check rules apply), never mid-item. Gates (warm-up + stage) serve at most 4 review items per quest per day (GATE_DAY_MAX, the frozen v0.4 budget per sitting); a stage gate reached after that opens for free. This also fixes a discrepancy: v0.4 allowed 3 gates × 2 = 6 items. Kid frame: '🔥 Warm-up! A quick one you learned before (1/2)'. LESSONS.md and docs/NIGHTLY.md updated. Diagnosis of the 0 gate items: the gate picker does select due items (including the re-scored ones); the learner simply hadn't played since gates shipped, and in-quest Play serves no reviews of its own, so a session ending between gates got none.
+- Done test: `node --test test/review-gates.test.mjs && npm test`: 12/12, including the repro (resume mid-stage with reviews due, 6 items: 0 reviews before, warm-up first now), the 4-a-day cap, a new warm-up on a new day, and no interruption of an item in flight; 86/86 in npm test. Local sim on a copy of real data: the item in flight, then 2 warm-up reviews, then 2 gate reviews before the next stage gate stage (4 that day), and the boss gate opens for free.
+- Deferred / discovered: Two slice-10 tests were updated for the 4-a-day budget (previously 6 gate items in one day).

@@ -244,7 +244,11 @@ export function next(S,g,pack,now){
 // Spot-checks: about 1 gate item in 3 (and every gate item when nothing is due) checks a skill that was only inferred
 // and never verified, picked by most dependents, then lowest confidence. Right -> shown directly; miss -> learning,
 // and the guesses built on it are withdrawn (failUp). A spot-check never awards a medal.
-export const GATE_MAX=3,GATE_ITEMS=2;
+// v0.5: at most GATE_DAY_MAX gate items per quest per Pacific day (the frozen "≤ 4 gate items" budget, per sitting), and a
+// warm-up gate (1-2 due reviews) at the first item boundary of each day when the learner resumes a started quest.
+export const GATE_MAX=3,GATE_ITEMS=2,GATE_DAY_MAX=4;
+const gateDay=(S,pack,now)=>{const q=S.quests[pack.date],d=ptDay(now);if(q.gateDay?.day!==d)q.gateDay={day:d,n:0,warm:false};return q.gateDay;};
+const resumed=(S,pack)=>pack.topics.some(t=>t.questions.some((q,j)=>S.packSeen[`${pack.date}:${t.topicId}:${j}`]));
 export function gateStages(n){return[...new Set([1,Math.floor(n/2),n-1])].filter(k=>k>0&&k<n).sort((a,b)=>a-b).slice(0,GATE_MAX);}
 const gateRec=(S,pack)=>{const q=(S.quests??={})[pack.date]??={};return q.gates??={};};
 export const unverified=(S,id)=>{const r=S.ts[id];return !!r&&r.st==='mastered'&&r.how==='inferred'&&!r.verified;};
@@ -255,24 +259,28 @@ function gatePick(S,g,pack,due,now,used){const inf=id=>S.ts[id].how==='inferred'
   // soon-due fallback: a directly mastered topic in box 0-1 due within 2 days
   const soon=g.topics.filter(t=>{const r=S.ts[t.id];return r?.st==='mastered'&&r.how!=='inferred'&&(r.box||0)<=1&&r.due<=now+2*DAY&&!used.has(t.id);}).sort((a,b)=>S.ts[a.id].due-S.ts[b.id].due);
   return soon[0]?.id||null;}
-function gateItem(S,g,pack,due,now){if(!pack?.quest)return null;const k=pack.topics.findIndex(t=>g.byId[t.topicId]&&packQ(S,pack,t.topicId));if(k<1)return null;
-  const st=pack.topics[k];if(!gateStages(pack.topics.length).includes(k))return null;if(st.questions.some((q,j)=>S.packSeen[`${pack.date}:${st.topicId}:${j}`]))return null;
-  const G=gateRec(S,pack),gk=G[k]??={before:k,items:[],right:0,n:0,open:false};if(gk.open)return null;
+function gateItem(S,g,pack,due,now){if(!pack?.quest||!S.quests?.[pack.date]?.started)return null;const k=pack.topics.findIndex(t=>g.byId[t.topicId]&&packQ(S,pack,t.topicId));if(k<0)return null;
+  const G=gateRec(S,pack),day=gateDay(S,pack,now),left=GATE_DAY_MAX-day.n;
   const used=new Set(Object.values(G).flatMap(x=>x.items||[]));
-  const nSpot=g.topics.filter(t=>unverified(S,t.id)&&!used.has(t.id)).length;
-  if(gk.of==null){const avail=due.filter(t=>!used.has(t.id)).length;gk.of=avail>2||(avail>0&&nSpot)?GATE_ITEMS:avail>0?1:nSpot?Math.min(GATE_ITEMS,nSpot):(gatePick(S,g,pack,[],now,used)?1:0);}
-  if(gk.n>=gk.of){gk.open=true;return null;}
+  const nSpot=g.topics.filter(t=>unverified(S,t.id)&&!used.has(t.id)).length,avail=due.filter(t=>!used.has(t.id)).length;
+  let key,gk;const wk='w:'+day.day;
+  if(G[wk]&&!G[wk].open){key=wk;gk=G[wk];}
+  else if(!day.warm&&left>0&&resumed(S,pack)&&(avail||nSpot)){day.warm=true;key=wk;gk=G[wk]={before:'warm',warm:true,day:day.day,items:[],right:0,n:0,open:false,of:Math.min(left,avail>1||(avail&&nSpot)?GATE_ITEMS:1)};}
+  else{day.warm=true;if(k<1)return null;const st=pack.topics[k];if(!gateStages(pack.topics.length).includes(k))return null;if(st.questions.some((q,j)=>S.packSeen[`${pack.date}:${st.topicId}:${j}`]))return null;
+    key=k;gk=G[k]??={before:k,items:[],right:0,n:0,open:false};if(gk.open)return null;
+    if(gk.of==null)gk.of=Math.min(Math.max(0,left),avail>2||(avail>0&&nSpot)?GATE_ITEMS:avail>0?1:nSpot?Math.min(GATE_ITEMS,nSpot):(gatePick(S,g,pack,[],now,used)?1:0));}
+  if(gk.n>=gk.of||GATE_DAY_MAX-day.n<=0){gk.open=true;gk.of=gk.n;return null;}
   const served=Object.values(G).reduce((a,x)=>a+(x.items?.length||0),0),dueLeft=due.some(t=>!used.has(t.id));
   let id=nSpot&&(!dueLeft||served%3===2)?spotPick(S,g,used):null;if(!id)id=gatePick(S,g,pack,due,now,used);if(!id){gk.open=true;gk.of=gk.n;return null;}
   const it=buildItem(S,g,id,'review',null,now);gk.items.push(id);
-  return{...it,format:'gate',timed:null,boss:null,bonus:null,spot:unverified(S,id)||undefined,gate:{k,n:gk.n+1,of:gk.of,date:pack.date}};}
+  return{...it,format:'gate',timed:null,boss:null,bonus:null,spot:unverified(S,id)||undefined,gate:{k:key,n:gk.n+1,of:gk.of,date:pack.date,warm:gk.warm||undefined}};}
 function spotDone(S,g,it,x,now){const rec=S.ts[it.topicId],t=g.byId[it.topicId];if(!rec)return;
   if(x.r.correct){const box=rec.box0??rec.box;rec.st='mastered';rec.how='direct';rec.verified=now;rec.box=box||0;rec.due=now+BOXES[rec.box]*DAY;delete rec.box0;
     x.ev.push({event:'verified',topicId:it.topicId,topic:t.name,subject:t.subject});}
   else{rec.st='learning';rec.how='direct';rec.box=0;delete rec.box0;const n=failUp(S,g,it.topicId);x.ev.push({event:'spotMiss',topicId:it.topicId,topic:t.name,subject:t.subject,withdrawn:n});}
   x.r.spot={verified:!!x.r.correct};}
-function gateDone(S,it,r){const q=S.quests?.[it.gate.date];const gk=q?.gates?.[it.gate.k];if(!gk)return;gk.n++;if(r.correct&&!it.tries)gk.right++;if(gk.n>=gk.of)gk.open=true;r.gate={k:it.gate.k,n:gk.n,of:gk.of,open:gk.open};
-  if(gk.open)r.jane=(r.jane?r.jane+' ':'')+'🗝️ Gate open! On to the next stop!';}
+function gateDone(S,it,r){const q=S.quests?.[it.gate.date];const gk=q?.gates?.[it.gate.k];if(!gk)return;gk.n++;if(q.gateDay)q.gateDay.n++;if(r.correct&&!it.tries)gk.right++;if(gk.n>=gk.of)gk.open=true;r.gate={k:it.gate.k,n:gk.n,of:gk.of,open:gk.open};
+  if(gk.open)r.jane=(r.jane?r.jane+' ':'')+(gk.warm?'🔥 Warm-up done! Back to your quest!':'🗝️ Gate open! On to the next stop!');}
 // ---------- grading ----------
 // Answer form: when a question asks for a percent, a decimal, a fraction or a whole number, only that form counts.
 // The right value in another form is a gentle nudge ('wrongForm'), never a miss.
@@ -404,7 +412,7 @@ export function choose(S,g,c,pack,now){const cur=S.focus&&g.byId[S.focus];let ms
   else if(c==='fractions'){id=pickFocus(S,g,pack,now,{domain:'Fractions'});msg='Back to fractions! 🍕';}
   if(id)S.focus=id;S.current=null;return{jane:msg};}
 export function publicItem(it,g){if(!it)return null;const t=g.byId[it.topicId];const b=it.stage==='bonus';
-  return{id:it.id,topicId:it.topicId,topic:{name:t.sn||t.name,subject:t.subject,domain:t.domain,ic:t.ic},q:b?it.bonus.q:it.q,type:b?'input':it.type,choices:b?null:it.choices,vis:it.vis,ptype:it.ptype,creative:it.creative,placeholder:it.placeholder,pics:it.pics,items:it.items,left:it.left,right:it.right,statements:it.statements,line:it.line,parts:it.parts,blank:it.blank,card:it.card,body:it.body,emoji:it.emoji,scene:it.scene,tpl:it.tpl,mini:it.mini,stage:it.stage,mode:it.mode,format:b?'bonus':it.format,intro:b?null:it.intro,timed:b?null:it.timed,boss:it.boss,level:it.lvl,issued:it.issued,title:it.title,example:it.example,guided:b?undefined:it.guided,steps:b||!it.guided?undefined:it.steps,requeued:it.requeued,gate:it.gate?{n:it.gate.n,of:it.gate.of,k:it.gate.k,spot:!!it.spot}:undefined,help:helpFor(it)};}
+  return{id:it.id,topicId:it.topicId,topic:{name:t.sn||t.name,subject:t.subject,domain:t.domain,ic:t.ic},q:b?it.bonus.q:it.q,type:b?'input':it.type,choices:b?null:it.choices,vis:it.vis,ptype:it.ptype,creative:it.creative,placeholder:it.placeholder,pics:it.pics,items:it.items,left:it.left,right:it.right,statements:it.statements,line:it.line,parts:it.parts,blank:it.blank,card:it.card,body:it.body,emoji:it.emoji,scene:it.scene,tpl:it.tpl,mini:it.mini,stage:it.stage,mode:it.mode,format:b?'bonus':it.format,intro:b?null:it.intro,timed:b?null:it.timed,boss:it.boss,level:it.lvl,issued:it.issued,title:it.title,example:it.example,guided:b?undefined:it.guided,steps:b||!it.guided?undefined:it.steps,requeued:it.requeued,gate:it.gate?{n:it.gate.n,of:it.gate.of,k:it.gate.k,spot:!!it.spot,warm:!!it.gate.warm}:undefined,help:helpFor(it)};}
 export function medalInfo(m,g){const t=g.byId[m.id];if(!t)return null;return{id:m.id,tier:m.tier,at:m.at,boss:!!m.boss,name:t.sn||t.name,ic:t.ic,subject:t.subject,domain:t.domain,why:t.kq?`${t.kq} → ${t.ka}`:t.self};}
 // upgrade an in-flight old-style self-check (raw assessmentPrompt) to the kid-friendly item, keeping its mode
 export function refresh(S,g,pack,now){const c=S.current;if(c&&c.kind==='self'&&/Yes, I can/.test(c.choices?.[0]||'')&&g.byId[c.topicId]){S.current=buildItem(S,g,c.topicId,c.mode,pack,now);return true;}return false;}
