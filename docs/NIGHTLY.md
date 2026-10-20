@@ -9,13 +9,13 @@ on whatever scheduler they like, and write the pack by hand or with any assistan
 ```mermaid
 flowchart LR
   A[Kid plays during the day<br/>answers, hints, glossary taps] -->|storage: KV or DATA_DIR<br/>progress, log:DATE| B[~1:00 AM scheduler<br/>runs export-progress.mjs]
-  B --> C{3 quests<br/>already active?}
+  B --> C{A quest<br/>in progress?}
   C -- no --> D[Write a new quest<br/>per LESSONS.md]
-  C -- yes --> E[Write a catch-up boost<br/>for the oldest quest]
+  C -- yes --> E[Refresh its unreached stages<br/>reached ones stay locked]
   D --> F[publish-lessons.mjs<br/>validate → lessons:DATE]
-  E --> G[publish-lessons.mjs<br/>validate → boost:DATE]
+  E --> G[publish-lessons.mjs --refresh<br/>validate → lessons:QUEST DATE]
   F --> H[Morning: app shows the<br/>New quest! reveal]
-  G --> I[Morning: quest strip shows<br/>the boost message]
+  G --> I[Morning: fresh stages ahead<br/>in the same quest]
   H --> A
   I --> A
 ```
@@ -40,21 +40,32 @@ The export includes:
   self-checks per topic and domain. Also `goDeeper` (with easier prerequisite steps) and `strengths` (with `stretchTo`
   topics).
 - **`termsLookedUp`**: glossary words the kid tapped.
-- **`quests`**: active quests, the cap (3) and `nextStep` (a new quest, or a catch-up boost).
+- **`quests`**: the `current` quest (with `reachedStages`, `lockedStages`, `refreshableStages`), `queued` packs and
+  `nextStep`: `REFRESH: …` (a quest is in progress) or `NEW QUEST: …`.
 - **`frontier`**: ready and learning topics, closest to the target age first.
 - **`reviewDue`**: mastered topics whose spaced review is due (the gates serve them; don't write review stages).
 - **`coverage`**: per subject, areas (Marble domains) seen out of total; `coverage.untouched` lists the unseen
   areas (math and science first) with up to 3 `starters` near the target age.
 - **`reviewHealth`**: `due`, `overdue` (> 1 day late), `oldestOverdueDays`, `gateItems7d`, `spotChecks7d`,
-  `unverifiedInferred`: is spaced review keeping up?
+  `unverifiedInferred`, `reviewsServed7d` (first-try review answers, gates and Play), `gatesOpened7d` (gates and
+  warm-ups that served items), `gatesAhead` (stage gates not reached yet in the active quest), `lastPlayed`,
+  `daysSinceLastPlay` and a plain **`note`**: `ok`; `not played since <date>: gates not reached yet` (nothing is
+  broken, the learner hasn't played); or `played but no reviews served: check the gates` (a real problem: tell the
+  parent). Is spaced review keeping up?
 - **`summary`**, **`stats`** and the raw **`progress`** record.
 
-## 3. Check the quest cap
-At most **3 quests** can be active (started and unfinished) at a time. The routine reads `quests.nextStep`:
-- **Under the cap:** write a **new quest** for tomorrow.
-- **At the cap:** write a **catch-up boost** for the **oldest** active quest instead
-  (`{"boostFor":"<quest date>", ...}`). It trims stages that have a lot left, adds hints and shows an encouraging
-  message. `publish-lessons.mjs` also refuses to publish a new quest at the cap unless you pass `--force`.
+## 3. One quest at a time: refresh or new quest?
+There is only one quest at a time. The routine reads `quests.nextStep`:
+- **`REFRESH: …`** (a quest is in progress): don't write a new quest. Refresh the current quest's **unreached
+  stages** with tonight's learning, exactly as in LESSONS.md "Refreshing the current quest":
+  1. The export wrote the stored pack to `quests.current.packFile` (`exports/quest-<quest date>.json`; with `--local`,
+     under `$DATA_DIR/exports/`). Copy it to `packs/quest-<quest date>.json`.
+  2. Keep `date`, `quest` and the first `quests.current.reachedStages` topics **byte-for-byte**; rewrite, add or drop
+     only the topics after them (`refreshableStages`), boss last. The budget (16 graded, 7 stages) counts only those.
+  3. `node publish-lessons.mjs packs/quest-<quest date>.json --refresh --date <quest date> --dry-run`, then without
+     `--dry-run`. Exit **6** means a reached stage or the quest block changed: nothing was written; copy them unchanged.
+- **`NEW QUEST: …`** (none in progress): write a **new quest** for tomorrow (step 4) and publish it normally. A new
+  quest while one is in progress is refused (exit **3**). Catch-up boosts are retired (exit 1).
 
 ## 4. Write the pack (rules in LESSONS.md)
 - **Visit a new area.** One stretch stage from `coverage.untouched` (a `starters` topic), rotating subjects with math
@@ -85,17 +96,17 @@ At most **3 quests** can be active (started and unfinished) at a time. The routi
 ```bash
 node publish-lessons.mjs packs/2026-10-18.json --dry-run   # validate only; fix every error and warning
 node publish-lessons.mjs packs/2026-10-18.json             # → KV lessons:2026-10-18
-node publish-lessons.mjs boost.json                        # at the cap → KV boost:<quest date>
+node publish-lessons.mjs packs/quest-2026-10-17.json --refresh --date 2026-10-17   # REFRESH → KV lessons:2026-10-17
 # Node server / Docker: add --local (or set STORAGE=file) to every command; it reads and writes DATA_DIR instead of KV.
 ```
 Nothing is written if the pack is invalid (the script exits 1 and lists every problem). **Never change a finished
-quest:** the publisher refuses to overwrite or boost one (exit 4, even with `--force`). New material goes in the next
-quest.
+quest:** the publisher refuses to overwrite one (exit 4, even with `--force`). New material goes in the next
+quest. A refresh never changes the stages the learner reached (exit 6).
 
 ## 6. In the morning
-When the kid opens the app and today's quest hasn't been started (and fewer than 3 are active), Jane plays the animated
-**"New quest!"** reveal, and the Quests tab shows a red dot. If a boost was published instead, the quest strip shows its
-message and the trimmed or hinted stages apply right away. Preview either one in the sandbox first:
+When no quest is in progress and a new one is waiting, Jane plays the animated **"New quest!"** reveal, and the
+Quests tab shows a red dot. After a refresh, the kid simply finds fresh stages ahead in the same quest. Each day the
+kid continues the quest starts with a short 🔥 warm-up of due reviews. Preview either one in the sandbox first:
 `/api/sandbox?on=1`, then `POST /api/sandbox/reset {"offsetDays":1}`.
 
 ## Spaced review: how it's scheduled and mixed in
@@ -109,13 +120,16 @@ message and the trimmed or hinted stages apply right away. Preview either one in
 - **In a quest** reviews come through **review gates**: before stage 2, the middle stage and the boss, the learner
   answers 1-2 items the app draws from the due queue at runtime (most overdue first). They count in Leitner exactly
   like other reviews, so reviews keep flowing while quests run. About 1 gate item in 3 is a **spot-check** of an
-  inferred skill (right: it counts as shown directly; miss: back to learning). See LESSONS.md "Review gates".
+  inferred skill (right: it counts as shown directly; miss: back to learning). Each day the learner continues a
+  quest starts with a 🔥 warm-up of 1-2 reviews, and gates serve at most 4 review items per quest per day. See
+  LESSONS.md "Review gates".
 - **The nightly author doesn't write review stages.** If `reviewHealth.overdue` or `oldestOverdueDays` keeps growing,
   the learner isn't reaching the gates (no quest played): mention it in the commit message rather than adding review stages.
 
 ## When the routine messages the parent
 Usually never. It stays quiet on a normal night. It only reaches out when something **fails** (the export or publish
-errors, or a pack it can't make valid) or **matters**, for example the quest cap being hit night after night, a new
+errors, or a pack it can't make valid) or **matters**, for example `reviewHealth.note` saying `played but no reviews
+served`, the same quest being refreshed night after night with no progress, a new
 struggle spot that keeps coming back, or a big milestone. The parent report (`/parent`) is the everyday view.
 
 ## Run it yourself
@@ -148,7 +162,7 @@ together with the planned generator below.
 
 ## Planned: a built-in nightly generator
 Not built yet. The plan is a `scheduled()` handler in the Worker, run by a Cron Trigger. It would build a rules-based
-quest (or a catch-up boost) from the same data the export produces, using the kid prompts, generators and LESSONS.md
+quest (or a refresh of the current one) from the same data the export produces, using the kid prompts, generators and LESSONS.md
 rules, then validate it and write `lessons:YYYY-MM-DD` itself. That would make the nightly cycle work with zero setup.
 Hand-written or assistant-written packs would still take priority when one is published.
 

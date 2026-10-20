@@ -7,7 +7,7 @@ container) with file-based storage, and it is built on the open
 [Marble Skill Taxonomy](https://github.com/withmarbleapp/os-taxonomy): 1,590 micro-topics across 8 subjects,
 linked by 3,221 prerequisite edges.
 
-> **v0.4.2.** It's a child's learning app, so all personal data is excluded from the repo, and every path has a clear
+> **v0.5.0.** It's a child's learning app, so all personal data is excluded from the repo, and every path has a clear
 > license (see [LICENSING.md](LICENSING.md)). What's next: [Roadmap](#roadmap). Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## Philosophy
@@ -53,8 +53,9 @@ friendly tutor. The name is just a nod to the books: this project has no affilia
 - **Island map ("My World").** Each subject is an island and each topic is a stone, colored mastered / review due /
   learning / ready / locked. Tap a stone for *Explore now!* or *Practice now* mini-sessions.
 - **Quests.** Each daily lesson pack is a quest with a story hook, stages, a boss finale and a quest medal, plus an
-  animated "New quest!" reveal and a Quests tab. **At most 3 quests are active at once**; at the cap, the nightly job
-  publishes a *catch-up boost* for the oldest one instead of a new quest. Quests are short (about 8 minutes, at most
+  animated "New quest!" reveal and a Quests tab. **One quest at a time**: a newer pack waits hidden ("Next up: ???")
+  until the current quest is finished, and meanwhile the nightly job *refreshes* the current quest's unreached
+  stages instead of starting another one. Quests are short (about 8 minutes, at most
   16 graded questions) and **a finished quest is locked**: its medal and progress never change.
 - **Nightly lesson packs.** `export-progress.mjs` exports weak spots, strengths, frontier topics and due reviews.
   You (or an AI assistant) write tomorrow's pack following [LESSONS.md](LESSONS.md), then
@@ -89,8 +90,8 @@ any assistant (see [How the nightly cycle works](docs/NIGHTLY.md)).
 
 ## Nightly lessons
 
-A nightly cycle turns the day's answers into tomorrow's quest: **export → check the quest cap → write a quest or a
-catch-up boost → validate → publish**. It runs on whatever scheduler you choose (cron, launchd, a CI schedule, or by
+A nightly cycle turns the day's answers into tomorrow's quest: **export → new quest, or refresh the unreached stages of
+the current one → validate → publish**. It runs on whatever scheduler you choose (cron, launchd, a CI schedule, or by
 hand). The two scripts are the whole interface, and no outside service is needed. A Cloudflare Cron Trigger is the natural
 built-in option, and a **built-in nightly generator** (a `scheduled()` handler) is a planned feature. Details and a
 diagram: **[docs/NIGHTLY.md](docs/NIGHTLY.md)**.
@@ -121,7 +122,7 @@ Storage: Workers KV (binding JANE_KV) on Cloudflare, or one JSON file per key in
    progress              the learner's single progress record
    log:YYYY-MM-DD        that day's answer log (Pacific Time days)
    lessons:YYYY-MM-DD    published lesson pack / quest
-   boost:YYYY-MM-DD      catch-up boost for a quest
+   boost:YYYY-MM-DD      catch-up boost for a quest (retired in v0.5; old keys still apply)
    sandbox:*             sandbox copies (testing only)
 ```
 
@@ -194,8 +195,8 @@ Suggested prompt to paste into your assistant:
 > Read README.md, INSTALL.md, LESSONS.md and docs/NIGHTLY.md in this repo. Deploy Jane to `<my host: Cloudflare Workers /
 > this computer with npm start / Docker / my VPS>`, creating the storage it needs. Set `LEARNER_NAME` to `<name>`, `LEARNER_AGE` to `<age>` and
 > `LEARNER_GRADE` to `<grade>`, keeping secrets and ids out of git. Back up progress before every deploy. Then schedule
-> the nightly cycle for about 1:00 AM `<my time zone>`: run export-progress.mjs, write tomorrow's quest (or a catch-up
-> boost) following LESSONS.md, validate with publish-lessons.mjs --dry-run, then publish. Only message me if something
+> the nightly cycle for about 1:00 AM `<my time zone>`: run export-progress.mjs, write tomorrow's quest (or refresh the
+> quest in progress with --refresh) following LESSONS.md, validate with publish-lessons.mjs --dry-run, then publish. Only message me if something
 > fails or needs my attention.
 
 ## Roadmap
@@ -212,6 +213,11 @@ See [CHANGELOG.md](CHANGELOG.md) for what's shipped.
 **v0.4** (shipped)
 - **Learning loop:** shorter quests, 🗝️ review gates with spot-checks, honest medals (and a one-time re-score tool,
   `migrate-medals.mjs`), answer-form nudges ("write it as a percent"), locked finished quests, and coverage of new areas.
+
+**v0.5** (shipped)
+- **One quest at a time** (a newer quest waits as "Next up: ???"), the nightly **refreshes** the current quest's
+  unreached stages (`publish-lessons.mjs --refresh`), a daily 🔥 **warm-up** so due reviews reach the learner in every
+  quest session, and a `reviewHealth` note that tells "not played yet" from "broken".
 
 **Next**
 - **Generated Learn-it cards for non-math topics** (today Play mode generates them for math; packs cover the rest).
