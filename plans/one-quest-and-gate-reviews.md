@@ -1,6 +1,6 @@
 # One quest at a time, and reviews that reach the learner (v0.5)
 
-**Status:** in progress on branch `feat/one-quest-and-gate-reviews`, 2/4 slices done. Tracking issue: #29.
+**Status:** in progress on branch `feat/one-quest-and-gate-reviews`, 3/4 slices done. Tracking issue: #29.
 
 ## Why
 - **Reviews.** The nightly export said the review gates served 0 review items in the last 7 days while many
@@ -47,7 +47,7 @@
 |---|---|---|---|
 | 1 | Reviews reach the learner in every quest session | review | #25 ✅ |
 | 2 | The export tells "not reached yet" from "broken" | review | #26 ✅ |
-| 3 | One active quest at a time | quests | #27 |
+| 3 | One active quest at a time | quests | #27 ✅ |
 | 4 | The nightly refreshes the unreached stages | quests | #28 |
 
 ### Slice 1: Reviews reach the learner in every quest session (#25) — ✅ done
@@ -88,7 +88,7 @@
 - Done test: `node --test test/server.test.mjs && npm test`
 - Decisions frozen: D2 as written.
 
-### Slice 3: One active quest at a time (#27)
+### Slice 3: One active quest at a time (#27) — ✅ done
 - **Ships:** The app has exactly one current quest. A newer quest pack waits hidden (no alert, can't be started)
   until the current one is finished, then appears as the new quest. The Quests tab shows the current quest big,
   "Next up: ???" when one is waiting, and finished quests below.
@@ -147,3 +147,8 @@ quest queued). gitleaks clean.
 - Shipped: export-progress.mjs reviewHealth adds reviewsServed7d, gatesOpened7d (gates and warm-ups that served items; answer logs now record the gate key), gatesAhead (stage gates not reached in active quests), lastPlayed, daysSinceLastPlay and a note: 'ok' / 'not played since <date>: gates not reached yet' / 'played but no reviews served: check the gates'. docs/NIGHTLY.md and LESSONS.md describe the fields.
 - Done test: `node --test test/server.test.mjs && npm test`: 6/6 server tests (the export case checks all numeric fields and note 'ok'; a new case with no answers in the window gets 'not played since …: gates not reached yet'), 87/87 in npm test. On a local state with reviews due and no recent answers: reviewsServed7d 0, gatesAhead > 0, note 'not played since <date>: gates not reached yet'.
 - Deferred / discovered: None.
+
+### Slice 3 (#27) ✅
+- Shipped: E.questLineup(S, packs, today) → {current, newQuest, queued, finished}: the started, unfinished quest (focused, else oldest) is current; with none, the newest unstarted quest pack is the new quest. Worker: /api/state plays the current quest, newQuest only for it, quests:{current, nextUp, boost} (no cap); /api/quest/start answers 409 'Finish your quest to unlock the next one! 🗝️' for any other quest; /api/quests returns {current, nextUp, finished} and never names the queued quest. Quests tab: the current quest big, a dashed 'Next up: ???' teaser, finished quests below; the cap chip and paused messages are gone. Parent report labels queued quests. Export quests block: current, queued, nextStep (no cap). README and INSTALL updated.
+- Done test: `node --test test/one-quest.test.mjs && npm test`: 5/5 (lineup rules, plus a standalone-server run: a newer pack while one is unfinished gives newQuest false, nextUp true, a secret teaser and a 409 on start; after the first quest is finished the newer one becomes the new quest), 92/92 in npm test. A local copy of a real-shaped state: the in-progress quest stays current at the same position and item, the newer pack is queued, starting it is refused.
+- Deferred / discovered: Older unstarted packs are superseded once a newer one is current (they were never started, so nothing is lost). Slice 4 replaces the export's nextStep with the refresh command.

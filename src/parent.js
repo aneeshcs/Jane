@@ -35,10 +35,11 @@ export function parentData({S,g,now,today,logs,packs,tomorrowPack,boosts}){
   const wins=all.filter(l=>last7.has(l.day)&&l.event==='mastered').map(l=>({name:l.topic,how:l.how,day:l.day,subject:g.byId[l.topicId]?.subject}));
   const terms={};for(const l of all)if(l.event==='term'&&l.term){const k=l.term.toLowerCase();(terms[k]??={term:l.term,count:0,last:l.ts}).count++;terms[k].last=l.ts;}
   // quests
+  const LQ=E.questLineup(S,packs,today);
   const quests=Object.values(packs).filter(Boolean).sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{const pp=boosts[p.date]?E.applyBoost(p,boosts[p.date]):p;const qi=E.questInfo(S,g,pp);
     const A=answers.filter(l=>l.pack===p.date);
     return{...qi,stages:qi.stages.map((s,i)=>{const id=s.topicId,a=A.filter(l=>l.topicId===id),f=a.filter(l=>l.try===1);return{...s,topic:g.byId[id]?.name,first:f.length,firstRight:f.filter(l=>l.correct).length,lm:a.filter(l=>l.learningMoment||(l.try>=2&&!l.correct)).length};}),
-      boost:pp.boost||null,questMedal:(S.questMedals||[]).find(m=>m.date===p.date)||null};});
+      boost:pp.boost||null,queued:LQ.queued.includes(p.date)||undefined,questMedal:(S.questMedals||[]).find(m=>m.date===p.date)||null};});
   const tonight=tomorrowPack?{date:tomorrowPack.date,title:tomorrowPack.quest?.title||tomorrowPack.title,hook:tomorrowPack.quest?.hook||'',stages:tomorrowPack.topics.map(t=>({name:t.stage?.name||g.byId[t.topicId]?.name,deep:!!t.deepDive,review:!!t.review,boss:t.format==='boss'}))}:null;
   // upcoming reviews
   const reviews=recs.filter(([,r])=>r.how!=='inferred').map(([id,r])=>({n:g.byId[id].name,subject:g.byId[id].subject,due:r.due,box:r.box||0,overdue:r.due<=now})).sort((a,b)=>a.due-b.due).slice(0,40);

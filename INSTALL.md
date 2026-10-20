@@ -122,7 +122,7 @@ the app is designed around ages ~8-12) and `LEARNER_GRADE` (default `upper eleme
 The nightly scripts read the same block.
 
 Optional tuning (code constants):
-spaced-review boxes (`BOXES`) and the quest cap (`QUEST_CAP` in `src/worker.js` and `lib-cli.mjs`).
+spaced-review boxes (`BOXES`) and the review-gate budget (`GATE_DAY_MAX`, `GATE_ITEMS` in `src/engine.js`).
 
 ### 5. Deploy
 ```bash

@@ -421,6 +421,15 @@ export function refresh(S,g,pack,now){const c=S.current;if(c&&c.kind==='self'&&/
 export function questActive(S,pack){if(!pack?.quest)return false;const q=S.quests?.[pack.date];return !!(q?.started&&!q.done);}
 // a finished quest is locked: its pack serves nothing more, and its progress is read from the completion snapshot
 export const questLocked=(S,pack)=>!!(pack?.quest&&S.quests?.[pack.date]?.done);
+// v0.5: ONE quest at a time. current = the started, unfinished quest (focused, else oldest); with none, the newest
+// unstarted quest pack (a "New quest!"). Other unfinished quest packs are queued: hidden, no alert, can't be started.
+// Older unstarted packs are superseded once a newer one is current. packs: {date: pack} for dates <= today.
+export function questLineup(S,packs,today){const Q=S?.quests||{},ds=Object.keys(packs||{}).filter(d=>packs[d]?.quest&&d<=today).sort();
+  const active=ds.filter(d=>Q[d]?.started&&!Q[d]?.done),fresh=ds.filter(d=>!Q[d]?.started&&!Q[d]?.done);
+  let current=active.includes(S?.questFocus)?S.questFocus:active[0]||null,newQuest=false;
+  if(!current&&fresh.length){current=fresh[fresh.length-1];newQuest=true;}
+  const queued=ds.filter(d=>d!==current&&!Q[d]?.done&&(active.includes(d)||(!newQuest&&fresh.includes(d))));
+  return{current,newQuest,queued,finished:ds.filter(d=>Q[d]?.done).reverse()};}
 export function questInfo(S,g,pack){if(!pack)return null;const Q=pack.quest||{},rec=S.quests?.[pack.date]||{};
   const seen=(t,j)=>S.packSeen[`${pack.date}:${t.topicId}:${j}`];
   let stages=pack.topics.map((t,i)=>{const live=t.questions.map((q,j)=>[q,j]).filter(([q])=>!q._skip),n=live.length,d=live.filter(([,j])=>seen(t,j)).length,tp=g.byId[t.topicId];

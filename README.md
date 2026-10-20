@@ -53,8 +53,9 @@ friendly tutor. The name is just a nod to the books: this project has no affilia
 - **Island map ("My World").** Each subject is an island and each topic is a stone, colored mastered / review due /
   learning / ready / locked. Tap a stone for *Explore now!* or *Practice now* mini-sessions.
 - **Quests.** Each daily lesson pack is a quest with a story hook, stages, a boss finale and a quest medal, plus an
-  animated "New quest!" reveal and a Quests tab. **At most 3 quests are active at once**; at the cap, the nightly job
-  publishes a *catch-up boost* for the oldest one instead of a new quest. Quests are short (about 8 minutes, at most
+  animated "New quest!" reveal and a Quests tab. **One quest at a time**: a newer pack waits hidden ("Next up: ???")
+  until the current quest is finished, and meanwhile the nightly job *refreshes* the current quest's unreached
+  stages instead of starting another one. Quests are short (about 8 minutes, at most
   16 graded questions) and **a finished quest is locked**: its medal and progress never change.
 - **Nightly lesson packs.** `export-progress.mjs` exports weak spots, strengths, frontier topics and due reviews.
   You (or an AI assistant) write tomorrow's pack following [LESSONS.md](LESSONS.md), then
@@ -89,8 +90,8 @@ any assistant (see [How the nightly cycle works](docs/NIGHTLY.md)).
 
 ## Nightly lessons
 
-A nightly cycle turns the day's answers into tomorrow's quest: **export → check the quest cap → write a quest or a
-catch-up boost → validate → publish**. It runs on whatever scheduler you choose (cron, launchd, a CI schedule, or by
+A nightly cycle turns the day's answers into tomorrow's quest: **export → new quest, or refresh the unreached stages of
+the current one → validate → publish**. It runs on whatever scheduler you choose (cron, launchd, a CI schedule, or by
 hand). The two scripts are the whole interface, and no outside service is needed. A Cloudflare Cron Trigger is the natural
 built-in option, and a **built-in nightly generator** (a `scheduled()` handler) is a planned feature. Details and a
 diagram: **[docs/NIGHTLY.md](docs/NIGHTLY.md)**.

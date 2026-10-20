@@ -3,7 +3,7 @@
 // Usage: node export-progress.mjs [--out file.json] [--date YYYY-MM-DD] [--days 7] [--local]   (default out: exports/progress-<date>.json;
 //        with --local or STORAGE=file it reads the standalone server's DATA_DIR and writes DATA_DIR/exports/)
 // Adds weakSpots (per topic + per domain: misses, hints, slow answers, failed reviews, unsure self-checks), strengths and goDeeper suggestions.
-import fs from 'fs';import path from 'path';import {kvGet,loadTax,ptDate,DIR,activeQuests,QUEST_CAP,learnerConfig,outDir} from './lib-cli.mjs';import * as E from './src/engine.js';import {coverage as areaCoverage} from './src/coverage.js';
+import fs from 'fs';import path from 'path';import {kvGet,loadTax,ptDate,DIR,activeQuests,learnerConfig,outDir} from './lib-cli.mjs';import * as E from './src/engine.js';import {coverage as areaCoverage} from './src/coverage.js';
 E.configure(learnerConfig());const L=E.learner();
 const args=process.argv.slice(2),opt=k=>args.includes(k)?args[args.indexOf(k)+1]:null;
 const date=opt('--date')||ptDate(),out=opt('--out')||path.join(outDir('exports'),`progress-${date}.json`);
@@ -59,14 +59,16 @@ const needsSupport=Object.entries(S.support||{}).filter(([id,v])=>g.byId[id]&&(v
   bossPausedUntil:v.bossOff>now?new Date(v.bossOff).toISOString():undefined,easierSteps:stepDown(id).slice(0,4)}));
 const requeued=(S.requeue||[]).map(x=>({topicId:x.item.topicId,name:g.byId[x.item.topicId]?.name,question:x.item.q,answer:x.item.answer,comesBackAfter:new Date(x.notBefore).toISOString(),times:x.n}));
 const weakSpots={window:`${dayList[dayList.length-1]}..${date}`,rules:{slowSec:SLOW,idleIgnoredSec:IDLE,score:'misses×3 + hints×2 + slow + failedReviews×3 + unsure×2 + stuck×2 + skipped×3'},topics:weakTopics,domains,goDeeper,strengths,needsSupport,requeued};
-// ---------- quests (cap 3 active) + glossary lookups ----------
+// ---------- quests (v0.5: ONE current quest; newer packs wait queued) + glossary lookups ----------
 const A=activeQuests(S);const qinfo=d=>{const p=kvGet('lessons:'+d);if(!p?.quest)return null;const b=kvGet('boost:'+d);const pp=b?E.applyBoost(p,b):p;const qi=E.questInfo(S,g,pp);
-  return{date:d,title:qi.title,startedAt:new Date(S.quests[d].started).toISOString(),done:qi.done,total:qi.total,pct:qi.pct,boosted:!!b,
+  return{date:d,title:qi.title,startedAt:S.quests?.[d]?.started?new Date(S.quests[d].started).toISOString():null,done:qi.done,total:qi.total,pct:qi.pct,
     remainingStages:qi.stages.map((s,i)=>({i,topicId:s.topicId,name:s.name,left:s.n-s.done,boss:s.boss})).filter(s=>s.left>0)};};
-const activeList=A.map(qinfo).filter(Boolean);
+const qDates=[...new Set([...A,...dayList,ptDate(Date.parse(date+'T12:00:00Z')+864e5)])].filter(d=>d<=date).sort();
+const LQ=E.questLineup(S,Object.fromEntries(qDates.map(d=>[d,kvGet('lessons:'+d)])),date);
+const activeList=A.map(qinfo).filter(Boolean),cur=LQ.current&&!LQ.newQuest?qinfo(LQ.current):null;
 reviewHealth.gatesAhead=A.reduce((a,d)=>{const p=kvGet('lessons:'+d);return a+(p?.quest?E.questInfo(S,g,p).gates.filter(x=>x.state==='locked').length:0);},0); // stage gates not reached yet in active quests
-const quests={active:activeList.length,cap:QUEST_CAP,atCap:activeList.length>=QUEST_CAP,list:activeList,completed:Object.entries(S.quests||{}).filter(([,q])=>q.done).map(([d])=>d),
-  nextStep:activeList.length>=QUEST_CAP?`AT CAP: do not publish a new quest. Publish a catch-up boost for ${activeList[0].date} ("${activeList[0].title}", ${activeList[0].pct}% done).`:`OK to publish a new quest (${activeList.length}/${QUEST_CAP} active).`};
+const quests={current:cur,queued:LQ.queued,active:activeList.length,list:activeList,completed:Object.entries(S.quests||{}).filter(([,q])=>q.done).map(([d])=>d),
+  nextStep:cur?`ONE QUEST ACTIVE: ${cur.date} ("${cur.title}", ${cur.pct}% done). Do not publish a new quest.`:'No quest in progress: OK to publish a new quest.'};
 const tl={};for(const l of logs)if(l.event==='term'){const k=l.term.toLowerCase();const x=tl[k]??={term:l.term,count:0,topics:new Set()};x.count++;if(l.topic)x.topics.add(l.topic);}
 const termsLookedUp=Object.values(tl).map(x=>({...x,topics:[...x.topics]})).sort((a,b)=>b.count-a.count);
 const res={exportedAt:new Date(now).toISOString(),date,timezone:'America/Los_Angeles',learner:S.name,summary:sm,
