@@ -5,6 +5,16 @@ Dates are Pacific Time.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-19
+
+### Added
+- **Trophy Case filters.** The medal-type chips at the top (All, Quest, Legendary, Gold, Silver, Bronze) are now
+  buttons. Tap one and only those medals show. Tap it again, or tap All, to see everything. The chosen chip glows
+  with a ✓ and the others dim, and the grid animates with AutoAnimate (no motion with reduced motion). A type with
+  no medals yet shows a friendly message. The buttons are keyboard and screen-reader friendly (`aria-pressed`, a
+  polite live region) and have 44 px touch targets. Helpers live in `public/trophies.js`, tested by
+  `test/trophy-filter.test.mjs` (#23).
+
 ## [0.4.1] - 2026-10-19
 
 ### Changed
@@ -163,7 +173,8 @@ First public release.
 - Runs on Cloudflare Workers (or `npm run dev` locally) only; the standalone Node server is planned for v0.2.
   `prototype/` is the early math-only version, not the full app.
 
-[Unreleased]: https://github.com/kentlangley/Jane/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/kentlangley/Jane/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/kentlangley/Jane/releases/tag/v0.4.2
 [0.4.1]: https://github.com/kentlangley/Jane/releases/tag/v0.4.1
 [0.4.0]: https://github.com/kentlangley/Jane/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kentlangley/Jane/releases/tag/v0.3.0

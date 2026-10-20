@@ -196,11 +196,18 @@ function openTrophies(){document.querySelector('.tab[data-v=trophies]').click();
 function reveal(m,inf){const o=document.createElement('div');o.className='reveal r-'+m.tier;const T=TIER[m.tier];
  o.innerHTML=`<div class="rays"></div><div class="rbox"><div class="rtier">${m.tier==='legendary'?'🌈 LEGENDARY!':'✨ New '+T.n+' medal!'}</div><div class="rmedal">${medalSVG(m,170)}</div><div class="rname">${esc(m.name)}</div><div class="small">${esc(m.subject)}${inf?` · +${inf} skills lit up!`:''}</div><button>Collect it! 🏆</button></div>`;
  document.body.appendChild(o);confetti(m.tier==='legendary'?140:90);const close=()=>{o.classList.add('out');setTimeout(()=>o.remove(),350);};o.querySelector('button').onclick=close;o.onclick=e=>{if(e.target===o)close();};}
-async function loadTrophies(){const d=await api('/api/trophies');const c=d.counts||{};
- $('tcount').innerHTML=['quest','legendary','gold','silver','bronze'].filter(t=>t!=='quest'||c.quest).map(t=>`<span class="tc t-${t}">${{quest:'🗺️',legendary:'🌈',gold:'🥇',silver:'🥈',bronze:'🥉'}[t]} ${c[t]||0} ${TIER[t].n}</span>`).join('');
- $('tgrid').innerHTML=d.medals.length?d.medals.map((m,i)=>`<button class="tcell" data-i="${i}">${medalSVG(m,72)}<span>${esc(m.name)}</span></button>`).join(''):'<p>No medals yet — go win one! 🏅</p>';
- $('tgrid').querySelectorAll('.tcell').forEach(b=>b.onclick=()=>{const m=d.medals[+b.dataset.i];$('tdetail').hidden=false;
-  $('tdetail').innerHTML=`<div class="tdbox">${medalSVG(m,120)}<h3>${esc(m.name)}</h3><div class="tier-pill t-${m.tier}">${TIER[m.tier].n}${m.boss?' · Boss win!':''}</div><p class="small">${ISL[m.subject]?.e||''} ${esc(m.subject)} › ${esc(m.domain)}</p><p>You earned this for: <b>${esc(m.why)}</b></p><p class="small">Won ${new Date(m.at).toLocaleDateString('en-US',{timeZone:'America/Los_Angeles',month:'short',day:'numeric'})}</p><button onclick="$('tdetail').hidden=true">Close</button></div>`;});}
+// Trophy Case: medal-type chips are filter buttons (public/trophies.js); the grid keeps its cells and AutoAnimate moves them
+let tFilter='all',tAnim=false;
+async function loadTrophies(){const d=await api('/api/trophies');const TF=window.TrophyFilter,M=d.medals||[];if(!TF.chips(M,tFilter).some(c=>c.tier===tFilter))tFilter='all';
+ const grid=$('tgrid');if(!tAnim&&window.UIK?.autoAnimate&&!matchMedia('(prefers-reduced-motion: reduce)').matches){UIK.autoAnimate(grid,{duration:260,easing:'ease-out'});tAnim=true;}
+ const cells=M.map((m,i)=>{const b=document.createElement('button');b.className='tcell t-'+m.tier;b.dataset.i=i;b.innerHTML=`${medalSVG(m,72)}<span>${esc(m.name)}</span>`;b.onclick=()=>detail(m);return b;});
+ const draw=()=>{$('tcount').innerHTML=TF.chipsHTML(M,tFilter);$('tcount').querySelectorAll('.tc').forEach(c=>c.onclick=()=>{const t=c.dataset.tier,kb=document.activeElement===c;tFilter=TF.next(tFilter,t);draw();if(kb)$('tcount').querySelector(`.tc[data-tier="${t}"]`)?.focus();});
+  const show=TF.filter(M,tFilter).map(m=>cells[M.indexOf(m)]);
+  grid.replaceChildren(...(show.length?show:[Object.assign(document.createElement('p'),{className:'tempty',textContent:TF.empty(tFilter,M.length)})]));
+  $('tlive').textContent=TF.say(tFilter,show.length);};
+ draw();
+ function detail(m){$('tdetail').hidden=false;
+  $('tdetail').innerHTML=`<div class="tdbox">${medalSVG(m,120)}<h3>${esc(m.name)}</h3><div class="tier-pill t-${m.tier}">${TIER[m.tier].n}${m.boss?' · Boss win!':''}</div><p class="small">${ISL[m.subject]?.e||''} ${esc(m.subject)} › ${esc(m.domain)}</p><p>You earned this for: <b>${esc(m.why)}</b></p><p class="small">Won ${new Date(m.at).toLocaleDateString('en-US',{timeZone:'America/Los_Angeles',month:'short',day:'numeric'})}</p><button onclick="$('tdetail').hidden=true">Close</button></div>`;}}
 // preview the unlock animation with the latest medal (no progress change): /#medal-preview
 if(location.hash==='#medal-preview')api('/api/state').then(s=>s.medals?.[0]&&reveal(s.medals[0],0));
 
