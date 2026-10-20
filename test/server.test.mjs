@@ -19,6 +19,7 @@ before(async()=>{
 after(()=>{srv?.kill();fs.rmSync(DATA,{recursive:true,force:true});});
 
 test('serves the kid app, /about and static assets',async()=>{
+  {const r=await fetch(B+'/trophies.js');assert.equal(r.status,200);assert.match(await r.text(),/TrophyFilter/);}
   for(const [p,re] of [['/',/<html/i],['/about',/Marble/],['/app.js',/function/],['/vendor/ui.js',/./]]){
     const r=await fetch(B+p);assert.equal(r.status,200,p);assert.match(await r.text(),re,p);}
   assert.equal((await fetch(B+'/nope')).status,404);assert.equal((await fetch(B+'/.env')).status,404);

@@ -64,7 +64,10 @@ button:active{transform:translateY(3px);box-shadow:0 2px 0 #009624}
 @keyframes medalIn{0%{transform:scale(0) rotateY(0)}60%{transform:scale(1.2) rotateY(540deg)}100%{transform:scale(1) rotateY(720deg)}}
 .rname{font-size:2rem;font-weight:800;text-shadow:0 2px 8px #000}
 .rbox button{margin-top:14px;font-size:1.3rem}
-.tcount{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}.tc{padding:4px 10px;border-radius:12px;font-weight:800;background:#f5f5f5}
+.tcount{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}.tc{padding:8px 14px;min-height:44px;border-radius:14px;font:inherit;font-weight:800;color:#333;background:#f5f5f5;border:2px solid transparent;box-shadow:none;cursor:pointer;touch-action:manipulation;transition:opacity .2s,transform .2s,box-shadow .2s}
+.tc.t-all{background:#ede7ff}.tc.on{border-color:#7c4dff;box-shadow:0 0 0 3px #7c4dff55;transform:scale(1.06)}.tc.on::after{content:' ✓'}.tc.dim{opacity:.45;filter:saturate(.6)}
+.tc:focus-visible{outline:3px solid #7c4dff;outline-offset:2px}.tempty{grid-column:1/-1;text-align:center;font-weight:700;padding:18px 8px;color:#555}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .tc.t-legendary{background:linear-gradient(90deg,#ff8bd8,#8a5cff,#2de2ff);color:#fff}.tc.t-gold{background:#fff3c4}.tc.t-silver{background:#eceff1}.tc.t-bronze{background:#ffe0c2}
 .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
 .tcell{background:#fffdf5;border:2px solid #ffe082;border-radius:16px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font:inherit;color:#333;box-shadow:none}
