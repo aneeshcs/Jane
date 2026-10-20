@@ -122,7 +122,7 @@ Storage: Workers KV (binding JANE_KV) on Cloudflare, or one JSON file per key in
    progress              the learner's single progress record
    log:YYYY-MM-DD        that day's answer log (Pacific Time days)
    lessons:YYYY-MM-DD    published lesson pack / quest
-   boost:YYYY-MM-DD      catch-up boost for a quest
+   boost:YYYY-MM-DD      catch-up boost for a quest (retired in v0.5; old keys still apply)
    sandbox:*             sandbox copies (testing only)
 ```
 
@@ -195,8 +195,8 @@ Suggested prompt to paste into your assistant:
 > Read README.md, INSTALL.md, LESSONS.md and docs/NIGHTLY.md in this repo. Deploy Jane to `<my host: Cloudflare Workers /
 > this computer with npm start / Docker / my VPS>`, creating the storage it needs. Set `LEARNER_NAME` to `<name>`, `LEARNER_AGE` to `<age>` and
 > `LEARNER_GRADE` to `<grade>`, keeping secrets and ids out of git. Back up progress before every deploy. Then schedule
-> the nightly cycle for about 1:00 AM `<my time zone>`: run export-progress.mjs, write tomorrow's quest (or a catch-up
-> boost) following LESSONS.md, validate with publish-lessons.mjs --dry-run, then publish. Only message me if something
+> the nightly cycle for about 1:00 AM `<my time zone>`: run export-progress.mjs, write tomorrow's quest (or refresh the
+> quest in progress with --refresh) following LESSONS.md, validate with publish-lessons.mjs --dry-run, then publish. Only message me if something
 > fails or needs my attention.
 
 ## Roadmap

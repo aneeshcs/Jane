@@ -1,6 +1,6 @@
 # One quest at a time, and reviews that reach the learner (v0.5)
 
-**Status:** in progress on branch `feat/one-quest-and-gate-reviews`, 3/4 slices done. Tracking issue: #29.
+**Status:** in progress on branch `feat/one-quest-and-gate-reviews`, 4/4 slices done. Tracking issue: #29.
 
 ## Why
 - **Reviews.** The nightly export said the review gates served 0 review items in the last 7 days while many
@@ -48,7 +48,7 @@
 | 1 | Reviews reach the learner in every quest session | review | #25 ✅ |
 | 2 | The export tells "not reached yet" from "broken" | review | #26 ✅ |
 | 3 | One active quest at a time | quests | #27 ✅ |
-| 4 | The nightly refreshes the unreached stages | quests | #28 |
+| 4 | The nightly refreshes the unreached stages | quests | #28 ✅ |
 
 ### Slice 1: Reviews reach the learner in every quest session (#25) — ✅ done
 - **Ships:** The first time a learner continues a quest each day, 1-2 due reviews come first (a warm-up gate),
@@ -109,7 +109,7 @@
 - Done test: `node --test test/one-quest.test.mjs && npm test`
 - Decisions frozen: D3 and D5 as written.
 
-### Slice 4: The nightly refreshes the unreached stages (#28)
+### Slice 4: The nightly refreshes the unreached stages (#28) — ✅ done
 - **Ships:** While a quest is unfinished, the nightly re-authors only the stages the learner hasn't reached, from
   that day's performance, with one command. The publisher rejects any change to reached stages.
 - **Touches:** `publish-lessons.mjs` (`--refresh`, new-quest refusal, boost retirement, remaining-stage budget),
@@ -152,3 +152,8 @@ quest queued). gitleaks clean.
 - Shipped: E.questLineup(S, packs, today) → {current, newQuest, queued, finished}: the started, unfinished quest (focused, else oldest) is current; with none, the newest unstarted quest pack is the new quest. Worker: /api/state plays the current quest, newQuest only for it, quests:{current, nextUp, boost} (no cap); /api/quest/start answers 409 'Finish your quest to unlock the next one! 🗝️' for any other quest; /api/quests returns {current, nextUp, finished} and never names the queued quest. Quests tab: the current quest big, a dashed 'Next up: ???' teaser, finished quests below; the cap chip and paused messages are gone. Parent report labels queued quests. Export quests block: current, queued, nextStep (no cap). README and INSTALL updated.
 - Done test: `node --test test/one-quest.test.mjs && npm test`: 5/5 (lineup rules, plus a standalone-server run: a newer pack while one is unfinished gives newQuest false, nextUp true, a secret teaser and a 409 on start; after the first quest is finished the newer one becomes the new quest), 92/92 in npm test. A local copy of a real-shaped state: the in-progress quest stays current at the same position and item, the newer pack is queued, starting it is refused.
 - Deferred / discovered: Older unstarted packs are superseded once a newer one is current (they were never started, so nothing is lost). Slice 4 replaces the export's nextStep with the refresh command.
+
+### Slice 4 (#28) ✅
+- Shipped: publish-lessons.mjs --refresh --date <quest date>: reached stages (any answer, the boss power-up seen, or the item on screen, plus every earlier stage; lib-cli questReached) and the quest block must stay unchanged (compared as JSON with the stored pack; exit 6, nothing written, stages named). Republishing the quest in progress without --refresh gets the same checks. The size budget counts only the remaining stages. A new quest while one is in progress exits 3 and prints the refresh command (also in dry runs); --refresh on an unstarted quest exits 1, on a finished one 4. Catch-up boosts are retired (exit 1); boost keys published before v0.5 still apply in the app. QUEST_CAP removed. export-progress: quests.current with reachedStages / lockedStages / refreshableStages / packFile (a copy of the stored pack in exports/), nextStep 'REFRESH: …' with the exact commands or 'NEW QUEST: …'. LESSONS.md 'One quest at a time' + 'Refreshing the current quest' (commands and flags), docs/NIGHTLY.md step 3 and diagram, README.
+- Done test: `node --test test/refresh.test.mjs && npm test`: 11/11 (unreached edit publishes; reached edit, removed stage, changed quest block and the stage on screen exit 6, nothing written, dry run too; remaining-stage budget lets a long older quest be refreshed; new quest while one is in progress exits 3 with the command; boosts retired; the export says REFRESH and its pack copy is a valid refresh), 103/103 in npm test. On a local copy of a real-shaped state: the export says REFRESH with the first stages locked, the unchanged copy validates, and an edit to a locked stage exits 6.
+- Deferred / discovered: The v0.4 started-quest WARNING (frozen 'warning only' decision) is now a hard error, as this release asks: reached stages are immutable.

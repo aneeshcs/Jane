@@ -1,18 +1,22 @@
 #!/usr/bin/env node
 // Validate a lesson pack / quest JSON file and write it to KV as lessons:<date>.
 // Usage: node publish-lessons.mjs <pack.json> [--date YYYY-MM-DD] [--dry-run] [--force] [--local] [--offline]
-// Exit codes: 1 invalid pack, 3 quest cap reached, 4 the quest is finished and locked (never overwritten, even with --force).
+//        node publish-lessons.mjs <pack.json> --refresh --date <quest date> [--dry-run] [--local]
+// Exit codes: 1 invalid pack, 2 usage, 3 a quest is in progress (refresh it instead), 4 the quest is finished and locked
+//   (never overwritten, even with --force), 6 a refresh changed a stage the learner already reached (or the quest block).
 //        --local (or STORAGE=file) publishes into the standalone server's DATA_DIR instead of Cloudflare KV.
-//        node publish-lessons.mjs <boost.json> [--dry-run]     (catch-up boost: file has "boostFor": "<quest date>")
-// A new quest is refused while 3 quests are active (started, unfinished) unless --force; publish a boost instead.
-import fs from 'fs';import {kvPut,kvGet,kvList,loadTax,activeQuests,QUEST_CAP,learnerConfig,LOCAL} from './lib-cli.mjs';import * as EN from './src/engine.js';import {coverage,seenAreas} from './src/coverage.js';
+// v0.5: ONE quest at a time. While a quest is started and unfinished, don't publish a new one (exit 3, --force overrides;
+// it would only wait queued): --refresh it instead. A refresh keeps every reached stage and the quest block byte-identical
+// and may change, add or drop the stages after them; the size budget applies to those remaining stages.
+// Catch-up boosts are retired (exit 1); the app still honours a boost:<date> key published before v0.5.
+import fs from 'fs';import {kvPut,kvGet,kvList,loadTax,activeQuests,questReached,learnerConfig,LOCAL} from './lib-cli.mjs';import * as EN from './src/engine.js';import {coverage,seenAreas} from './src/coverage.js';
 // Learner settings from wrangler.toml [vars]. Packs may write {name}; the app fills it in. Prompts must talk to the learner as "you".
 EN.configure(learnerConfig());const LRN=EN.learner();
 const NAMES=[LRN.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'\\{name\\}','the learner'].join('|');
 const THIRD=new RegExp(`(?:^|[^\\w{])(?:${NAMES}) (?:can|is|has|does|should|wants|gets|saves)\\b|\\bCan (?:${NAMES})|\\bhe\\b|\\bhis\\b`,'i');
 const YOU='talk to the learner as "you"';
 const args=process.argv.slice(2);const file=args.find(a=>!a.startsWith('--')&&args[args.indexOf(a)-1]!=='--date');
-const dateArg=args.includes('--date')?args[args.indexOf('--date')+1]:null,dry=args.includes('--dry-run'),force=args.includes('--force');
+const dateArg=args.includes('--date')?args[args.indexOf('--date')+1]:null,dry=args.includes('--dry-run'),force=args.includes('--force'),refreshArg=args.includes('--refresh');
 if(!file){console.error('Usage: node publish-lessons.mjs <pack.json> [--date YYYY-MM-DD] [--dry-run]');process.exit(2);}
 const pack=JSON.parse(fs.readFileSync(file,'utf8'));if(dateArg)pack.date=dateArg;
 // Finished quests are locked (LESSONS.md "Finished quests are locked"): never overwrite or boost one, even with --force.
@@ -24,8 +28,9 @@ const wcount=x=>String(x||'').trim().split(/\s+/).filter(Boolean).length;
 function checkTerms(terms,P,E,W){if(terms==null)return;if(typeof terms!=='object'||Array.isArray(terms)){E(P,'object {"word": "definition"} or {"word": {"d": "...", "e": "🎣"}}');return;}
   for(const [k,v] of Object.entries(terms)){const d=typeof v==='string'?v:v?.d;if(!k.trim()||typeof d!=='string'||!d.trim()){E(`${P}.${k}`,'needs a definition string');continue;}
     if(wcount(d)>15)W(`${P}.${k}`,`${wcount(d)} words (definitions ≤ 15)`);if(THIRD.test(d)||new RegExp(`(?:^|[^\\w{])(?:${NAMES})(?![\\w}])`,'i').test(d))W(`${P}.${k}`,YOU);if(v?.e!=null&&typeof v.e!=='string')E(`${P}.${k}.e`,'emoji string');}}
-// ---------- catch-up boost ----------
-if(pack.boostFor){if(lockedQuest(pack.boostFor))refuseLocked(pack.boostFor);const errs=[],warns=[];const E=(p,m)=>errs.push(`${p}: ${m}`),W=(p,m)=>warns.push(`${p}: ${m}`);
+// ---------- catch-up boost (retired in v0.5: refresh the current quest instead) ----------
+if(pack.boostFor){if(lockedQuest(pack.boostFor))refuseLocked(pack.boostFor);
+  console.error(`❌ catch-up boosts are retired (one quest at a time since v0.5). Refresh the quest's unreached stages instead:\n   node publish-lessons.mjs <pack.json> --refresh --date ${pack.boostFor}   (see LESSONS.md "Refreshing the current quest")`);process.exit(1);const errs=[],warns=[];const E=(p,m)=>errs.push(`${p}: ${m}`),W=(p,m)=>warns.push(`${p}: ${m}`);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(pack.boostFor))E('boostFor','quest date YYYY-MM-DD');if(!pack.message)E('message','a short, fun encouragement is required');else if(wcount(pack.message)>25)W('message','≤ 25 words');
   const q=dry&&args.includes('--offline')?null:kvGet('lessons:'+pack.boostFor);if(!dry&&!q?.quest)E('boostFor',`no quest published at lessons:${pack.boostFor}`);
   const ids=new Set((q?.topics||[]).map(t=>t.topicId));
@@ -36,6 +41,17 @@ if(pack.boostFor){if(lockedQuest(pack.boostFor))refuseLocked(pack.boostFor);cons
   if(dry){console.log(`✅ valid boost for quest ${pack.boostFor} (dry run)`);process.exit(0);}
   kvPut('boost:'+pack.boostFor,pack);console.log(`✅ published${LOCAL?' (local)':''} boost:${pack.boostFor} — ${Object.keys(pack.trim||{}).length} trimmed stages, ${Object.keys(pack.hints||{}).length} extra hints`);process.exit(0);}
 if(pack.quest&&lockedQuest(pack.date))refuseLocked(pack.date);
+// ---------- refresh (v0.5): the started, unfinished quest at this date; reached stages are immutable ----------
+const SIX=6,startedHere=!!(pack.quest&&PROG?.quests?.[pack.date]?.started),REFRESH=refreshArg||startedHere;let RR=0,PREV=null;
+if(refreshArg&&!dateArg){console.error('❌ --refresh needs --date <quest date> (the date of the quest in progress)');process.exit(2);}
+if(refreshArg&&(!PROG||!pack.quest)){console.error(`❌ --refresh needs ${!pack.quest?'a quest pack':'the learner\'s progress (drop --offline)'}`);process.exit(2);}
+if(refreshArg&&!startedHere){console.error(`❌ quest ${pack.date} isn't in progress, so there is nothing to refresh. Publish it normally${PROG?.quests?.[pack.date]?'':' (or check the date)'}.`);process.exit(1);}
+if(REFRESH){try{PREV=kvGet('lessons:'+pack.date);}catch{}if(!PREV?.quest){console.error(`❌ no quest published at lessons:${pack.date} to refresh`);process.exit(1);}
+  RR=questReached(PROG,PREV);const bad=[];
+  if(JSON.stringify(pack.quest)!==JSON.stringify(PREV.quest))bad.push('the quest block (title, hook, medal) changed');
+  for(let i=0;i<RR;i++){const a=PREV.topics[i],b=(pack.topics||[])[i];if(JSON.stringify(a)!==JSON.stringify(b))bad.push(`stage ${i+1} "${a.stage?.name||a.topicId}" ${b?'changed':'is missing'}`);}
+  if(bad.length){console.error(`⛔ refresh of ${pack.date} touches what the learner already reached (stages 1-${RR} and the quest block are locked). Nothing was written:\n  `+bad.join('\n  ')+`\n   Copy stages 1-${RR} unchanged from the stored pack and change only stages ${RR+1}+.`);process.exit(SIX);}
+  if(!refreshArg)console.warn(`ℹ️  ${pack.date} is the quest in progress: treating this as --refresh (stages 1-${RR} locked).`);}
 const tax=loadTax(),byId=Object.fromEntries(tax.topics.map(t=>[t.id,t])),errs=[],warns=[];const E=(p,m)=>errs.push(`${p}: ${m}`),W=(p,m)=>warns.push(`${p}: ${m}`);
 const str=(v,p,req=true)=>{if(v==null||v===''){if(req)E(p,'required string');return false;}if(typeof v!=='string'){E(p,'must be a string');return false;}return true;};
 const strs=(a,p,min,max)=>{if(!Array.isArray(a)||a.length<min||a.length>max||!a.every(x=>typeof x==='string'&&x.trim())){E(p,`${min}-${max} non-empty strings`);return false;}if(new Set(a).size!==a.length)E(p,'items must be unique');return true;};
@@ -83,7 +99,7 @@ const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0,nCards=0;const typesUs
   if(!Array.isArray(t.questions)||!t.questions.length)E(P+'.questions','non-empty array required');const qs=t.questions||[];
   const graded=qs.filter(q=>!CARDS.includes(q.type)).length;if(!graded)E(P+'.questions','needs at least one graded question (not only cards)');
   if(Q&&t.format==='boss'&&graded&&graded<3)E(P,`boss stage needs ≥ 3 graded questions (has ${graded}): a legendary medal means a real boss fight`);
-  if(t.review)nReview+=graded;nGraded+=graded;nq+=qs.length;nCards+=qs.length-graded;
+  if(i>=RR){if(t.review)nReview+=graded;nGraded+=graded;nq+=qs.length;nCards+=qs.length-graded;} // refresh: the budget counts the remaining stages
   if(t.deepDive){nDeep++;if(graded<3)E(P,`deep dive needs ≥ 3 graded questions (has ${graded})`);if(graded>4)W(P,`deep dive has ${graded} graded questions (aim 3-4 to keep quests short)`);if(!qs.some(q=>q.type==='why'||q.type==='learn'))E(P,'deep dive needs a "why" or "learn" card');
     if(new Set(qs.map(q=>q.type).filter(x=>!CARDS.includes(x))).size<3)W(P,'deep dive: mix at least 3 question types');}
   if(tp&&tp.ageRangeStart<LRN.age-2)W(P,`"${tp.name}" starts at age ${tp.ageRangeStart}: below the target level (${LRN.grade}, ~age ${LRN.age})`);
@@ -133,7 +149,8 @@ const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0,nCards=0;const typesUs
 const MAX_GRADED=16,MAX_STAGES=7,estMin=Math.round((nGraded*25+nCards*10)/6)/10;
 if(Q&&nGraded>MAX_GRADED)E('size',`${nGraded} graded questions: too long (max ${MAX_GRADED}; the app adds up to 4 review-gate items, ~20 answers ≈ 8 min). Trim stages`);
 if(Q&&nGraded&&nGraded<10)W('size',`${nGraded} graded questions: aim for 12-16`);
-if(Q&&(pack.topics||[]).length>MAX_STAGES)E('size',`${pack.topics.length} stages: too long (max ${MAX_STAGES}, aim 4-6)`);
+if(Q&&(pack.topics||[]).length-RR>MAX_STAGES)E('size',`${pack.topics.length-RR} ${RR?'remaining ':''}stages: too long (max ${MAX_STAGES}, aim 4-6)`);
+if(REFRESH&&(pack.topics||[]).length<=RR)E('refresh',`no stages left after the ${RR} reached ones: add the remaining stages (boss last)`);
 if(Q&&estMin>8)W('size',`about ${estMin} min (aim ≤ 8): trim cards or questions`);
 // spaced review runs through the app's review gates now (LESSONS.md "Review gates"): review stages still publish, but spend quest budget
 const revStages=pack.topics.filter(t=>t.review).length;if(revStages)W('review',`${revStages} review stage${revStages>1?'s':''}: review runs through gates now, so spend the budget on new learning`);
@@ -143,14 +160,10 @@ let newAreas=null;if(Q&&PROG){const CG=EN.graph(tax),SP=EN.migrate(JSON.parse(JS
   const areas=[...new Set(pack.topics.filter(t=>byId[t.topicId]).map(t=>byId[t.topicId].subject+'|'+byId[t.topicId].domain))];newAreas=areas.filter(a=>!seenA.has(a));
   if(!newAreas.length&&cov.untouched.length)W('coverage',`no new area: add one stretch stage from coverage.untouched, math and science first (e.g. ${cov.untouched.slice(0,3).map(u=>u.subject+' / '+u.domain).join(', ')})`);}
 const inter=[...typesUsed].filter(x=>!['mc','numeric','text'].includes(x));if(inter.length<3)W('formats',`only ${inter.length} interactive format(s) used; mix in order/match/picture/blank/numberline/fracbar/truefalse/why/fact`);
-if(Q&&PROG?.quests?.[pack.date]?.started){let prev=null;try{prev=kvGet('lessons:'+pack.date);}catch{}
-  for(const t of prev?.topics||[]){const answered=(t.questions||[]).some((q,j)=>PROG.packSeen?.[`${pack.date}:${t.topicId}:${j}`]);if(!answered)continue;
-    const nt=pack.topics.find(x=>x.topicId===t.topicId);if(!nt)W('started',`stage "${t.stage?.name||t.topicId}" already has answers and was removed: this changes the learner's quest progress`);
-    else if(JSON.stringify(nt.questions)!==JSON.stringify(t.questions))W('started',`stage "${t.stage?.name||t.topicId}" already has answers and its questions changed: this changes the learner's quest progress`);}}
 if(warns.length)console.warn(`⚠️  ${warns.length} warning(s) (see LESSONS.md):\n  `+warns.join('\n  '));
 if(errs.length){console.error(`❌ ${errs.length} problem(s) in ${file}:\n  `+errs.join('\n  '));process.exit(1);}
-if(Q&&!dry&&!force){const S=kvGet('progress');const A=activeQuests(S,pack.date).filter(d=>kvList('lessons:'+d).length);
-  if(A.length>=QUEST_CAP){console.error(`⛔ ${A.length}/${QUEST_CAP} quests are active (${A.join(', ')}). Not publishing a new quest.\n   Publish a catch-up boost for the oldest one instead (see LESSONS.md "Quest cap"), or pass --force.`);process.exit(3);}}
-const sum=`${pack.topics.length} ${Q?'stages':'topics'}, ${nq} items (~${estMin} min, ${nGraded} graded${nReview?`, ${nReview} in review stages`:''}, review via gates, ${nDeep} deep dive${nDeep===1?'':'s'}${newAreas?`, new areas: ${newAreas.length}${newAreas.length?` (${newAreas.map(a=>a.replace('|',' / ')).join(', ')})`:''}`:''}), formats: ${[...typesUsed].join(', ')}`;
+if(Q&&!REFRESH&&!force&&PROG){const A=activeQuests(PROG,pack.date).filter(d=>kvList('lessons:'+d).length);
+  if(A.length){console.error(`⛔ quest ${A[0]} is in progress (one quest at a time). Not publishing a new quest: it would only wait hidden.\n   Refresh its unreached stages instead: node publish-lessons.mjs <pack.json> --refresh --date ${A[0]}   (see LESSONS.md "Refreshing the current quest")`);process.exit(3);}}
+const sum=`${REFRESH?`refresh: stages 1-${RR} locked, ${pack.topics.length-RR} remaining, `:''}${pack.topics.length} ${Q?'stages':'topics'}, ${nq} items (~${estMin} min, ${nGraded} graded${nReview?`, ${nReview} in review stages`:''}, review via gates, ${nDeep} deep dive${nDeep===1?'':'s'}${newAreas?`, new areas: ${newAreas.length}${newAreas.length?` (${newAreas.map(a=>a.replace('|',' / ')).join(', ')})`:''}`:''}), formats: ${[...typesUsed].join(', ')}`;
 if(dry){console.log(`✅ valid${Q?` quest "${Q.title}"`:''}: ${sum} for ${pack.date} (dry run, nothing written)`);process.exit(0);}
 kvPut('lessons:'+pack.date,pack);console.log(`✅ published${LOCAL?' (local)':''} lessons:${pack.date}${Q?` quest "${Q.title}"`:''}: ${sum}`);
