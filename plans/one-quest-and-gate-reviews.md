@@ -145,5 +145,5 @@ quest queued). gitleaks clean.
 
 ### Slice 2 (#26) ✅
 - Shipped: export-progress.mjs reviewHealth adds reviewsServed7d, gatesOpened7d (gates and warm-ups that served items; answer logs now record the gate key), gatesAhead (stage gates not reached in active quests), lastPlayed, daysSinceLastPlay and a note: 'ok' / 'not played since <date>: gates not reached yet' / 'played but no reviews served: check the gates'. docs/NIGHTLY.md and LESSONS.md describe the fields.
-- Done test: `node --test test/server.test.mjs && npm test`: 6/6 server tests (the export case checks all numeric fields and note 'ok'; a new case with no answers in the window gets 'not played since …: gates not reached yet'), 87/87 in npm test. On a local copy of a real-shaped state with no recent answers: due 34, reviewsServed7d 0, gatesAhead 2, note 'not played since <date>: gates not reached yet'.
+- Done test: `node --test test/server.test.mjs && npm test`: 6/6 server tests (the export case checks all numeric fields and note 'ok'; a new case with no answers in the window gets 'not played since …: gates not reached yet'), 87/87 in npm test. On a local state with reviews due and no recent answers: reviewsServed7d 0, gatesAhead > 0, note 'not played since <date>: gates not reached yet'.
 - Deferred / discovered: None.
