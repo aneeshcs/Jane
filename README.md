@@ -3,8 +3,8 @@
 **[Read the friendly guide](https://kentlangley.github.io/Jane/)**: what Jane is, how it works and how to start,
 written for parents and curious readers.
 
-**Jane** is a friendly, adaptive learning app for kids, designed around ages ~8-12 (upper elementary) and named after its tutor character.
-The learner's name, target age and grade are settings.
+**Jane** is a friendly, adaptive learning app for kids, designed around ages ~7-12 (elementary) and named after its tutor character.
+The learner's name, target age and grade are settings, and a **school profile** aligns quests with what the learner meets at school each month.
 It runs as a single Cloudflare Worker with static assets and Workers KV, or as a standalone Node server (or Docker
 container) with file-based storage, and it is built on the open
 [Marble Skill Taxonomy](https://github.com/withmarbleapp/os-taxonomy): 1,590 micro-topics across 8 subjects,
@@ -99,6 +99,12 @@ friendly tutor. The name is just a nod to the books: this project has no affilia
   words looked up, charts, per-subject progress, quest history, upcoming reviews, a searchable answer log and medals.
   It also shows review gates per quest and **coverage by area** (which topic areas have been explored). It works on
   phones and prints cleanly. All times are Pacific Time.
+- **School alignment (`data/school/`).** A school profile lists, per grade and month, the units the learner meets at school
+  (programs, standards, taxonomy topics). The export shows this month's units with starters, the nightly rules ask every
+  quest to visit one, Play gives their topics a small boost, and the parent report has an **At school this month**
+  section. Ships with a profile for **High Peaks Elementary (BVSD, Boulder, CO)**, grade 2, plus 21 **local topics**
+  (`data/local-topics/`) for U.S. history, civics and maps that the Marble taxonomy does not cover. See
+  [docs/SCHOOL.md](docs/SCHOOL.md).
 - **Sandbox.** `/api/sandbox?on=1` switches your browser to a copy of the progress for testing, so the real record is
   never touched.
 
@@ -167,7 +173,8 @@ and Docker, set them as environment variables:
 |---|---|---|
 | `LEARNER_NAME` | `Explorer` | Greetings, "X's Learning World", trophy case, parent report. Kid-facing text and lesson packs write `{name}` and the Worker fills it in |
 | `LEARNER_AGE` | `10` | Target age for placement, topic choice and the nightly export |
-| `LEARNER_GRADE` | `upper elementary` | Parent report and lesson-pack warnings |
+| `LEARNER_GRADE` | `upper elementary` | Parent report, lesson-pack warnings, and which grade of the school profile applies (write it like `2nd grade`) |
+| `SCHOOL_PROFILE` | the only profile in `data/school/` | Which school profile to follow (`bvsd-high-peaks` ships). See [docs/SCHOOL.md](docs/SCHOOL.md) |
 
 ## Repository layout
 
@@ -179,8 +186,10 @@ and Docker, set them as environment variables:
 | `test/` | End-to-end smoke test for the Node server (`npm test`) |
 | `data/marble/` | Marble Skill Taxonomy v1, unchanged, with its LICENSE, LICENSE-CONTENT, PROVENANCE.md, CITATION.cff |
 | `data/kid-prompts/`, `data/glossary.txt` | Kid-friendly layer derived from the taxonomy |
+| `data/local-topics/` | Local micro-topics (`lt_` ids) that extend the taxonomy for school curricula: U.S. history, civics, maps, science heroes |
+| `data/school/` | School profiles: units per grade and month, mapped to topics and standards (ships with `bvsd-high-peaks.json`) |
 | `packs/examples/` | A generic example quest. Real nightly packs (`packs/*.json`) are gitignored |
-| `LESSONS.md`, `docs/` | Lesson-pack rules and the nightly workflow |
+| `LESSONS.md`, `docs/` | Lesson-pack rules, the nightly workflow and the school alignment ([docs/SCHOOL.md](docs/SCHOOL.md)) |
 | `prototype/` | Early math-only Node prototype (source of the math generators); not the full app |
 | `build.mjs`, `deploy.sh`, `reset.sh`, `*-progress.mjs`, `publish-lessons.mjs` | Build and ops scripts |
 
@@ -241,6 +250,11 @@ See [CHANGELOG.md](CHANGELOG.md) for what's shipped.
 - **One quest at a time** (a newer quest waits as "Next up: ???"), the nightly **refreshes** the current quest's
   unreached stages (`publish-lessons.mjs --refresh`), a daily 🔥 **warm-up** so due reviews reach the learner in every
   quest session, and a `reviewHealth` note that tells "not played yet" from "broken".
+
+**v0.6** (in progress, [plan](plans/school-alignment-v0.6.md))
+- **School alignment:** school profiles (`data/school/`), local topics for U.S. history, civics and maps, this month's
+  school units in the export, the validator and the parent report, and placement that follows the target age for
+  younger learners (K-3) instead of assuming upper elementary.
 
 **Next**
 - **Generated Learn-it cards for non-math topics** (today Play mode generates them for math; packs cover the rest).

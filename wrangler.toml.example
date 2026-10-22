@@ -17,5 +17,6 @@ id = "<YOUR_KV_NAMESPACE_ID>"               # from: npx wrangler kv namespace cr
 # Learner settings (shown in the app, parent report and used by the nightly scripts).
 [vars]
 LEARNER_NAME = "Explorer"            # first name or nickname; kid-facing text uses {name} and this fills it in
-LEARNER_AGE = "10"                   # target age for placement and topic choice (designed for ~8-12)
-LEARNER_GRADE = "upper elementary"   # label used in the parent report and lesson-pack warnings
+LEARNER_AGE = "10"                   # target age for placement and topic choice (designed for ~7-12)
+LEARNER_GRADE = "upper elementary"   # label used in the parent report and lesson-pack warnings; write it like "2nd grade" to follow a school profile
+SCHOOL_PROFILE = "bvsd-high-peaks"   # optional: which data/school/*.json profile to follow (default: the only one). See docs/SCHOOL.md

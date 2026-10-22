@@ -27,7 +27,8 @@ LEARNER_NAME=Sam npm start  # builds, then serves http://localhost:8787  (parent
 |---|---|---|
 | `LEARNER_NAME` | `Explorer` | First name or nickname shown in the app |
 | `LEARNER_AGE` | `10` | Target age for placement and topic choice (designed for ~8-12) |
-| `LEARNER_GRADE` | `upper elementary` | Label for the parent report and pack warnings |
+| `LEARNER_GRADE` | `upper elementary` | Label for the parent report and pack warnings; written like `2nd grade` it also picks the grade of the school profile |
+| `SCHOOL_PROFILE` | the only profile in `data/school/` | School profile to follow for the export, the validator, Play and the parent report (see [docs/SCHOOL.md](docs/SCHOOL.md)) |
 | `PORT` | `8787` | Port to listen on |
 | `HOST` | `127.0.0.1` | Interface to listen on. Use `0.0.0.0` to reach it from a tablet on your home network (the parent page has no passcode yet) |
 | `DATA_DIR` | `./local-data` | Where progress, answer logs and lesson packs are stored (one JSON file per key; gitignored) |
@@ -118,7 +119,7 @@ Edit `wrangler.toml`:
 `wrangler.toml` is gitignored, so your ids stay out of git. The scripts refuse to run while `<YOUR_...>` placeholders remain.
 
 Learner settings go in the `[vars]` block: `LEARNER_NAME` (default `Explorer`), `LEARNER_AGE` (target age, default `10`;
-the app is designed around ages ~8-12) and `LEARNER_GRADE` (default `upper elementary`). Changing them needs a redeploy.
+the app is designed around ages ~7-12), `LEARNER_GRADE` (default `upper elementary`) and `SCHOOL_PROFILE` (optional, see [docs/SCHOOL.md](docs/SCHOOL.md)). Changing them needs a redeploy.
 The nightly scripts read the same block.
 
 Optional tuning (code constants):

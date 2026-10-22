@@ -32,6 +32,7 @@ node_modules/
 .wrangler/
 dist/
 public/tax.json
+public/school.json
 public/glossary.json
 src/gen.js
 prototype/bin/

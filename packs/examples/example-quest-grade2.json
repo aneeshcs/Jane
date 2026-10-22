@@ -1,0 +1,87 @@
+{
+  "date": "2026-10-15",
+  "title": "The Flag Still Flies (grade 2 example)",
+  "quest": {
+    "title": "The Flag Still Flies",
+    "emoji": "🇺🇸",
+    "hook": "Hey {name}! It's 1814 and the capital is in trouble. Learn the rule book, test some magnets, measure the escape route, then help Dolley save the day!",
+    "medal": { "name": "Star-Spangled Medal", "emoji": "🏅" }
+  },
+  "terms": {
+    "Old Ironsides": { "d": "A famous American warship whose sides were so strong cannonballs bounced off.", "e": "⛵" },
+    "portrait": { "d": "A painting or picture of a person.", "e": "🖼️" },
+    "centimeter": { "d": "A small unit for measuring length, about the width of your fingernail.", "e": "📏" }
+  },
+  "topics": [
+    {
+      "topicId": "lt_constit0007",
+      "stage": { "name": "Rule Book Rock", "emoji": "📜" },
+      "format": "story",
+      "teaches": ["lt_constit0007"],
+      "intro": { "emoji": "📜", "title": "Rule Book Rock", "story": "Every team needs rules. Our whole country has one big rule book. Learn its name to open the gate!" },
+      "questions": [
+        { "type": "learn", "emoji": "📜", "title": "The Constitution", "body": "The Constitution is the highest law of the United States. It starts with 'We the People' because the people give the government its power.",
+          "example": { "prompt": "Who is the boss of the government in the Constitution?", "steps": ["Read the first three words: 'We the People'.", "The people choose leaders and make the rules.", "So the people are the boss!"] } },
+        { "type": "mc", "guided": true, "steps": ["Think: the Constitution is the biggest rule book.", "A rule book is a kind of law."], "prompt": "What is the Constitution?", "choices": ["The highest law of our country", "A famous ship", "A kind of coin"], "answer": "The highest law of our country", "hint": "It is the rule book for the whole country.", "explanation": "The Constitution is the highest law of the United States." },
+        { "type": "blank", "prompt": "The Constitution begins with the words 'We the ___'.", "choices": ["People", "Kings", "Robots"], "answer": "People", "hint": "Who gives the government its power?", "explanation": "'We the People' means the power comes from the people." },
+        { "type": "mc", "prompt": "James Madison is called the Father of the ___.", "choices": ["Constitution", "Pizza", "Mountains"], "answer": "Constitution", "hint": "He helped write the big rule book.", "explanation": "James Madison did so much to write it that he is called the Father of the Constitution." },
+        { "type": "fact", "emoji": "✍️", "title": "Still working!", "body": "The Constitution was written in 1787. It is more than 230 years old and we still follow it today!" }
+      ]
+    },
+    {
+      "topicId": "mt_jgNB2752b9",
+      "stage": { "name": "Magnet Marsh", "emoji": "🧲" },
+      "format": "minigame",
+      "intro": { "emoji": "🧲", "title": "Magnet Marsh", "story": "The marsh bridge is held by magnets. Figure out which ends stick together to cross!" },
+      "questions": [
+        { "type": "learn", "emoji": "🧲", "title": "Poles: opposites attract", "body": "Every magnet has a north pole and a south pole. Opposite poles pull together. Same poles push apart.",
+          "example": { "prompt": "You hold a north pole near a south pole. What happens?", "steps": ["North and south are opposites.", "Opposites attract.", "They pull together: click!"] } },
+        { "type": "mc", "guided": true, "steps": ["Are the poles the same or opposite?", "Same poles push apart."], "prompt": "Two north poles come close. What happens?", "choices": ["They push apart", "They pull together", "They melt"], "answer": "They push apart", "hint": "Same poles never want to touch.", "explanation": "Two north poles are the same, so they repel (push apart)." },
+        { "type": "truefalse", "seconds": 30, "prompt": "Speed round! True or false?", "statements": [["A magnet has two poles.", true], ["North and south poles attract.", true], ["Two south poles pull together.", false], ["Every magnet is red.", false]], "hint": "Opposites attract, same poles repel.", "explanation": "Magnets have a north and a south pole; opposites attract and same poles repel." },
+        { "type": "picture", "prompt": "Which pair of poles will stick together?", "choices": [{ "label": "N and S", "pic": "🧲🔴🔵🧲" }, { "label": "N and N", "pic": "🧲🔴🔴🧲" }, { "label": "S and S", "pic": "🧲🔵🔵🧲" }], "answer": "N and S", "hint": "Opposites attract!", "explanation": "A north pole and a south pole are opposites, so they attract." }
+      ]
+    },
+    {
+      "topicId": "mt_e4x3l2JeLI",
+      "stage": { "name": "Measuring Meadow", "emoji": "📏" },
+      "format": "quest",
+      "intro": { "emoji": "📏", "title": "Measuring Meadow", "story": "The escape map is drawn in centimeters. Measure carefully so Dolley takes the right path!" },
+      "questions": [
+        { "type": "learn", "emoji": "📏", "title": "Measure from zero", "body": "Line up the object's end with 0 on the ruler. Read the number at the other end. That is the length!",
+          "example": { "prompt": "A crayon starts at 0 and ends at 9 on a centimeter ruler. How long is it?", "steps": ["Start at 0.", "The other end is at 9.", "The crayon is 9 centimeters long."] } },
+        { "type": "numeric", "guided": true, "steps": ["Find where the object starts and ends.", "Count from the start to the end."], "prompt": "A key goes from 0 to 6 on a centimeter ruler. How long is it?", "answer": "6", "form": "whole", "hint": "Read the number where the key ends.", "explanation": "From 0 to 6 is 6 centimeters.", "template": { "type": "numberline", "min": 0, "max": 10, "marks": [[0, "start"], [6, "end"]] } },
+        { "type": "numeric", "prompt": "A ribbon goes from 2 to 10 on the ruler. How long is it?", "answer": "8", "form": "whole", "hint": "It did not start at 0! Count from 2 up to 10.", "explanation": "10 − 2 = 8, so the ribbon is 8 centimeters long.", "template": { "type": "numberline", "min": 0, "max": 12, "marks": [[2, "start"], [10, "end"]] } },
+        { "type": "mc", "prompt": "Which tool is best for measuring your pencil?", "choices": ["A centimeter ruler", "A bathroom scale", "A clock"], "answer": "A centimeter ruler", "hint": "You want to know how long it is.", "explanation": "A ruler measures length. A scale measures weight and a clock measures time." }
+      ]
+    },
+    {
+      "topicId": "lt_war1812_008",
+      "stage": { "name": "Dolley's Dash", "emoji": "🏃‍♀️" },
+      "format": "story",
+      "teaches": ["lt_war1812_008", "lt_anthem_0009"],
+      "intro": { "emoji": "🔥", "title": "Dolley's Dash", "story": "It is 1814. British soldiers are marching on the White House. First Lady Dolley Madison has minutes to act!" },
+      "questions": [
+        { "type": "learn", "emoji": "🔥", "title": "The War of 1812", "body": "The United States fought Britain again in 1812. The British burned the White House, but Dolley Madison saved George Washington's portrait first!",
+          "example": { "prompt": "Why did the war start?", "steps": ["British ships were grabbing American sailors.", "Americans said: that is not fair!", "So President James Madison asked for war."] } },
+        { "type": "mc", "guided": true, "steps": ["Dolley grabbed something very special.", "It was a painting of the first president."], "prompt": "What did Dolley Madison save from the White House?", "choices": ["George Washington's portrait", "A pet dragon", "A pizza oven"], "answer": "George Washington's portrait", "hint": "It was a famous painting.", "explanation": "Dolley Madison saved the portrait of George Washington before the British burned the White House." },
+        { "type": "order", "prompt": "Put Dolley's story in order!", "items": ["British soldiers march toward the city", "Dolley grabs the portrait", "The White House burns", "The portrait is safe"], "hint": "What happened first, before anything burned?", "explanation": "The soldiers came, Dolley saved the portrait, then the White House burned." },
+        { "type": "learn", "emoji": "🏰", "title": "The flag was still there", "body": "At Fort McHenry the British attacked all night. At dawn the flag still flew. Francis Scott Key wrote a poem that became our national anthem.",
+          "example": { "prompt": "What is our national anthem called?", "steps": ["Key saw the star-spangled (star-covered) banner (flag).", "His poem was named after it.", "The Star-Spangled Banner!"] } },
+        { "type": "mc", "prompt": "Who wrote The Star-Spangled Banner?", "choices": ["Francis Scott Key", "James Madison", "Rosa Parks"], "answer": "Francis Scott Key", "hint": "He watched the battle at Fort McHenry.", "explanation": "Francis Scott Key wrote it after seeing the flag still flying at Fort McHenry." }
+      ]
+    },
+    {
+      "topicId": "lt_anthem_0009",
+      "stage": { "name": "BOSS: Fort McHenry at Dawn", "emoji": "🏰" },
+      "format": "boss",
+      "powerup": "Constitution = highest law, 'We the People'. Dolley saved Washington's portrait. Fort McHenry: the flag still flew, so Key wrote our anthem!",
+      "intro": { "emoji": "🏰", "title": "Fort McHenry at Dawn", "story": "Cannons boom all night. Keep the flag flying by answering three in a row!" },
+      "questions": [
+        { "type": "mc", "skill": "lt_anthem_0009", "prompt": "What did Francis Scott Key see at dawn?", "choices": ["The flag still flying", "A pirate ship", "A rainbow"], "answer": "The flag still flying", "hint": "'The flag was still there!'", "explanation": "The flag still flew over Fort McHenry, so the fort had held." },
+        { "type": "match", "skill": "lt_war1812_008", "prompt": "Match each person to what they did!", "pairs": [["Dolley Madison", "Saved the portrait"], ["Francis Scott Key", "Wrote the anthem"], ["James Madison", "Was the president"]], "hint": "Think about Dolley's dash and the poem.", "explanation": "Dolley saved the portrait, Key wrote the anthem, and James Madison was president." },
+        { "type": "blank", "skill": "lt_constit0007", "prompt": "The highest law of our land is the ___.", "choices": ["Constitution", "Anthem", "Map"], "answer": "Constitution", "hint": "The big rule book from Rule Book Rock.", "explanation": "The Constitution is the highest law of the United States." },
+        { "type": "mc", "skill": "lt_anthem_0009", "prompt": "The Star-Spangled Banner is our national ___.", "choices": ["Anthem", "Flag", "Sandwich"], "answer": "Anthem", "hint": "It is a song sung at big events.", "explanation": "The Star-Spangled Banner is the national anthem, the country's song." }
+      ]
+    }
+  ]
+}
