@@ -130,7 +130,7 @@ Run `node export-progress.mjs` and read `weakSpots` first. Then:
    tomorrow (see "When the kid gets stuck").
 2. **Keep stretching strengths.** For each `weakSpots.strengths` domain, add a **new** topic from `stretchTo` (or the
    frontier), short (2-3 questions), with a picture/template.
-3. **Never below the learner's level.** The target age and grade are settings (`LEARNER_AGE`, `LEARNER_GRADE` in `wrangler.toml`; the app is designed around ages ~8-12, upper elementary). No topics starting more than 2 years below the target age (the publisher warns), no
+3. **Never below the learner's level.** The target age and grade are settings (`LEARNER_AGE`, `LEARNER_GRADE` in `wrangler.toml`; the app is designed around ages ~7-12, elementary). No topics starting more than 2 years below the target age (the publisher warns), no
    baby wording. "Easier" means smaller steps, not younger content.
 4. **Spaced review runs through the gates.** Don't spend quest budget on review stages: the app's review gates
    (see "Review gates") pull due reviews and spot-checks from the Leitner queue at runtime. `"review": true` stages
@@ -146,6 +146,14 @@ Run `node export-progress.mjs` and read `weakSpots` first. Then:
 7. **Visit a new area.** Include at least one stretch stage from `coverage.untouched` in the export (see
    "Coverage"), rotating subjects with math and science first, using one of the listed `starters`. The publisher
    prints "new areas: N" and **warns** (never fails) when a quest adds no untouched area while some are left.
+8. **Follow the school year.** The export's `school.now` lists the units the learner meets at school this month (from
+   the school profile in `data/school/`, see [docs/SCHOOL.md](docs/SCHOOL.md)): subject, program, standards, the
+   topics that teach it, their states and up to 3 `starters`. Give every quest **at least one stage from a current
+   unit** (a ready or learning starter, or a `goDeeper` topic that is in one), and use the unit's setting for the story
+   (October: the Constitution and the War of 1812; a magnet marsh; measuring in centimeters). `school.next` shows next
+   month's units: a stretch stage from one of them is a good way to get ahead. The publisher prints "school units: N"
+   and **warns** (never fails) when a quest touches none while units are running. Local topics (`lt_` ids) work like
+   Marble topics everywhere (packs, `teaches`, `skill`, the map).
 
 ## Writing style (required for every pack)
 Jane talks **to** the learner, never about them. Every prompt must be:
@@ -237,7 +245,7 @@ solved problem for the stuck help), `skill` (the topic a boss question tests).
   "terms": { "Kraken": {"d": "A giant sea monster from old sailor stories.", "e": "🐙"} },  // optional extra glossary words
   "topics": [                                // the quest path, in order; topicIds unique
     {
-      "topicId": "mt_hJW7hVflm3",            // a Marble topic id (public/tax.json or the export's frontier)
+      "topicId": "mt_hJW7hVflm3",            // a topic id: Marble mt_… or local lt_… (public/tax.json or the export's frontier)
       "stage": { "name": "Simile Swamp", "emoji": "🐊" },   // required in quests: the stop on the path
       "format": "story",                     // quest | story | mystery | minigame | timed | boss | explore | guided
       "deepDive": true,                      // weak area: learn/why card + guided + 3-4 graded steps, mastery needs 3 in a row
@@ -301,8 +309,8 @@ node export-progress.mjs --out /tmp/p.json --date 2026-10-16
 The export contains `weakSpots` (per topic and per domain over the last 7 days, `--days N`: first-try misses that
 needed a `hints`, final `misses`, `slow` answers > 30 s, `failedReviews`, `unsure` self-checks, a `weakScore`, plus
 `goDeeper` suggestions with easier prerequisite steps and `strengths` with `stretchTo` topics), `summary` (counts per state and subject), `stats`, `todayLog` (every answer plus `mastered`,
-`inferred` and `demoted` events), `learnedToday`, `frontier` (ready and learning topics, closest to the target age (`LEARNER_AGE`) first,
-with full topic details, prerequisites and unlocks), `reviewDue`, `reviewHealth` (see rule 4), and the raw `progress` record.
+`inferred` and `demoted` events), `learnedToday`, `frontier` (ready and learning topics, this month's school topics first (`school: true`), then closest to the target age (`LEARNER_AGE`),
+with full topic details, prerequisites and unlocks), `reviewDue`, `reviewHealth` (see rule 4), `school` (this month's and next month's school units, see rule 8), and the raw `progress` record.
 Write tomorrow's quest from `weakSpots` and `frontier` (the gates handle `reviewDue`) using the rules above, dry-run, fix every warning, then publish it.
 
 Both scripts call the repo's `wrangler` (Node 22; a portable Node in `~/.local/node-v22.20.0-linux-x64` is used if present), read the account and KV ids from `wrangler.toml`, and need `CLOUDFLARE_API_TOKEN` set in the environment (never commit it).

@@ -437,3 +437,27 @@ pH|🧪|A 0-14 scale showing how acidic or alkaline something is.
 polymer|🧵|A material made of long chains of molecules, like plastic.
 recycling/recycle|♻️|Turning old things into new things instead of trash.
 finite|⏳|Will run out someday, like oil.
+# School alignment words (docs/SCHOOL.md): maps, civics, American history, economics
+constitution|📜|The highest law of a country: the rule book for the whole government.
+immigrant/immigration|🚢|A person who moves to a new country to live there.
+compass rose|🧭|The symbol on a map that shows north, south, east and west.
+map key/legend|🗝️|The box on a map that tells you what its symbols mean.
+hemisphere|🌍|Half of Earth, like the northern half or the southern half.
+continent|🌎|One of Earth's seven huge pieces of land, like North America.
+peninsula|🏖️|Land with water on three sides, sticking out from the mainland.
+government|🏛️|The people and rules that run a city, state or country.
+law|⚖️|A rule everyone in a place must follow.
+vote/voting|🗳️|To choose a leader or an idea by counting what everyone picks.
+scarcity/scarce|🍪|When there is not enough of something for everyone who wants it.
+goods|📦|Things you can buy and hold, like shoes or apples.
+services|🛠️|Jobs people do for you, like fixing a bike or cutting hair.
+anthem|🎶|A country's special song, sung at big events.
+boycott|✊|Refusing to buy or use something until it is made fair.
+mayor|🏙️|The leader of a city or town.
+governor|🏔️|The leader of a state.
+president|🇺🇸|The leader of a country.
+landform|⛰️|A natural shape of the land, like a mountain, valley or plain.
+prairie|🌾|A wide, flat land covered in grass.
+oasis|🌴|A green, watery spot in a desert.
+valley|🏞️|Low land between hills or mountains.
+desert|🏜️|A very dry place that gets little rain.

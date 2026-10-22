@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "note": "Local micro-topics that extend the Marble Skill Taxonomy where it has no coverage of a school's curriculum (US history, civics, maps, science heroes). Same shape as a Marble topic plus `kid` (the 3-option question: q, a, w) and `prereqs` ([[id, 'hard'|'soft'], ...]). Ids start with lt_. Built into public/tax.json by build.mjs. Database ODbL 1.0, text CC BY-SA 4.0 (see LICENSING.md). Standards keys: cas-ss-2022 (Colorado Academic Standards, Social Studies), cas-sc-2020 (Science), ck-seq (Core Knowledge Sequence section, grade 2).",
+  "domains": {
+    "Maps & Geography": "🗺️",
+    "American History": "🇺🇸",
+    "Civics & Government": "🏛️"
+  },
+  "topics": [
+    {
+      "id": "lt_mapkeys0001", "type": "CONCEPTUAL", "subject": "History", "domain": "Maps & Geography",
+      "name": "Map keys and symbols", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "A map key (legend) explains what the map's symbols and colors mean; use it to find places and features, and tell what a map is for (a street map vs a weather map)",
+      "evidence": ["Use a map key to say what a symbol on a map stands for", "Tell what kind of map it is and what it is for"],
+      "assessmentPrompt": "Show {{name}} a simple map with a key. Can they use the key to find the school, a river or a park?",
+      "standards": ["cas-ss-2022:SS.2.2.1", "ck-seq:G2.HG.I.A"],
+      "kid": {"q": "What does a map key (legend) do?", "a": "Tells you what the map's symbols mean", "w": ["Unlocks a treasure chest", "Tells you what time it is"]},
+      "prereqs": []
+    },
+    {
+      "id": "lt_compass0002", "type": "PROCEDURAL", "subject": "History", "domain": "Maps & Geography",
+      "name": "Compass rose and directions", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "Use a compass rose to find north, south, east and west, and the in-between directions northeast, northwest, southeast and southwest, to describe where places are on a map",
+      "evidence": ["Point to north, south, east and west on a map using the compass rose", "Use an in-between direction like northeast to say where a place is"],
+      "assessmentPrompt": "On a map, can {{name}} say which direction one place is from another, including an in-between direction like southwest?",
+      "standards": ["cas-ss-2022:SS.2.2.1", "ck-seq:G2.HG.I.A"],
+      "kid": {"q": "Which direction is between north and east?", "a": "Northeast", "w": ["Southwest", "Down"]},
+      "prereqs": [["lt_mapkeys0001", "soft"]]
+    },
+    {
+      "id": "lt_contine0003", "type": "CONCEPTUAL", "subject": "History", "domain": "Maps & Geography",
+      "name": "Seven continents and five oceans", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "Name and find the seven continents (Asia, Africa, North America, South America, Antarctica, Europe, Australia) and the oceans (Pacific, Atlantic, Indian, Arctic, Southern) on a map or globe",
+      "evidence": ["Name the seven continents", "Find the Pacific and Atlantic Oceans on a globe"],
+      "assessmentPrompt": "Can {{name}} name the seven continents and point to the Pacific Ocean on a globe?",
+      "standards": ["cas-ss-2022:SS.2.2.1", "ck-seq:G2.HG.I.A"],
+      "kid": {"q": "How many continents are there?", "a": "Seven", "w": ["Three", "Fifty"]},
+      "prereqs": []
+    },
+    {
+      "id": "lt_equator0004", "type": "CONCEPTUAL", "subject": "History", "domain": "Maps & Geography",
+      "name": "Equator, hemispheres and poles", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "The equator is an imaginary line around the middle of Earth that splits it into the Northern and Southern Hemispheres; the North and South Poles are at the top and bottom; the Prime Meridian splits Eastern and Western Hemispheres",
+      "evidence": ["Point to the equator and the two poles on a globe", "Say which hemisphere the United States is in"],
+      "assessmentPrompt": "On a globe, can {{name}} find the equator and the poles and say that we live in the Northern Hemisphere?",
+      "standards": ["cas-ss-2022:SS.2.2.1", "ck-seq:G2.HG.I.A"],
+      "kid": {"q": "What is the equator?", "a": "An imaginary line around the middle of Earth", "w": ["A mountain at the North Pole", "The biggest ocean"]},
+      "prereqs": [["lt_contine0003", "hard"]]
+    },
+    {
+      "id": "lt_landfrm0005", "type": "LANGUAGE", "subject": "History", "domain": "Maps & Geography",
+      "name": "Landform words", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "Know geography words for the shapes of land and water: coast, valley, prairie, desert, oasis, peninsula, island, bay, harbor, mountain, plain; use them to describe places like Colorado's mountains and plains",
+      "evidence": ["Match words like valley, peninsula and prairie to pictures", "Describe the land near home with the right words"],
+      "assessmentPrompt": "Can {{name}} explain the difference between an island and a peninsula, or a valley and a prairie?",
+      "standards": ["cas-ss-2022:SS.2.2.1", "cas-sc-2020:SC.2.3.2", "ck-seq:G2.HG.I.B"],
+      "kid": {"q": "Land with water on three sides is a ___.", "a": "Peninsula", "w": ["Desert", "Valley"]},
+      "prereqs": []
+    },
+    {
+      "id": "lt_ourplac0006", "type": "CONCEPTUAL", "subject": "History", "domain": "Maps & Geography",
+      "name": "Our place: Colorado, the U.S. and its neighbors", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "Name your city, state (Colorado), country (United States) and continent (North America); find Canada and Mexico as the United States' neighbors, and the Rocky Mountains, Mississippi River and Great Lakes on a map",
+      "evidence": ["Name city, state, country and continent in order", "Find Canada and Mexico on a map of North America"],
+      "assessmentPrompt": "Can {{name}} say that Boulder is in Colorado, in the United States, in North America, and name the two countries next to the U.S.?",
+      "standards": ["cas-ss-2022:SS.2.2.1", "ck-seq:G2.HG.VII.A"],
+      "kid": {"q": "Which country is north of the United States?", "a": "Canada", "w": ["Mexico", "Brazil"]},
+      "prereqs": [["lt_contine0003", "hard"]]
+    },
+    {
+      "id": "lt_constit0007", "type": "CONCEPTUAL", "subject": "History", "domain": "American History",
+      "name": "The Constitution: We the People", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "The Constitution is the highest law of the United States; it begins 'We the People' because the government gets its power from the people; James Madison is called the Father of the Constitution",
+      "evidence": ["Say what the Constitution is (the highest law of our land)", "Explain why it starts with 'We the People'"],
+      "assessmentPrompt": "Can {{name}} explain that the Constitution is the rule book for the whole country and that its power comes from the people?",
+      "standards": ["cas-ss-2022:SS.2.4.2", "ck-seq:G2.AH.I"],
+      "kid": {"q": "What is the Constitution?", "a": "The highest law of the United States", "w": ["A famous ship", "A kind of money"]},
+      "prereqs": []
+    },
+    {
+      "id": "lt_war1812_008", "type": "CONCEPTUAL", "subject": "History", "domain": "American History",
+      "name": "The War of 1812", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "In 1812 the United States went to war with Britain: British ships were taking American sailors (impressment); the warship Old Ironsides won sea battles; the British burned the White House, and Dolley Madison saved George Washington's portrait; James Madison was president",
+      "evidence": ["Name one reason the War of 1812 started", "Tell what Dolley Madison saved when the White House burned"],
+      "assessmentPrompt": "Can {{name}} tell the story of the British burning the White House and what Dolley Madison rescued?",
+      "standards": ["cas-ss-2022:SS.2.1.1", "ck-seq:G2.AH.II"],
+      "kid": {"q": "Who was president during the War of 1812?", "a": "James Madison", "w": ["Abraham Lincoln", "George Washington"]},
+      "prereqs": [["lt_constit0007", "soft"]]
+    },
+    {
+      "id": "lt_anthem_0009", "type": "CONCEPTUAL", "subject": "History", "domain": "American History",
+      "name": "Fort McHenry and The Star-Spangled Banner", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "During the War of 1812, Francis Scott Key watched the British attack Fort McHenry all night; at dawn the American flag still flew, and he wrote the poem that became our national anthem, The Star-Spangled Banner",
+      "evidence": ["Say who wrote The Star-Spangled Banner and what he saw", "Explain what a national anthem is"],
+      "assessmentPrompt": "Can {{name}} explain why the words 'the flag was still there' mattered to Francis Scott Key?",
+      "standards": ["cas-ss-2022:SS.2.1.1", "ck-seq:G2.AH.II"],
+      "kid": {"q": "What did Francis Scott Key write after the battle at Fort McHenry?", "a": "The Star-Spangled Banner", "w": ["The Constitution", "A cookbook"]},
+      "prereqs": [["lt_war1812_008", "hard"]]
+    },
+    {
+      "id": "lt_immigra0010", "type": "CONCEPTUAL", "subject": "History", "domain": "American History",
+      "name": "Immigration: coming to America", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "An immigrant is a person who moves to a new country to live; millions came to America for freedom, safety or a better life, many arriving by ship at Ellis Island past the Statue of Liberty; the motto 'e pluribus unum' means 'out of many, one'",
+      "evidence": ["Say what an immigrant is and one reason people immigrate", "Tell what Ellis Island and the Statue of Liberty meant to newcomers"],
+      "assessmentPrompt": "Can {{name}} explain what an immigrant is and why so many people came to America?",
+      "standards": ["cas-ss-2022:SS.2.1.2", "ck-seq:G2.AH.V"],
+      "kid": {"q": "What is an immigrant?", "a": "A person who moves to a new country to live", "w": ["A kind of ship", "A person who paints statues"]},
+      "prereqs": []
+    },
+    {
+      "id": "lt_fightca0011", "type": "CONCEPTUAL", "subject": "History", "domain": "American History",
+      "name": "Fighting for a cause: equal rights", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "America says all people are created equal, but not everyone has always been treated equally; many brave people worked peacefully to change unfair laws and win equal rights for all, and that work is called fighting for a cause",
+      "evidence": ["Explain what equal rights means in kid words", "Name one person who fought for a cause"],
+      "assessmentPrompt": "Can {{name}} explain what it means to fight for a cause and give an example of a right people have won?",
+      "standards": ["cas-ss-2022:SS.2.4.1", "ck-seq:G2.AH.VI"],
+      "kid": {"q": "Fighting for a cause means working to ___.", "a": "Change something unfair", "w": ["Win a race", "Build a castle"]},
+      "prereqs": []
+    },
+    {
+      "id": "lt_rosamlk0012", "type": "CONCEPTUAL", "subject": "History", "domain": "American History",
+      "name": "Rosa Parks and Martin Luther King Jr.", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "Rosa Parks refused to give up her bus seat in Montgomery, Alabama, which started a bus boycott; Martin Luther King Jr. led peaceful marches and gave the 'I Have a Dream' speech about equal rights for all",
+      "evidence": ["Tell what Rosa Parks did on the bus and why it mattered", "Say what Martin Luther King Jr.'s dream was about"],
+      "assessmentPrompt": "Can {{name}} tell the story of Rosa Parks and the bus boycott, and say what Dr. King dreamed of?",
+      "standards": ["cas-ss-2022:SS.2.4.1", "ck-seq:G2.AH.VI"],
+      "kid": {"q": "What did Rosa Parks refuse to do?", "a": "Give up her bus seat", "w": ["Go to school", "Eat her dinner"]},
+      "prereqs": [["lt_fightca0011", "hard"]]
+    },
+    {
+      "id": "lt_jackces0013", "type": "CONCEPTUAL", "subject": "History", "domain": "American History",
+      "name": "Jackie Robinson and Cesar Chavez", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "Jackie Robinson became the first Black player in modern Major League Baseball in 1947 and faced unfair treatment with courage; Cesar Chavez led farm workers to win fair pay and safer work through peaceful strikes and boycotts",
+      "evidence": ["Say why Jackie Robinson was important", "Say who Cesar Chavez helped and how"],
+      "assessmentPrompt": "Can {{name}} explain what Jackie Robinson was first at, and who Cesar Chavez stood up for?",
+      "standards": ["cas-ss-2022:SS.2.4.1", "ck-seq:G2.AH.VI"],
+      "kid": {"q": "Cesar Chavez helped which workers get fair treatment?", "a": "Farm workers", "w": ["Astronauts", "Pirates"]},
+      "prereqs": [["lt_fightca0011", "hard"]]
+    },
+    {
+      "id": "lt_anthony0014", "type": "CONCEPTUAL", "subject": "History", "domain": "American History",
+      "name": "Susan B. Anthony, Eleanor Roosevelt and Mary McLeod Bethune", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "Susan B. Anthony worked so women could vote; Eleanor Roosevelt spoke up for civil and human rights around the world; Mary McLeod Bethune started a school so Black students could get an education",
+      "evidence": ["Say what Susan B. Anthony wanted for women", "Say what Mary McLeod Bethune built and why"],
+      "assessmentPrompt": "Can {{name}} match each of these three women to the cause she fought for?",
+      "standards": ["cas-ss-2022:SS.2.4.1", "ck-seq:G2.AH.VI"],
+      "kid": {"q": "Susan B. Anthony fought for women's right to ___.", "a": "Vote", "w": ["Swim", "Drive trucks"]},
+      "prereqs": [["lt_fightca0011", "hard"]]
+    },
+    {
+      "id": "lt_whatgov0015", "type": "CONCEPTUAL", "subject": "History", "domain": "Civics & Government",
+      "name": "What government does", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "A government makes and enforces laws, keeps people safe, settles disagreements and provides services like police and fire protection, roads, schools, parks and snow removal; it is a bit like the rules and helpers of a family or school",
+      "evidence": ["Name two things a government does", "Name a service the city or state provides"],
+      "assessmentPrompt": "Can {{name}} name some jobs a government does, like making laws or plowing snowy roads?",
+      "standards": ["cas-ss-2022:SS.2.4.2", "ck-seq:G2.AH.I"],
+      "kid": {"q": "Which is a job of government?", "a": "Making laws and keeping people safe", "w": ["Choosing your bedtime story", "Baking every birthday cake"]},
+      "prereqs": []
+    },
+    {
+      "id": "lt_leaders0016", "type": "CONCEPTUAL", "subject": "History", "domain": "Civics & Government",
+      "name": "Leaders: mayor, governor, president", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "Communities have leaders at different levels: a mayor leads a city, a governor leads a state (Colorado) and the president leads the country; good leaders listen, are fair and honest, and help the group reach its goals",
+      "evidence": ["Match mayor, governor and president to city, state and country", "Name one quality of a good leader"],
+      "assessmentPrompt": "Can {{name}} say who leads a city, a state and the country, and what makes a leader good?",
+      "standards": ["cas-ss-2022:SS.2.4.2"],
+      "kid": {"q": "Who leads a whole state like Colorado?", "a": "The governor", "w": ["The mayor", "The librarian"]},
+      "prereqs": [["lt_whatgov0015", "hard"]]
+    },
+    {
+      "id": "lt_citizen0017", "type": "CONCEPTUAL", "subject": "History", "domain": "Civics & Government",
+      "name": "Being a citizen", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "A citizen is a full member of a country, by being born there or by becoming one later (naturalization); citizens have rights, like voting and holding office, and responsibilities, like following laws, paying taxes and helping the community",
+      "evidence": ["Say one right and one responsibility of a citizen", "Explain two ways a person can become a U.S. citizen"],
+      "assessmentPrompt": "Can {{name}} explain what a citizen is and name a right and a responsibility citizens have?",
+      "standards": ["cas-ss-2022:SS.2.4.1", "ck-seq:G2.AH.V"],
+      "kid": {"q": "Which is a responsibility of a citizen?", "a": "Following the laws", "w": ["Owning a boat", "Eating ice cream"]},
+      "prereqs": [["lt_immigra0010", "soft"]]
+    },
+    {
+      "id": "lt_communi0018", "type": "CONCEPTUAL", "subject": "History", "domain": "Civics & Government",
+      "name": "Making your community better", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "People improve their school and community by volunteering, cleaning up, helping neighbors, and sharing ideas respectfully (speaking up, writing letters, voting when grown up); solving problems together makes a community stronger",
+      "evidence": ["Name two ways to help your school or community", "Say a respectful way to share an idea you disagree about"],
+      "assessmentPrompt": "Can {{name}} name something they could do to make school or the neighborhood better, and a respectful way to share an idea?",
+      "standards": ["cas-ss-2022:SS.2.4.1"],
+      "kid": {"q": "Which helps your community?", "a": "Volunteering to clean up a park", "w": ["Hiding all the library books", "Ignoring a lost neighbor"]},
+      "prereqs": []
+    },
+    {
+      "id": "lt_scarcit0019", "type": "CONCEPTUAL", "subject": "Life Skills", "domain": "Money & Finance",
+      "name": "Scarcity: not enough for everyone", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "Scarcity means there is not enough of something (money, time, water, cookies) for everyone to have all they want, so people must choose; goods are things you can buy and services are jobs people do for you",
+      "evidence": ["Explain scarcity with an example", "Sort examples into goods and services"],
+      "assessmentPrompt": "Can {{name}} explain why we can't have everything we want (scarcity) and give an example of a good and a service?",
+      "standards": ["cas-ss-2022:SS.2.3.1", "cas-ss-2022:SS.2.5.1"],
+      "kid": {"q": "Scarcity means there is ___ of something for everyone.", "a": "Not enough", "w": ["Too much", "Exactly the right amount"]},
+      "prereqs": []
+    },
+    {
+      "id": "lt_scihero0020", "type": "CONCEPTUAL", "subject": "Science", "domain": "Scientific Inquiry",
+      "name": "Science heroes", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "Scientists and inventors who changed the world: Anton van Leeuwenhoek built microscopes and saw tiny living things; Elijah McCoy invented an oil cup that kept train engines running (the real McCoy); Florence Nightingale made hospitals clean and safe; Daniel Hale Williams performed one of the first heart surgeries",
+      "evidence": ["Match each science hero to what they did", "Say why one of their discoveries still matters today"],
+      "assessmentPrompt": "Can {{name}} say what Leeuwenhoek saw with his microscope, or how Florence Nightingale changed hospitals?",
+      "standards": ["ck-seq:G2.SC.VI"],
+      "kid": {"q": "What did Anton van Leeuwenhoek use to see tiny living things?", "a": "A microscope", "w": ["A telescope", "A magnet"]},
+      "prereqs": []
+    },
+    {
+      "id": "lt_earthmg0021", "type": "CONCEPTUAL", "subject": "Science", "domain": "Forces & Motion",
+      "name": "Earth is a magnet: how a compass works", "ageRangeStart": 7, "ageRangeEnd": 9,
+      "description": "Earth acts like a giant magnet with magnetic poles near the North and South Poles; a compass needle is a small magnet that turns to point north, so you can find directions outdoors (orienteering)",
+      "evidence": ["Explain why a compass needle points north", "Use a compass to find north and then east"],
+      "assessmentPrompt": "Can {{name}} explain why a compass needle always swings to point north?",
+      "standards": ["ck-seq:G2.SC.IV"],
+      "kid": {"q": "A compass needle points north because ___.", "a": "Earth acts like a giant magnet", "w": ["The needle is very heavy", "The sun pulls it"]},
+      "prereqs": [["mt_jgNB2752b9", "hard"], ["lt_compass0002", "soft"]]
+    }
+  ]
+}

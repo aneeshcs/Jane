@@ -25,6 +25,7 @@ prototype/data
 prototype/node_modules
 prototype/bin
 public/tax.json
+public/school.json
 public/glossary.json
 public/vendor
 src/gen.js

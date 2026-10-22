@@ -5,6 +5,34 @@ Dates are Pacific Time.
 
 ## [Unreleased]
 
+### Added
+- **School alignment** ([docs/SCHOOL.md](docs/SCHOOL.md), plan: [plans/school-alignment-v0.5.md](plans/school-alignment-v0.5.md)).
+  A school profile (`data/school/*.json`, bundled into `public/school.json` by `build.mjs`) lists per grade and month
+  the units the learner meets at school, with program names, standards codes and the taxonomy topics that teach them.
+  Ships with `bvsd-high-peaks.json`: High Peaks Elementary (Boulder Valley School District, Colorado), grade 2:
+  Illustrative Mathematics units, HMH Into Reading modules and Fundations, FOSS and Core Knowledge science units,
+  the Core Knowledge social studies map and Second Step, mapped to the 2020/2022 Colorado Academic Standards.
+- **Local topics** (`data/local-topics/topics.json`, ids `lt_…`): 21 micro-topics for U.S. history (the Constitution,
+  the War of 1812, immigration and citizenship, fighting for a cause), civics, maps and geography, scarcity and
+  science heroes, which the Marble taxonomy does not cover. They carry a kid question, prerequisites and standards
+  codes, and work everywhere a Marble topic does (packs, map, medals). Three new History areas (icons included) and
+  23 glossary words.
+- **Export:** `school` (this month's and next month's units with topic states and starters); frontier topics in a
+  current unit come first and are flagged `school: true`. **Validator:** prints "school units: N" and warns (never
+  fails) when a quest touches none while units are running. **LESSONS.md rule 8** "Follow the school year".
+- **Parent report:** an **At school this month** section (units, programs, standards, topic states, what is coming
+  next month). **Play:** topics in this month's units get a +20 focus bonus (between the pack and unseen areas).
+- `SCHOOL_PROFILE` learner setting (wrangler `[vars]` or env); `LEARNER_GRADE` picks the grade (`2nd grade`).
+- Example quest for grade 2: `packs/examples/example-quest-grade2.json` (October: the Constitution, magnets,
+  measuring, the War of 1812, a Fort McHenry boss).
+- Tests: `test/school.test.mjs`.
+
+### Changed
+- **Placement and Play follow the target age.** Placement probes used to be drawn from topics for ages 9-11 and Play
+  penalised any topic under age 8, whatever `LEARNER_AGE` said; both are now relative to the target age, probes seeded
+  under the old rule are dropped, and a learner under 9 gets a whole-number first question (8 − 3 − 2 slices) with the
+  fraction as the bonus. The README now says ages ~7-12 (elementary).
+
 ## [0.4.2] - 2026-10-19
 
 ### Added

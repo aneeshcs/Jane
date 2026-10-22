@@ -3,7 +3,7 @@
 // static files from public/ and file-based storage in DATA_DIR. No runtime dependencies.
 //   npm start          (builds first)      or   node server/index.mjs   (after npm run build)
 // Env: PORT (8787), HOST (127.0.0.1; use 0.0.0.0 to reach it from other devices), DATA_DIR (./local-data),
-//      LEARNER_NAME, LEARNER_AGE, LEARNER_GRADE.
+//      LEARNER_NAME, LEARNER_AGE, LEARNER_GRADE, SCHOOL_PROFILE (docs/SCHOOL.md).
 import http from 'http';import fs from 'fs';import path from 'path';import {fileURLToPath} from 'url';
 import {fileStore} from './file-kv.mjs';import {assets} from './assets.mjs';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -15,7 +15,7 @@ const VERSION=JSON.parse(fs.readFileSync(path.join(ROOT,'package.json'),'utf8'))
 const PORT=+(process.env.PORT||8787),HOST=process.env.HOST||'127.0.0.1';
 const DATA_DIR=path.resolve(process.env.DATA_DIR||path.join(ROOT,'local-data'));
 const env={ASSETS:assets(PUBLIC),JANE_KV:fileStore(DATA_DIR)};
-for(const k of ['LEARNER_NAME','LEARNER_AGE','LEARNER_GRADE'])if(process.env[k])env[k]=process.env[k];
+for(const k of ['LEARNER_NAME','LEARNER_AGE','LEARNER_GRADE','SCHOOL_PROFILE'])if(process.env[k])env[k]=process.env[k];
 // One request at a time touches storage (the Worker does read-modify-write on the progress record).
 let chain=Promise.resolve();const serial=fn=>{const r=chain.then(fn,fn);chain=r.catch(()=>{});return r;};
 const MAX_BODY=1<<20;

@@ -45,6 +45,8 @@ The export includes:
 - **`reviewDue`**: mastered topics whose spaced review is due (the gates serve them; don't write review stages).
 - **`coverage`**: per subject, areas (Marble domains) seen out of total; `coverage.untouched` lists the unseen
   areas (math and science first) with up to 3 `starters` near the target age.
+- **`school`**: this month's (`now`) and next month's (`next`) school units for the learner's grade, each with its
+  program, standards, topics with states and up to 3 `starters` ([SCHOOL.md](SCHOOL.md)).
 - **`reviewHealth`**: `due`, `overdue` (> 1 day late), `oldestOverdueDays`, `gateItems7d`, `spotChecks7d`,
   `unverifiedInferred`: is spaced review keeping up?
 - **`summary`**, **`stats`** and the raw **`progress`** record.
@@ -57,6 +59,9 @@ At most **3 quests** can be active (started and unfinished) at a time. The routi
   message. `publish-lessons.mjs` also refuses to publish a new quest at the cap unless you pass `--force`.
 
 ## 4. Write the pack (rules in LESSONS.md)
+- **Follow the school year.** At least one stage from a unit in `school.now` (what the learner meets at school this
+  month: topics, states and `starters`), with the unit's setting as the story. The publisher prints "school units: N"
+  and warns at 0 while units are running (see LESSONS.md rule 8 and [SCHOOL.md](SCHOOL.md)).
 - **Visit a new area.** One stretch stage from `coverage.untouched` (a `starters` topic), rotating subjects with math
   and science first. The publisher prints "new areas: N" and warns at 0 while untouched areas are left (a warning,
   not an error).

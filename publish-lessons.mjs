@@ -5,7 +5,7 @@
 //        --local (or STORAGE=file) publishes into the standalone server's DATA_DIR instead of Cloudflare KV.
 //        node publish-lessons.mjs <boost.json> [--dry-run]     (catch-up boost: file has "boostFor": "<quest date>")
 // A new quest is refused while 3 quests are active (started, unfinished) unless --force; publish a boost instead.
-import fs from 'fs';import {kvPut,kvGet,kvList,loadTax,activeQuests,QUEST_CAP,learnerConfig,LOCAL} from './lib-cli.mjs';import * as EN from './src/engine.js';import {coverage,seenAreas} from './src/coverage.js';
+import fs from 'fs';import {kvPut,kvGet,kvList,loadTax,loadSchool,activeQuests,QUEST_CAP,learnerConfig,LOCAL} from './lib-cli.mjs';import * as EN from './src/engine.js';import {coverage,seenAreas} from './src/coverage.js';import {unitsFor,gradeKey,pickProfile} from './src/school.js';
 // Learner settings from wrangler.toml [vars]. Packs may write {name}; the app fills it in. Prompts must talk to the learner as "you".
 EN.configure(learnerConfig());const LRN=EN.learner();
 const NAMES=[LRN.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'\\{name\\}','the learner'].join('|');
@@ -74,10 +74,10 @@ const tooHard=a=>/\.\d{4,}/.test(String(a))||/\d\.\d+\s*%/.test(String(a)); // p
 function steps(v,P,req){if(v==null){if(req)E(P,'guided practice needs "steps": 1-4 short strings shown before answering');return;}if(!Array.isArray(v)||!v.length||v.length>6||!v.every(x=>typeof x==='string'&&x.trim()))E(P,'1-6 non-empty strings');else v.forEach((x,k)=>{if(wc(x)>18)W(`${P}[${k}]`,`${wc(x)} words (steps ≤ 18)`);});}
 const taught=new Set();
 const seen=new Set();let nq=0,nGraded=0,nReview=0,nDeep=0,nCards=0;const typesUsed=new Set();
-(pack.topics||[]).forEach((t,i)=>{const P=`topics[${i}]`,tp=byId[t.topicId];if(!tp)E(P+'.topicId',`unknown Marble topic id "${t.topicId}"`);if(seen.has(t.topicId))E(P+'.topicId','duplicate');seen.add(t.topicId);
+(pack.topics||[]).forEach((t,i)=>{const P=`topics[${i}]`,tp=byId[t.topicId];if(!tp)E(P+'.topicId',`unknown topic id "${t.topicId}" (a Marble mt_ id or a local lt_ id from public/tax.json)`);if(seen.has(t.topicId))E(P+'.topicId','duplicate');seen.add(t.topicId);
   if(t.format&&!FORMATS.includes(t.format))E(P+'.format','one of '+FORMATS.join('|'));
   if(t.intro){str(t.intro.title,P+'.intro.title');str(t.intro.story,P+'.intro.story');str(t.intro.emoji,P+'.intro.emoji',false);if(wc(t.intro.story)>25)W(P+'.intro.story',`${wc(t.intro.story)} words (aim ≤ 25)`);}
-  if(t.teaches!=null&&!(Array.isArray(t.teaches)&&t.teaches.every(x=>byId[x])))E(P+'.teaches','array of Marble topic ids this stage teaches or practises (for a later boss)');
+  if(t.teaches!=null&&!(Array.isArray(t.teaches)&&t.teaches.every(x=>byId[x])))E(P+'.teaches','array of topic ids (mt_ or lt_) this stage teaches or practises (for a later boss)');
   if(t.powerup!=null&&(typeof t.powerup!=='string'||wc(t.powerup)>30))E(P+'.powerup','string, ≤ 30 words (the "Boss ahead! Here\'s your power-up" recap)');
   if(t.review!=null&&typeof t.review!=='boolean')E(P+'.review','true|false');if(t.deepDive!=null&&typeof t.deepDive!=='boolean')E(P+'.deepDive','true|false');
   if(!Array.isArray(t.questions)||!t.questions.length)E(P+'.questions','non-empty array required');const qs=t.questions||[];
@@ -142,6 +142,11 @@ const revStages=pack.topics.filter(t=>t.review).length;if(revStages)W('review',`
 let newAreas=null;if(Q&&PROG){const CG=EN.graph(tax),SP=EN.migrate(JSON.parse(JSON.stringify(PROG)),CG),seenA=seenAreas(SP,CG,[]),cov=coverage(SP,CG,[],{age:LRN.age});
   const areas=[...new Set(pack.topics.filter(t=>byId[t.topicId]).map(t=>byId[t.topicId].subject+'|'+byId[t.topicId].domain))];newAreas=areas.filter(a=>!seenA.has(a));
   if(!newAreas.length&&cov.untouched.length)W('coverage',`no new area: add one stretch stage from coverage.untouched, math and science first (e.g. ${cov.untouched.slice(0,3).map(u=>u.subject+' / '+u.domain).join(', ')})`);}
+// School alignment (LESSONS.md "Follow the school year"): which stages hit a unit the learner meets at school this month. Warning only.
+let schoolHits=null;{const prof=pickProfile(loadSchool(),learnerConfig().SCHOOL_PROFILE),gk=gradeKey(LRN.grade);
+  if(Q&&prof?.grades?.[gk]&&/^\d{4}-\d{2}/.test(pack.date||'')){const U=unitsFor(prof,gk,+pack.date.slice(5,7));
+    schoolHits=U.now.filter(u=>(pack.topics||[]).some(t=>(u.topics||[]).includes(t.topicId))).map(u=>u.title);
+    if(!schoolHits.length&&U.now.length)W('school',`no stage from this month's school units (${U.now.slice(0,3).map(u=>u.subject+' / '+u.title).join('; ')}${U.now.length>3?'; …':''}): add one from the export's school.now starters`);}}
 const inter=[...typesUsed].filter(x=>!['mc','numeric','text'].includes(x));if(inter.length<3)W('formats',`only ${inter.length} interactive format(s) used; mix in order/match/picture/blank/numberline/fracbar/truefalse/why/fact`);
 if(Q&&PROG?.quests?.[pack.date]?.started){let prev=null;try{prev=kvGet('lessons:'+pack.date);}catch{}
   for(const t of prev?.topics||[]){const answered=(t.questions||[]).some((q,j)=>PROG.packSeen?.[`${pack.date}:${t.topicId}:${j}`]);if(!answered)continue;
@@ -151,6 +156,6 @@ if(warns.length)console.warn(`⚠️  ${warns.length} warning(s) (see LESSONS.md
 if(errs.length){console.error(`❌ ${errs.length} problem(s) in ${file}:\n  `+errs.join('\n  '));process.exit(1);}
 if(Q&&!dry&&!force){const S=kvGet('progress');const A=activeQuests(S,pack.date).filter(d=>kvList('lessons:'+d).length);
   if(A.length>=QUEST_CAP){console.error(`⛔ ${A.length}/${QUEST_CAP} quests are active (${A.join(', ')}). Not publishing a new quest.\n   Publish a catch-up boost for the oldest one instead (see LESSONS.md "Quest cap"), or pass --force.`);process.exit(3);}}
-const sum=`${pack.topics.length} ${Q?'stages':'topics'}, ${nq} items (~${estMin} min, ${nGraded} graded${nReview?`, ${nReview} in review stages`:''}, review via gates, ${nDeep} deep dive${nDeep===1?'':'s'}${newAreas?`, new areas: ${newAreas.length}${newAreas.length?` (${newAreas.map(a=>a.replace('|',' / ')).join(', ')})`:''}`:''}), formats: ${[...typesUsed].join(', ')}`;
+const sum=`${pack.topics.length} ${Q?'stages':'topics'}, ${nq} items (~${estMin} min, ${nGraded} graded${nReview?`, ${nReview} in review stages`:''}, review via gates, ${nDeep} deep dive${nDeep===1?'':'s'}${newAreas?`, new areas: ${newAreas.length}${newAreas.length?` (${newAreas.map(a=>a.replace('|',' / ')).join(', ')})`:''}`:''}${schoolHits?`, school units: ${schoolHits.length}${schoolHits.length?` (${schoolHits.join('; ')})`:''}`:''}), formats: ${[...typesUsed].join(', ')}`;
 if(dry){console.log(`✅ valid${Q?` quest "${Q.title}"`:''}: ${sum} for ${pack.date} (dry run, nothing written)`);process.exit(0);}
 kvPut('lessons:'+pack.date,pack);console.log(`✅ published${LOCAL?' (local)':''} lessons:${pack.date}${Q?` quest "${Q.title}"`:''}: ${sum}`);

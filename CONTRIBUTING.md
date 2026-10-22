@@ -9,7 +9,9 @@ By contributing, you agree that your contribution is licensed under the license 
 - **Code** (`src/`, `server/`, `test/`, `public/*.js|css|html`, `prototype/`, Docker files, scripts): **MIT**.
 - **Data** (`data/`, generated `tax.json`/`glossary.json`): **ODbL 1.0** for the database, **CC BY-SA 4.0** for text.
   Don't edit `data/marble/` (it's the unchanged upstream dataset); put changes in the derived files instead, or
-  send taxonomy fixes upstream to https://github.com/withmarbleapp/os-taxonomy.
+  send taxonomy fixes upstream to https://github.com/withmarbleapp/os-taxonomy. Topics a school curriculum needs that
+  Marble lacks go in `data/local-topics/topics.json` (`lt_` ids, with a kid question and prereqs); school profiles go
+  in `data/school/` (see [docs/SCHOOL.md](docs/SCHOOL.md)). `npm run build` validates both.
 - **Content** (`packs/examples/`, `LESSONS.md`, `docs/`): **CC BY-SA 4.0**.
 
 ## Privacy (important: this is a kids' app)

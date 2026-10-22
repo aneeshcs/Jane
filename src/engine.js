@@ -9,7 +9,7 @@ let NAME='Explorer', TARGET_AGE=10, GRADE='upper elementary';
 export function configure(env={}){NAME=String(env.LEARNER_NAME||'Explorer').trim()||'Explorer';const a=parseFloat(env.LEARNER_AGE);TARGET_AGE=a>=4&&a<=16?a:10;GRADE=String(env.LEARNER_GRADE||'upper elementary').trim();}
 export const learner=()=>({name:NAME,age:TARGET_AGE,grade:GRADE});
 export const withName=(s,name=NAME)=>String(s).replace(/\{\{name\}\}|\{name\}/g,()=>name);
-const PIZZA_ID='mt_e7filQgayF';
+const PIZZA_ID='mt_e7filQgayF',YOUNG_ID='mt_yTWxkzzoOZ'; // first question: fraction word problems (age 10+), or two-step word problems (age 7-8) for younger learners
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1)), pick=a=>a[Math.floor(Math.random()*a.length)];
 export function graph(TAX){const byId={},pre={},post={};for(const t of TAX.topics){byId[t.id]=t;pre[t.id]=[];post[t.id]=[];}
   for(const [t,p,h] of TAX.deps)if(byId[t]&&byId[p]){pre[t].push({id:p,h:!!h});post[p].push({id:t,h:!!h});}
@@ -99,19 +99,21 @@ function probeDown(S,g,id){const seen=new Map([[id,0]]),q=[id];while(q.length){c
   const c=[...seen].filter(([x,d])=>d>0&&unknown(S,x));if(!c.length)return null;const max=Math.max(...c.map(x=>x[1])),mid=Math.max(1,Math.ceil(max/2));
   const at=c.filter(x=>x[1]===mid);return pick(at.length?at:c)[0];}
 function probeUp(S,g,id){const sub=g.byId[id].subject,seen=new Map([[id,0]]),q=[id];while(q.length){const x=q.shift();if(seen.get(x)>=4)continue;for(const e of g.post[x])if(!seen.has(e.id)&&g.byId[e.id].subject===sub){seen.set(e.id,seen.get(x)+1);q.push(e.id);}}
-  const a0=Math.max(8,g.byId[id].ageRangeStart),dom=g.byId[id].domain;let c=[...seen].filter(([x,d])=>d>0&&unknown(S,x)&&g.byId[x].ageRangeStart>=a0&&g.byId[x].ageRangeStart<=12);
+  const a0=Math.max(TARGET_AGE-2,g.byId[id].ageRangeStart),dom=g.byId[id].domain;let c=[...seen].filter(([x,d])=>d>0&&unknown(S,x)&&g.byId[x].ageRangeStart>=a0&&g.byId[x].ageRangeStart<=TARGET_AGE+2);
   const sd=c.filter(([x])=>g.byId[x].domain===dom);if(sd.length)c=sd;if(!c.length)return null;const max=Math.max(...c.map(x=>x[1])),mid=Math.ceil(max/2);
   const at=c.filter(x=>x[1]===mid);return pick(at.length?at:c)[0];}
 function ancestors(g,id){const s=new Set(),q=[id];while(q.length)for(const e of g.pre[q.pop()])if(!s.has(e.id)){s.add(e.id);q.push(e.id);}return s.size;}
 // ---------- placement ----------
 const BUDGET={Mathematics:6,Science:4,English:4,History:3,'Personal & Social Development':2,'Life Skills':2,Computing:2,'Learning to Learn':2};
 function seedPlacement(S,g,pack){const subs=Object.keys(BUDGET),q=[];const packIds=new Set((pack?.topics||[]).map(t=>t.topicId));
-  for(const sub of subs){const c=g.topics.filter(t=>t.subject===sub&&t.ageRangeStart>=9&&t.ageRangeStart<=11&&unknown(S,t.id));
+  // seed one probe per subject from topics starting within a year of the target age (fallback: within 3 years), deepest in the graph first
+  for(const sub of subs){let c=g.topics.filter(t=>t.subject===sub&&Math.abs(t.ageRangeStart-TARGET_AGE)<=1&&unknown(S,t.id));if(!c.length)c=g.topics.filter(t=>t.subject===sub&&Math.abs(t.ageRangeStart-TARGET_AGE)<=3&&unknown(S,t.id));
     c.sort((a,b)=>(packIds.has(b.id)-packIds.has(a.id))*100+(ancestors(g,b.id)-ancestors(g,a.id))-(Math.abs(a.ageRangeStart-TARGET_AGE)-Math.abs(b.ageRangeStart-TARGET_AGE))*2);
     if(c[0])q.push(c[0].id);}
   const m=q.shift();S.placement.queue=[m,...q];}
 function placementNext(S,g,pack){const P=S.placement;if(P.done)return null;if(!P.seeded){const keep=P.queue;seedPlacement(S,g,pack);P.queue=[...keep,...P.queue];P.seeded=true;}
-  while(P.queue.length){const id=P.queue.shift();const sub=g.byId[id].subject;if((P.per[sub]||0)>=BUDGET[sub])continue;if(!unknown(S,id))continue;return id;}
+  while(P.queue.length){const id=P.queue.shift();if(!g.byId[id]||g.byId[id].ageRangeStart>TARGET_AGE+2)continue; // a probe seeded under an older target age is dropped
+    const sub=g.byId[id].subject;if((P.per[sub]||0)>=BUDGET[sub])continue;if(!unknown(S,id))continue;return id;}
   P.done=true;return null;}
 function placementResult(S,g,id,ok){const P=S.placement;const sub=g.byId[id].subject;P.per[sub]=(P.per[sub]||0)+1;P.asked++;
   if((P.per[sub]||0)>=BUDGET[sub])return;const nx=ok?probeUp(S,g,id):probeDown(S,g,id);if(nx)P.queue.unshift(nx);}
@@ -197,13 +199,15 @@ export function buildItem(S,g,id,mode,pack,now){const t=g.byId[id],r=S.ts[id];le
 // Coverage (LESSONS.md "Coverage"): an area (Marble domain) is seen with a direct record that has a correct answer
 // (the engine has no logs; src/coverage.js adds logged graded answers). Ready topics in unseen areas get +10 (below +40 for the pack).
 export const AREA_BONUS=10;
+// School alignment (docs/SCHOOL.md): topics in this month's school units get a Play bonus, between the pack (+40) and unseen areas (+10).
+export const SCHOOL_BONUS=20;let SCHOOL=new Set();export function setSchoolTopics(ids){SCHOOL=new Set(ids||[]);}export const schoolTopics=()=>SCHOOL;
 export function seenAreas(S,g,logs=[]){const seen=new Map();const k=t=>t.subject+'|'+t.domain;
   for(const l of logs)if(l&&!l.event&&l.topicId&&l.expected!=='(self-check)'&&l.regraded!=='neutral'){const t=g.byId[l.topicId];if(t){const x=seen.get(k(t))||{answered:0};x.answered++;seen.set(k(t),x);}}
   for(const [id,r] of Object.entries(S.ts||{})){const t=g.byId[id];if(t&&r.how==='direct'&&(r.c||0)>=1&&!seen.has(k(t)))seen.set(k(t),{answered:0});}
   return seen;}
 export function focusScore(S,g,id,packIds=new Set(),seenA=null){const t=g.byId[id];let s=-Math.abs(t.ageRangeStart-TARGET_AGE)*4;if(packIds.has(id))s+=40;
   if(seenA&&!seenA.has(t.subject+'|'+t.domain)&&S.ts[id]?.st!=='learning')s+=AREA_BONUS;if(S.ts[id]?.st==='learning')s+=15;if(kindFor(t))s+=4;
-  if(t.ageRangeStart<8)s-=30;const recentSubs=S.recent.slice(-3).map(x=>g.byId[x]?.subject);if(recentSubs.filter(x=>x===t.subject).length>=2)s-=12;return s+Math.random()*6;}
+  if(t.ageRangeStart<TARGET_AGE-2)s-=30;if(SCHOOL.has(id))s+=SCHOOL_BONUS;const recentSubs=S.recent.slice(-3).map(x=>g.byId[x]?.subject);if(recentSubs.filter(x=>x===t.subject).length>=2)s-=12;return s+Math.random()*6;}
 export function pickFocus(S,g,pack,now,opt={}){const packIds=new Set((pack?.topics||[]).map(t=>t.topicId).filter(id=>g.byId[id]&&packQ(S,pack,id)));
   let c=g.topics.filter(t=>{const s=stateOf(S,g,t.id,now);return s==='ready'||s==='learning';});
   if(opt.subject)c=c.filter(t=>t.subject===opt.subject);if(opt.notSubject)c=c.filter(t=>t.subject!==opt.subject&&t.subject!==opt.notSubject);if(opt.domain)c=c.filter(t=>t.domain===opt.domain);
@@ -211,10 +215,14 @@ export function pickFocus(S,g,pack,now,opt={}){const packIds=new Set((pack?.topi
   if(opt.unseen){const sa=seenAreas(S,g);c=c.filter(t=>!sa.has(t.subject+'|'+t.domain));}
   if(!c.length)return null;const seenA=seenAreas(S,g),sc=new Map(c.map(t=>[t.id,focusScore(S,g,t.id,packIds,seenA)]));c.sort((a,b)=>sc.get(b.id)-sc.get(a.id));return c[0].id;}
 export function next(S,g,pack,now){
-  if(!S.firstDone){S.firstDone=true;const it={kind:'math',type:'input',q:'Your pizza has 8 slices. You eat 3, your friend eats 2. What fraction is left?',answer:'3/8',
+  if(!S.firstDone){S.firstDone=true;const young=TARGET_AGE<9; // under 9 (grades K-3): a two-step whole-number story first, fractions as the bonus
+    const it=young?{kind:'math',type:'input',q:'Your pizza has 8 slices. You eat 3, your friend eats 2. How many slices are left?',answer:'3',
+      hint:'Take away 3, then take away 2 more: 8 − 3 − 2.',explain:'8 − 3 = 5, and 5 − 2 = 3. So 3 slices are left!',
+      vis:{type:'pizza',slices:8,eaten:5},bonus:{q:'Bonus ⭐: what fraction of the pizza is left? (like 1/2)',a:'3/8'},first:true,format:'explore',lvl:2}
+    :{kind:'math',type:'input',q:'Your pizza has 8 slices. You eat 3, your friend eats 2. What fraction is left?',answer:'3/8',
     hint:'Count the slices that are still on the plate: 8 − 3 − 2. Put that number over 8, the total slices.',explain:'8 − 3 − 2 = 3 slices left out of 8, so 3/8 of the pizza is left!',
     vis:{type:'pizza',slices:8,eaten:5},bonus:{q:'Bonus ⭐: write 3/8 as a decimal!',a:'0.375'},first:true,format:'explore',lvl:4};
-    S.current={...it,id:now+'-0',topicId:PIZZA_ID,mode:'diagnostic',tries:0,stage:'main',issued:now};return S.current;}
+    S.current={...it,id:now+'-0',topicId:young?YOUNG_ID:PIZZA_ID,mode:'diagnostic',tries:0,stage:'main',issued:now};return S.current;}
   // a skipped item comes back a day later, guided (steps visible) and never as a boss
   const rq=(S.requeue||[]).findIndex(x=>x.notBefore<=now&&g.byId[x.item?.topicId]);
   if(rq>=0&&!questActive(S,pack)&&!S.mini){const x=S.requeue.splice(rq,1)[0],so=solve(x.item.q);S.itemsServed++;S.recent=[...S.recent.slice(-9),x.item.topicId];
@@ -321,7 +329,8 @@ function submit0(S,g,answer,now){const it=S.current;if(!it)return{error:'no item
   if(ok==='wrongForm'){it.nudges=(it.nudges||0)+1;const jane=nudgeText(it,isBonus);ev.push({event:'formNudge',formNudge:true,topicId:it.topicId,topic:t.name,subject:t.subject,question:logE.question,expected:logE.expected,given:logE.given,form:formOf(it,isBonus),pack:logE.pack});
     return finish(S,{correct:false,retry:true,formNudge:true,jane},ev);}
   ev.push(logE);
-  if(isBonus){if(ok){S.points+=15;S.stars++;r.jane='BONUS! You\'re a decimal wizard! 🧙‍♂️ +15 points and a ⭐';r.correct=true;}else{r.jane=`Good try! ${it.bonus.a} is the decimal. Tip: divide the top number by the bottom number.`;r.reveal=it.bonus.a;r.correct=false;}
+  if(isBonus){const frac=/\//.test(String(it.bonus.a)); // a fraction bonus (young learners) or the usual decimal bonus
+    if(ok){S.points+=15;S.stars++;r.jane=frac?'BONUS! You\'re a fraction wizard! 🧙‍♂️ +15 points and a ⭐':'BONUS! You\'re a decimal wizard! 🧙‍♂️ +15 points and a ⭐';r.correct=true;}else{r.jane=frac?`Good try! ${it.bonus.a} is the fraction: slices left over the total slices.`:`Good try! ${it.bonus.a} is the decimal. Tip: divide the top number by the bottom number.`;r.reveal=it.bonus.a;r.correct=false;}
     r.done=true;S.current=null;return finish(S,r,ev);}
   if(it.type==='self'){S.current=null;r.done=true;rec.last=now;
     if(answer==='yes'&&it.mode==='review'&&rec.st==='mastered'){S.points+=5;r.correct=true;r.jane=`Awesome! ⭐ +5 points.`;}
@@ -398,8 +407,8 @@ function skip0(S,g,pack,now){const it=S.current;if(!it)return{error:'no item'};c
   return finish(S,{done:true,skipped:true,jane:playBoss?'Skipped! No heart lost. 💜 Let\'s power up, then back to the boss!':it.format==='boss'?'Skipped! No heart lost. 💜 On to the next one!':'Skipped for now! We\'ll come back to it later. 💜'},ev,true);}
 function finish(S,r,ev,noChoice){if(r.done&&!noChoice&&!S.mini){S.sinceChoice++;if(S.sinceChoice>=6){r.askChoice=true;S.sinceChoice=0;}}return{r,ev};}
 export function choose(S,g,c,pack,now){const cur=S.focus&&g.byId[S.focus];let msg='Keep going — you\'re doing great!',id=null;
-  if(c==='harder'){id=pickFocus(S,g,pack,now,{subject:cur?.subject,minAge:(cur?.ageRangeStart||10)+1});msg='Ooh, a challenge! Let\'s go! 🚀';}
-  else if(c==='easier'){if(cur&&S.ts[S.focus]?.lvl>1)S.ts[S.focus].lvl--;else id=pickFocus(S,g,pack,now,{subject:cur?.subject,maxAge:(cur?.ageRangeStart||10)-1});msg='Great choice — practice makes perfect!';}
+  if(c==='harder'){id=pickFocus(S,g,pack,now,{subject:cur?.subject,minAge:(cur?.ageRangeStart||TARGET_AGE)+1});msg='Ooh, a challenge! Let\'s go! 🚀';}
+  else if(c==='easier'){if(cur&&S.ts[S.focus]?.lvl>1)S.ts[S.focus].lvl--;else id=pickFocus(S,g,pack,now,{subject:cur?.subject,maxAge:(cur?.ageRangeStart||TARGET_AGE)-1});msg='Great choice — practice makes perfect!';}
   else if(c==='different'){const ns={notSubject:cur?.subject||'Mathematics'};id=pickFocus(S,g,pack,now,{...ns,unseen:true})||pickFocus(S,g,pack,now,{unseen:true})||pickFocus(S,g,pack,now,ns);msg=id?`Something new: ${g.byId[id].sn||g.byId[id].name}! 🎨`:msg;}
   else if(c==='fractions'){id=pickFocus(S,g,pack,now,{domain:'Fractions'});msg='Back to fractions! 🍕';}
   if(id)S.focus=id;S.current=null;return{jane:msg};}

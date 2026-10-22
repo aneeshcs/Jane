@@ -18,12 +18,14 @@ export function kvGet(key){if(FS)return FS.getSync(key,'json');try{const out=wr(
 export function kvPut(key,obj){if(FS)return FS.putSync(key,JSON.stringify(obj));const f=path.join(DIR,`.kvput-${process.pid}.json`);fs.writeFileSync(f,JSON.stringify(obj));try{wr(['kv','key','put','--binding','JANE_KV','--remote',key,'--path',f]);}finally{fs.unlinkSync(f);}}
 export function kvDel(key){if(FS)return FS.deleteSync(key);wr(['kv','key','delete','--binding','JANE_KV','--remote',key]);}
 export const loadTax=()=>JSON.parse(fs.readFileSync(path.join(DIR,'public/tax.json'),'utf8'));
+// School profiles bundled by build.mjs (docs/SCHOOL.md); null before the first build.
+export const loadSchool=()=>{const f=path.join(DIR,'public/school.json');return fs.existsSync(f)?JSON.parse(fs.readFileSync(f,'utf8')):null;};
 export const ptDate=(ms=Date.now())=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
 export function kvList(prefix){if(FS)return FS.listSync(prefix);const out=wr(['kv','key','list','--binding','JANE_KV','--remote','--prefix',prefix]);return JSON.parse(out).map(k=>k.name);}
 // active quests = started, not finished (max 3 at a time)
 export const QUEST_CAP=3;
 export function activeQuests(S,except){const Q=S?.quests||{};return Object.entries(Q).filter(([d,q])=>q.started&&!q.done&&d!==except).map(([d])=>d).sort();}
-// Learner settings: [vars] LEARNER_NAME / LEARNER_AGE / LEARNER_GRADE in wrangler.toml (env vars override; local mode uses env only, like the server). Defaults: Explorer, 10, upper elementary.
+// Learner settings: [vars] LEARNER_NAME / LEARNER_AGE / LEARNER_GRADE (and SCHOOL_PROFILE) in wrangler.toml (env vars override; local mode uses env only, like the server). Defaults: Explorer, 10, upper elementary.
 export function learnerConfig(){const v={};if(!LOCAL)try{const t=fs.readFileSync(path.join(DIR,'wrangler.toml'),'utf8');const m=t.match(/^\[vars\]([\s\S]*?)(?=^\[|$(?![\s\S]))/m);
-  if(m)for(const l of m[1].split('\n')){const x=l.match(/^\s*(LEARNER_[A-Z]+)\s*=\s*"([^"]*)"/);if(x)v[x[1]]=x[2];}}catch{}
-  for(const k of ['LEARNER_NAME','LEARNER_AGE','LEARNER_GRADE'])if(process.env[k])v[k]=process.env[k];return v;}
+  if(m)for(const l of m[1].split('\n')){const x=l.match(/^\s*(LEARNER_[A-Z]+|SCHOOL_PROFILE)\s*=\s*"([^"]*)"/);if(x)v[x[1]]=x[2];}}catch{}
+  for(const k of ['LEARNER_NAME','LEARNER_AGE','LEARNER_GRADE','SCHOOL_PROFILE'])if(process.env[k])v[k]=process.env[k];return v;}

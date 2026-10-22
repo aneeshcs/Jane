@@ -3,7 +3,7 @@
 // Usage: node export-progress.mjs [--out file.json] [--date YYYY-MM-DD] [--days 7] [--local]   (default out: exports/progress-<date>.json;
 //        with --local or STORAGE=file it reads the standalone server's DATA_DIR and writes DATA_DIR/exports/)
 // Adds weakSpots (per topic + per domain: misses, hints, slow answers, failed reviews, unsure self-checks), strengths and goDeeper suggestions.
-import fs from 'fs';import path from 'path';import {kvGet,loadTax,ptDate,DIR,activeQuests,QUEST_CAP,learnerConfig,outDir} from './lib-cli.mjs';import * as E from './src/engine.js';import {coverage as areaCoverage} from './src/coverage.js';
+import fs from 'fs';import path from 'path';import {kvGet,loadTax,loadSchool,ptDate,DIR,activeQuests,QUEST_CAP,learnerConfig,outDir} from './lib-cli.mjs';import * as E from './src/engine.js';import {coverage as areaCoverage} from './src/coverage.js';import {schoolView,schoolTopicIds,gradeKey,pickProfile} from './src/school.js';
 E.configure(learnerConfig());const L=E.learner();
 const args=process.argv.slice(2),opt=k=>args.includes(k)?args[args.indexOf(k)+1]:null;
 const date=opt('--date')||ptDate(),out=opt('--out')||path.join(outDir('exports'),`progress-${date}.json`);
@@ -22,7 +22,10 @@ const reviewHealth={due:dueRecs.length,overdue:dueRecs.filter(id=>S.ts[id].due<=
   gateItems7d:logs.filter(l=>!l.event&&l.format==='gate'&&l.try===1).length,spotChecks7d:logs.filter(l=>l.event==='verified'||l.event==='spotMiss').length,
   unverifiedInferred:Object.keys(S.ts).filter(id=>g.byId[id]&&E.unverified(S,id)).length};
 const near=t=>Math.abs(t.ageRangeStart-L.age);
-const frontier=g.topics.filter(t=>['ready','learning'].includes(E.stateOf(S,g,t.id,now))).sort((a,b)=>near(a)-near(b)).map(t=>full(t));
+// School alignment (LESSONS.md "Follow the school year", docs/SCHOOL.md): this month's and next month's school units for the learner's grade
+const PROF=pickProfile(loadSchool(),learnerConfig().SCHOOL_PROFILE),GK=gradeKey(L.grade),month=+date.slice(5,7);
+const school=PROF?schoolView(PROF,GK,S,g,now,month):null,schoolIds=PROF?schoolTopicIds(PROF,GK,month):new Set();
+const frontier=g.topics.filter(t=>['ready','learning'].includes(E.stateOf(S,g,t.id,now))).sort((a,b)=>(schoolIds.has(b.id)-schoolIds.has(a.id))||near(a)-near(b)).map(t=>full(t,{school:schoolIds.has(t.id)||undefined}));
 const reviewDue=g.topics.filter(t=>E.stateOf(S,g,t.id,now)==='review').sort((a,b)=>S.ts[a.id].due-S.ts[b.id].due).map(t=>full(t,{dueAt:new Date(S.ts[t.id].due).toISOString(),box:S.ts[t.id].box}));
 // ---------- weak spots ----------
 const SLOW=30,IDLE=600;const W={};const T=id=>W[id]??={topicId:id,name:g.byId[id]?.name,subject:g.byId[id]?.subject,domain:g.byId[id]?.domain,answers:0,correct:0,misses:0,hints:0,slow:0,failedReviews:0,unsure:0,stuck:0,skipped:0,secs:[],qtypes:{},examples:[]};
@@ -67,10 +70,11 @@ const res={exportedAt:new Date(now).toISOString(),date,timezone:'America/Los_Ang
   unverifiedInferred:reviewHealth.unverifiedInferred, // inferred skills a gate spot-check has not confirmed yet
   coverage:areaCoverage(S,g,logs,{age:L.age,now}), // areas (Marble domains) seen per subject + starters for untouched ones (LESSONS.md "Coverage")
   reviewHealth, // spaced review runs through quest gates now: watch for starvation here (LESSONS.md "Review gates")
+  school, // this month's school units (school.now) and next month's (school.next), each with topics, states and starters (LESSONS.md "Follow the school year")
   todaysPack:pack?{date:pack.date,title:pack.title,topicIds:pack.topics.map(t=>t.topicId)}:null,
   quests,termsLookedUp,weakSpots,todayLog:log,learnedToday:log.filter(l=>l.event==='mastered'),
   frontier,reviewDue,progress:S};
 fs.mkdirSync(path.dirname(out),{recursive:true});fs.writeFileSync(out,E.withName(JSON.stringify({learner:L,...res},null,1),JSON.stringify(L.name).slice(1,-1)));
-console.log(`  🗺️ quests: ${quests.nextStep}`);if(termsLookedUp.length)console.log(`  📘 looked up: ${termsLookedUp.slice(0,10).map(t=>t.term+'×'+t.count).join(', ')}`);
+console.log(`  🗺️ quests: ${quests.nextStep}`);if(school?.aligned)console.log(`  🏫 school (${school.gradeLabel}, ${school.monthName}): ${school.now.length} unit${school.now.length===1?'':'s'} this month: ${school.now.map(u=>u.title).join('; ')||'(none: school break)'}`);else if(PROF)console.log(`  🏫 school profile ${PROF.id} has no units for grade "${L.grade}" (set LEARNER_GRADE like "2nd grade")`);if(termsLookedUp.length)console.log(`  📘 looked up: ${termsLookedUp.slice(0,10).map(t=>t.term+'×'+t.count).join(', ')}`);
 for(const x of goDeeper)console.log(`  🔎 go deeper${x.needsSupport?' (GENTLE, the kid got stuck)':''}: ${x.name} (${x.domain}): ${x.why}`);for(const x of strengths)console.log(`  💪 strength: ${x.domain} → stretch to ${x.stretchTo.map(t=>t.name).join(', ')||'(nothing ready)'}`);
 console.log(`✅ wrote ${out}: ${sm.done}/${sm.total} mastered (${sm.pct}%), ${frontier.length} frontier, ${reviewDue.length} review due, ${log.filter(l=>!l.event).length} answers today`);

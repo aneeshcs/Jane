@@ -1,6 +1,8 @@
-import * as E from './engine.js';import * as PR from './parent.js';import {VERSION} from './version.js';
-let G=null;const QUEST_CAP=3;
+import * as E from './engine.js';import * as PR from './parent.js';import {VERSION} from './version.js';import {pickProfile,schoolTopicIds,gradeKey,ptMonth} from './school.js';
+let G=null,SCH=null;const QUEST_CAP=3;
 async function graph(env){if(!G){const r=await env.ASSETS.fetch(new Request('https://assets.local/tax.json'));G=E.graph(await r.json());}return G;}
+// School profile (docs/SCHOOL.md): public/school.json, built from data/school/; SCHOOL_PROFILE picks one (default: the only/first). Cached per isolate.
+async function school(env){if(SCH===null){try{const r=await env.ASSETS.fetch(new Request('https://assets.local/school.json'));SCH=r.ok?(pickProfile(await r.json(),env.SCHOOL_PROFILE)||false):false;}catch{SCH=false;}}return SCH||null;}
 export const ptDate=(ms=Date.now())=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
 // Every JSON response goes through J, which fills in the learner's name ({name} placeholder, see engine.configure).
 const J=(o,s=200)=>new Response(E.withName(JSON.stringify(o),JSON.stringify(E.learner().name).slice(1,-1)),{status:s,headers:{'content-type':'application/json','cache-control':'no-store'}});
@@ -14,6 +16,7 @@ export default{async fetch(req,env){E.configure(env);const u=new URL(req.url),P=
  if(P==='/api/sandbox'){const on=u.searchParams.get('on')!=='0';return new Response(null,{status:302,headers:{location:'/','set-cookie':`sbx=${on?1:0}; Path=/; SameSite=Lax${on?'; Max-Age=86400':'; Max-Age=0'}`}});}
  if(sbx&&P==='/api/sandbox/reset'&&req.method==='POST'){const b=await req.json().catch(()=>({}));await KV.put('sandbox:progress',(await KV.get('progress'))||'null');await KV.put('sandbox:debug:clockOffsetDays',String(+b.offsetDays||0));return J({ok:true,sandbox:true,offsetDays:+b.offsetDays||0});}
  const off=+(await KV.get(K('debug:clockOffsetDays')))||0;const now=Date.now()+off*864e5,today=ptDate(now);
+ const SP=await school(env);E.setSchoolTopics(SP?schoolTopicIds(SP,gradeKey(E.learner().grade),ptMonth(now)):[]); // Play bonus for this month's school units
  const raw=await KV.get(K('progress'),'json');let S=E.migrate(raw,g);const migrated=raw&&raw.v!==2;
  const S0=JSON.stringify(S);
  // ---- quests: max 3 active (started, unfinished). The engine plays the focused / oldest active quest; today's new quest waits while 3 are active.
@@ -36,7 +39,7 @@ export default{async fetch(req,env){E.configure(env);const u=new URL(req.url),P=
    const ds=[...Array(14)].map((_,i)=>ptDate(now-(13-i)*864e5));const logs={};await Promise.all(ds.map(async d=>logs[d]=(await KV.get(K('log:'+d),'json'))||[]));
    const qp={};for(const d of recent)if(PC[d]?.quest)qp[d]=PC[d];const boosts={};await Promise.all(Object.keys(qp).map(async d=>boosts[d]=await KV.get('boost:'+d,'json')));
    const tomorrowPack=await KV.get('lessons:'+ptDate(now+864e5),'json');
-   const data=PR.parentData({S,g,now,today,logs,packs:qp,tomorrowPack,boosts});data.sandbox=sbx||undefined;
+   const data=PR.parentData({S,g,now,today,logs,packs:qp,tomorrowPack,boosts,schoolProfile:SP});data.sandbox=sbx||undefined;
    return new Response(PR.parentShell(data),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});}
  if(P==='/api/state'){if(!S.current)E.next(S,g,pack,now);out=pub();}
  else if(P==='/api/trophies'){out=E.trophies(S,g);}
