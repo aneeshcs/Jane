@@ -115,7 +115,7 @@ and do not endorse it (see `data/marble/PROVENANCE.md`).
 ## Younger learners: what changed in the engine
 
 Jane was written for upper elementary, and a few rules were hard-coded for a 10-year-old regardless of `LEARNER_AGE`.
-With a 2nd grader (age 8) they served the wrong level, so v0.5 makes them relative to the target age:
+With a 2nd grader (age 8) they served the wrong level, so v0.6 makes them relative to the target age:
 
 | Before | Now |
 |---|---|

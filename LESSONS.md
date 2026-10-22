@@ -37,6 +37,11 @@ open for free). Gate answers move Leitner boxes like any review (a first-try rig
 demotes it), and a gate opens once its items are answered, right or wrong, so it never strands the learner. Gates
 don't count toward quest progress. The nightly author doesn't pick gate items.
 
+**Warm-up and daily budget.** The first time the learner continues a started quest each day, a 🔥 **warm-up** of 1-2
+due reviews comes first (after any question already on screen, never in the middle of one). Warm-up and gates
+together serve **at most 4 review items per quest per day**; a gate reached after that opens for free. So reviews
+reach the learner every day they play, even when a session stops between gates or a quest runs over several days.
+
 **Spot-checks.** About 1 gate item in 3 (and every gate item when nothing is due) is a quick check of a skill the app
 only *inferred* and never saw: the one with the most dependent skills, then the lowest confidence. Right: the skill
 counts as shown directly (`verified`). Miss: it goes back to learning and the guesses built on it are withdrawn. A
@@ -92,34 +97,58 @@ eighths, halving or money; smaller numbers; one idea per step), a learn card, 2 
 that climb back up. **No boss on that skill tomorrow**, and add its own `example`/`steps` so the stuck help is
 specific.
 
-## Quest cap: max 3 active quests
-A quest is **active** once started and until finished. At most **3** can be active.
-- The app shows `🗺️ x/3` on the quest strip and Quests tab. It plays the quest the learner picked ("Keep going" / "Play this
-  quest"), otherwise the **oldest** active one.
-- When 3 are active, today's new quest is **paused**: no "New quest!" reveal, it shows "🔒 Waiting" in the Quests
-  tab, and Jane says "Finish your quest to unlock the next one!" pointing at the oldest unfinished quest.
-- `export-progress.mjs` reports `quests` (active count, per-quest progress, remaining stages, `nextStep`).
-- `publish-lessons.mjs` **refuses** a new quest when 3 are active (exit code 3) unless `--force`.
-- **At the cap, the nightly job publishes a catch-up boost instead** of a new quest, for the OLDEST active quest:
-```json
-{"boostFor":"2026-10-17","emoji":"🚀","message":"You're SO close, captain! Two short stops, then the Kraken!",
- "trim":{"mt_kLQOzZYrd5":3},                       // max graded questions in that stage (shorter remaining stages)
- "hints":{"mt_lvaSGHwvQ5":"Multiply tops, multiply bottoms!"},  // extra hint put before each hint of that stage
- "terms":{"kraken":{"d":"A giant sea monster from old sailor stories.","e":"🐙"}}}
+## One quest at a time
+A quest is **current** once started and until finished, and there is only **one** at a time (since v0.5).
+- The app plays the current quest. The Quests tab shows it big, a secret **"Next up: ???"** card when another quest
+  pack is waiting, and finished quests below. No counter, no switching.
+- A quest pack published while the current quest is unfinished is **queued**: no "New quest!" reveal, it isn't listed,
+  and the app refuses to start it. When the current quest is finished, the **newest** waiting pack becomes the new
+  quest (older unstarted packs are skipped; they were never started, so nothing is lost).
+- `export-progress.mjs` reports `quests`: `current` (progress, `reachedStages`, `lockedStages`, `refreshableStages`,
+  `remainingStages`), `queued`, and `nextStep`: **`REFRESH: …`** while a quest is in progress, **`NEW QUEST: …`** when
+  none is.
+- `publish-lessons.mjs` **refuses a new quest while one is in progress** (exit code **3**, nothing written). `--force`
+  overrides, but the pack would only wait queued: don't.
+- Catch-up boosts (`boostFor`) are **retired**: the publisher refuses them (exit 1). A `boost:<date>` key published
+  before v0.5 still applies in the app until that quest is finished.
+
+## Refreshing the current quest
+While a quest is in progress, the nightly job **refreshes its unreached stages** with tonight's learning (weak
+spots, coverage, stretch) instead of writing a new quest.
+- **Reached stages are locked.** A stage is reached when the learner answered any of its questions (or saw its boss
+  power-up card), or its item is on screen right now, and every stage before a reached one counts as reached too.
+  The export lists them in `quests.current.lockedStages` (`reachedStages` = how many).
+- **The quest block is locked** (`quest`: title, hook, medal, emoji): same story, same medal.
+- **Everything after the reached stages may change**: rewrite, add, drop or reorder those stages, keep a boss last.
+  `terms` may change too.
+- **The budget applies to the remaining stages**: at most 16 graded questions and 7 stages after the reached ones
+  (the size warnings count only those). The 4 review-gate items a day come on top, as always.
+- Steps:
+```bash
+node export-progress.mjs              # nextStep "REFRESH: …"; also writes the stored pack to exports/quest-<quest date>.json
+cp exports/quest-<quest date>.json packs/quest-<quest date>.json
+#   edit packs/quest-<quest date>.json: keep "date", "quest" and topics[0 .. reachedStages-1] unchanged;
+#   rewrite, add or drop only the topics after them (boss last)
+node publish-lessons.mjs packs/quest-<quest date>.json --refresh --date <quest date> --dry-run   # validate
+node publish-lessons.mjs packs/quest-<quest date>.json --refresh --date <quest date>             # write lessons:<quest date>
 ```
-  `node publish-lessons.mjs boost.json` validates it and writes `boost:<quest date>`; the app shows the message on the
-  quest strip and applies the trims/hints right away. Trim only stages with lots left (see `remainingStages`), never
-  the boss below 3.
+- The publisher compares against the stored pack and the learner's progress (read-only). If a reached stage or the
+  quest block differs, it exits **6** and writes nothing, naming the stages; copy them unchanged and try again.
+  `--refresh` on a quest that isn't in progress exits 1 (unstarted: publish normally) or 4 (finished: locked).
+  Republishing the quest in progress without `--refresh` gets the same checks.
+- Node server / Docker: add `--local` (or set `STORAGE=file`) to both scripts, like every other command; the export
+  then writes `quest-<quest date>.json` under `$DATA_DIR/exports/`.
 
 ## Finished quests are locked
 Once the learner finishes a quest, it is done for good: it shows 100% and its medal in the app, the Quests tab, the
 parent report and the export, from a snapshot taken when it finished. Its pack serves no more items.
 `publish-lessons.mjs` **refuses** (exit code **4**, nothing written) to overwrite `lessons:<date>` or write
-`boost:<date>` for a finished quest, even with `--force`. **Put new material in the next quest.** Republishing a
-started, unfinished quest still works, but the publisher warns for every stage that already has answers and changed.
+`boost:<date>` for a finished quest, even with `--force`. **Put new material in the next quest.** A started, unfinished
+quest can only be refreshed after its reached stages (see "Refreshing the current quest"; exit 6 otherwise).
 
 ## How to plan tomorrow's quest (rules)
-0. Check `quests.nextStep` first: at the cap, write a boost (above), not a quest.
+0. Check `quests.nextStep` first: `REFRESH: …` means rewrite the current quest's unreached stages (above) with the
+   rules below, not a new quest. `NEW QUEST: …` means write tomorrow's quest.
 Run `node export-progress.mjs` and read `weakSpots` first. Then:
 1. **Go deeper where the learner struggles.** Every topic in `weakSpots.goDeeper` (misses, hints, slow answers, failed
    reviews, "not yet / sort of" self-checks, "I'm stuck" taps and skips) gets a **deep dive** stage (`"deepDive": true`): a `learn`
@@ -135,7 +164,9 @@ Run `node export-progress.mjs` and read `weakSpots` first. Then:
 4. **Spaced review runs through the gates.** Don't spend quest budget on review stages: the app's review gates
    (see "Review gates") pull due reviews and spot-checks from the Leitner queue at runtime. `"review": true` stages
    still publish (for old packs) but get a warning. Watch the export's `reviewHealth` (`due`, `overdue`,
-   `oldestOverdueDays`, `gateItems7d`, `spotChecks7d`, `unverifiedInferred`) for review that isn't keeping up.
+   `oldestOverdueDays`, `gateItems7d`, `spotChecks7d`, `unverifiedInferred`, `reviewsServed7d`, `gatesOpened7d`,
+   `gatesAhead`, `lastPlayed`, `daysSinceLastPlay`, `note`) for review that isn't keeping up. `note` says whether the
+   learner just hasn't played (`not played since …`) or played without getting reviews (`played but no reviews served`).
 5. **Make it interactive and illustrated.** Mix formats (the publisher warns if fewer than 3 interactive ones), add a
    `scene` or `template` to most stages, and drop in a **fun-fact** card or two.
 6. **Keep it short (enforced):** a quest is about **8 minutes**: **at most 16 graded questions** over **4-6 stages
@@ -294,10 +325,10 @@ cd jane   # the repo checkout
 node publish-lessons.mjs packs/2026-10-17.json --dry-run      # validate only
 node publish-lessons.mjs packs/2026-10-17.json                # validate + write lessons:2026-10-17
 node publish-lessons.mjs my-pack.json --date 2026-10-18       # override the date
-node publish-lessons.mjs boost.json                           # catch-up boost (when 3 quests are active)
-node publish-lessons.mjs packs/x.json --force                 # publish a new quest even at the cap (avoid)
+node publish-lessons.mjs refresh.json --refresh --date 2026-10-17   # refresh the quest in progress (unreached stages only)
 ```
 A finished quest is locked: the script exits with code 4 and writes nothing (see "Finished quests are locked").
+A new quest while one is in progress exits 3; a refresh that touches a reached stage exits 6 (see "Refreshing the current quest").
 The script exits with code 1 and lists every problem if the pack is invalid, for example an unknown topic id, an
 mc answer that isn't one of the choices, or a missing hint or explanation. Nothing is written in that case.
 

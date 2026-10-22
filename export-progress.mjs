@@ -3,7 +3,7 @@
 // Usage: node export-progress.mjs [--out file.json] [--date YYYY-MM-DD] [--days 7] [--local]   (default out: exports/progress-<date>.json;
 //        with --local or STORAGE=file it reads the standalone server's DATA_DIR and writes DATA_DIR/exports/)
 // Adds weakSpots (per topic + per domain: misses, hints, slow answers, failed reviews, unsure self-checks), strengths and goDeeper suggestions.
-import fs from 'fs';import path from 'path';import {kvGet,loadTax,loadSchool,ptDate,DIR,activeQuests,QUEST_CAP,learnerConfig,outDir} from './lib-cli.mjs';import * as E from './src/engine.js';import {coverage as areaCoverage} from './src/coverage.js';import {schoolView,schoolTopicIds,gradeKey,pickProfile} from './src/school.js';
+import fs from 'fs';import path from 'path';import {kvGet,loadTax,loadSchool,ptDate,DIR,activeQuests,questReached,learnerConfig,outDir} from './lib-cli.mjs';import * as E from './src/engine.js';import {coverage as areaCoverage} from './src/coverage.js';import {schoolView,schoolTopicIds,gradeKey,pickProfile} from './src/school.js';
 E.configure(learnerConfig());const L=E.learner();
 const args=process.argv.slice(2),opt=k=>args.includes(k)?args[args.indexOf(k)+1]:null;
 const date=opt('--date')||ptDate(),out=opt('--out')||path.join(outDir('exports'),`progress-${date}.json`);
@@ -21,6 +21,12 @@ function reviewDueIds(){return g.topics.filter(t=>E.stateOf(S,g,t.id,now)==='rev
 const reviewHealth={due:dueRecs.length,overdue:dueRecs.filter(id=>S.ts[id].due<=now-DAY).length,oldestOverdueDays:Math.max(0,Math.floor((now-oldest)/DAY)),
   gateItems7d:logs.filter(l=>!l.event&&l.format==='gate'&&l.try===1).length,spotChecks7d:logs.filter(l=>l.event==='verified'||l.event==='spotMiss').length,
   unverifiedInferred:Object.keys(S.ts).filter(id=>g.byId[id]&&E.unverified(S,id)).length};
+// v0.5: tell "not reached yet" (no play) from "broken" (play, reviews due, none served)
+{const ans=logs.filter(l=>!l.event&&l.try===1),lastTs=Math.max(0,...ans.map(l=>Date.parse(l.ts)||0),...(ans.length?[]:Object.values(S.ts).map(r=>r.last||0)));
+  Object.assign(reviewHealth,{reviewsServed7d:ans.filter(l=>l.mode==='review').length,
+    gatesOpened7d:new Set(logs.filter(l=>!l.event&&l.format==='gate').map(l=>l.pack+':'+(l.gate??'?'))).size, // gates (incl. warm-ups) that served review items
+    gatesAhead:0,lastPlayed:lastTs?new Date(lastTs).toISOString():null,daysSinceLastPlay:lastTs?Math.floor((now-lastTs)/DAY):null});
+  reviewHealth.note=!ans.length?`not played since ${lastTs?ptDate(lastTs):'ever'}: gates not reached yet`:!reviewHealth.reviewsServed7d&&reviewHealth.due?'played but no reviews served: check the gates':'ok';}
 const near=t=>Math.abs(t.ageRangeStart-L.age);
 // School alignment (LESSONS.md "Follow the school year", docs/SCHOOL.md): this month's and next month's school units for the learner's grade
 const PROF=pickProfile(loadSchool(),learnerConfig().SCHOOL_PROFILE),GK=gradeKey(L.grade),month=+date.slice(5,7);
@@ -56,13 +62,21 @@ const needsSupport=Object.entries(S.support||{}).filter(([id,v])=>g.byId[id]&&(v
   bossPausedUntil:v.bossOff>now?new Date(v.bossOff).toISOString():undefined,easierSteps:stepDown(id).slice(0,4)}));
 const requeued=(S.requeue||[]).map(x=>({topicId:x.item.topicId,name:g.byId[x.item.topicId]?.name,question:x.item.q,answer:x.item.answer,comesBackAfter:new Date(x.notBefore).toISOString(),times:x.n}));
 const weakSpots={window:`${dayList[dayList.length-1]}..${date}`,rules:{slowSec:SLOW,idleIgnoredSec:IDLE,score:'misses×3 + hints×2 + slow + failedReviews×3 + unsure×2 + stuck×2 + skipped×3'},topics:weakTopics,domains,goDeeper,strengths,needsSupport,requeued};
-// ---------- quests (cap 3 active) + glossary lookups ----------
+// ---------- quests (v0.5: ONE current quest; newer packs wait queued) + glossary lookups ----------
 const A=activeQuests(S);const qinfo=d=>{const p=kvGet('lessons:'+d);if(!p?.quest)return null;const b=kvGet('boost:'+d);const pp=b?E.applyBoost(p,b):p;const qi=E.questInfo(S,g,pp);
-  return{date:d,title:qi.title,startedAt:new Date(S.quests[d].started).toISOString(),done:qi.done,total:qi.total,pct:qi.pct,boosted:!!b,
+  const rr=S.quests?.[d]?.started?questReached(S,p):0;
+  return{date:d,title:qi.title,startedAt:S.quests?.[d]?.started?new Date(S.quests[d].started).toISOString():null,done:qi.done,total:qi.total,pct:qi.pct,
+    reachedStages:rr,lockedStages:qi.stages.slice(0,rr).map((s,i)=>({i,topicId:s.topicId,name:s.name})),refreshableStages:qi.stages.slice(rr).map((s,i)=>({i:i+rr,topicId:s.topicId,name:s.name,boss:s.boss})),
     remainingStages:qi.stages.map((s,i)=>({i,topicId:s.topicId,name:s.name,left:s.n-s.done,boss:s.boss})).filter(s=>s.left>0)};};
-const activeList=A.map(qinfo).filter(Boolean);
-const quests={active:activeList.length,cap:QUEST_CAP,atCap:activeList.length>=QUEST_CAP,list:activeList,completed:Object.entries(S.quests||{}).filter(([,q])=>q.done).map(([d])=>d),
-  nextStep:activeList.length>=QUEST_CAP?`AT CAP: do not publish a new quest. Publish a catch-up boost for ${activeList[0].date} ("${activeList[0].title}", ${activeList[0].pct}% done).`:`OK to publish a new quest (${activeList.length}/${QUEST_CAP} active).`};
+const qDates=[...new Set([...A,...dayList,ptDate(Date.parse(date+'T12:00:00Z')+864e5)])].filter(d=>d<=date).sort();
+const LQ=E.questLineup(S,Object.fromEntries(qDates.map(d=>[d,kvGet('lessons:'+d)])),date);
+const activeList=A.map(qinfo).filter(Boolean),cur=LQ.current&&!LQ.newQuest?qinfo(LQ.current):null;
+// REFRESH starts from a copy of the stored pack (LESSONS.md "Refreshing the current quest"): exports/quest-<date>.json
+if(cur){cur.packFile=path.join(path.dirname(out),`quest-${cur.date}.json`);fs.mkdirSync(path.dirname(cur.packFile),{recursive:true});fs.writeFileSync(cur.packFile,JSON.stringify(kvGet('lessons:'+cur.date),null,1));}
+reviewHealth.gatesAhead=A.reduce((a,d)=>{const p=kvGet('lessons:'+d);return a+(p?.quest?E.questInfo(S,g,p).gates.filter(x=>x.state==='locked').length:0);},0); // stage gates not reached yet in active quests
+const quests={current:cur,queued:LQ.queued,active:activeList.length,list:activeList,completed:Object.entries(S.quests||{}).filter(([,q])=>q.done).map(([d])=>d),
+  nextStep:cur?`REFRESH: quest ${cur.date} ("${cur.title}", ${cur.pct}% done) is in progress. Do not publish a new quest. Copy ${cur.packFile} to packs/quest-${cur.date}.json, keep "date", "quest" and stages 1-${cur.reachedStages} unchanged, rewrite stages ${cur.reachedStages+1}+ (${cur.refreshableStages.length} now) from tonight's export, then: node publish-lessons.mjs packs/quest-${cur.date}.json --refresh --date ${cur.date} --dry-run (and again without --dry-run)`
+    :'NEW QUEST: no quest in progress. Write tomorrow\'s quest and publish it normally.'};
 const tl={};for(const l of logs)if(l.event==='term'){const k=l.term.toLowerCase();const x=tl[k]??={term:l.term,count:0,topics:new Set()};x.count++;if(l.topic)x.topics.add(l.topic);}
 const termsLookedUp=Object.values(tl).map(x=>({...x,topics:[...x.topics]})).sort((a,b)=>b.count-a.count);
 const res={exportedAt:new Date(now).toISOString(),date,timezone:'America/Los_Angeles',learner:S.name,summary:sm,

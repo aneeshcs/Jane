@@ -1,5 +1,5 @@
 import * as E from './engine.js';import * as PR from './parent.js';import {VERSION} from './version.js';import {pickProfile,schoolTopicIds,gradeKey,ptMonth} from './school.js';
-let G=null,SCH=null;const QUEST_CAP=3;
+let G=null,SCH=null;
 async function graph(env){if(!G){const r=await env.ASSETS.fetch(new Request('https://assets.local/tax.json'));G=E.graph(await r.json());}return G;}
 // School profile (docs/SCHOOL.md): public/school.json, built from data/school/; SCHOOL_PROFILE picks one (default: the only/first). Cached per isolate.
 async function school(env){if(SCH===null){try{const r=await env.ASSETS.fetch(new Request('https://assets.local/school.json'));SCH=r.ok?(pickProfile(await r.json(),env.SCHOOL_PROFILE)||false):false;}catch{SCH=false;}}return SCH||null;}
@@ -19,20 +19,19 @@ export default{async fetch(req,env){E.configure(env);const u=new URL(req.url),P=
  const SP=await school(env);E.setSchoolTopics(SP?schoolTopicIds(SP,gradeKey(E.learner().grade),ptMonth(now)):[]); // Play bonus for this month's school units
  const raw=await KV.get(K('progress'),'json');let S=E.migrate(raw,g);const migrated=raw&&raw.v!==2;
  const S0=JSON.stringify(S);
- // ---- quests: max 3 active (started, unfinished). The engine plays the focused / oldest active quest; today's new quest waits while 3 are active.
+ // ---- quests (v0.5): ONE current quest (E.questLineup). A newer quest pack waits hidden until the current one is finished.
  const todayPack=await KV.get('lessons:'+today,'json');const PC={[today]:todayPack};
  const ld=[];{let cur;do{const l=await KV.list({prefix:'lessons:',cursor:cur});ld.push(...l.keys.map(k=>k.name.slice(8)));cur=l.list_complete?null:l.cursor;}while(cur);}
  const recent=ld.filter(d=>d<=today).sort().slice(-30);await Promise.all(recent.filter(d=>!(d in PC)).map(async d=>PC[d]=await KV.get('lessons:'+d,'json')));
- const qrec=d=>S.quests?.[d]||{};const activeQ=()=>recent.filter(d=>PC[d]?.quest&&qrec(d).started&&!qrec(d).done);
- const paused=()=>!!(todayPack?.quest&&!qrec(today).started&&activeQ().length>=QUEST_CAP);
+ const qrec=d=>S.quests?.[d]||{};const LU=()=>E.questLineup(S,Object.fromEntries(recent.map(d=>[d,PC[d]])),today);
  const withBoost=async p=>{if(!p?.quest)return p;const b=await KV.get('boost:'+p.date,'json');return b?E.applyBoost(p,b):p;};
- const choosePack=async()=>{const A=activeQ();let d=S.questFocus&&A.includes(S.questFocus)?S.questFocus:null;if(!d&&A.length)d=A[0];return d?withBoost(PC[d]):paused()?null:todayPack;};
+ const choosePack=async()=>{const d=LU().current;return d?withBoost(PC[d]):todayPack;};
  let pack=await choosePack();E.refresh(S,g,pack,now);
  const body=req.method==='POST'?await req.json().catch(()=>({})):{};let out,ev=[];
  const pub=()=>{const sm=E.summary(S,g,now);delete sm.codes;return{name:E.learner().name,learner:E.learner(),points:S.points,stars:S.stars,streak:S.streak,bestStreak:S.bestStreak,solved:S.solved,medals:(S.medals||[]).slice(-4).reverse().map(m=>E.medalInfo(m,g)).filter(Boolean),medalCount:E.trophies(S,g).medals.filter(m=>m.tier!=='quest').length,
    placement:{done:S.placement.done,asked:S.placement.asked},progress:sm,pack:pack?{date:pack.date,title:pack.title}:null,item:E.publicItem(S.current,g),clockOffsetDays:off||undefined,sandbox:sbx||undefined,
-   quest:pack?.quest?E.questInfo(S,g,pack):null,newQuest:!!(todayPack?.quest&&!qrec(today).started&&!paused()),
-   quests:{active:activeQ().length,cap:QUEST_CAP,paused:paused(),oldest:(()=>{const d=activeQ()[0];return d?{date:d,title:PC[d].quest.title,emoji:PC[d].quest.emoji||'🗺️',pct:E.questInfo(S,g,PC[d]).pct}:null;})(),boost:pack?.boost||null},
+   quest:pack?.quest?E.questInfo(S,g,pack):null,newQuest:(()=>{const L=LU();return L.newQuest&&pack?.date===L.current;})(),
+   quests:(()=>{const L=LU();return{current:L.current,nextUp:L.queued.length>0,boost:pack?.boost||null};})(),
    terms:pack?.terms||null,mini:S.mini?{topicId:S.mini.topicId,subject:S.mini.ret}:null};};
  const questCheck=r=>{const m=E.completeQuest(S,g,pack,now);if(m){r.questDone=m;ev.push({event:'questDone',date:pack.date,quest:m.title});}};
  if(P==='/parent'){ // read-only: returns before any KV write
@@ -51,15 +50,15 @@ export default{async fetch(req,env){E.configure(env);const u=new URL(req.url),P=
    const md=E.miniAfter(S,g,pack,now,x.r);if(md)x.r.miniDone=md;questCheck(x.r);if(!S.current)E.next(S,g,pack,now);out={...x.r,state:pub()};}
  else if(P==='/api/explore'&&req.method==='POST'){if(!g.byId[body.topicId])return J({error:'unknown topic'},400);const it=E.startMini(S,g,body.topicId,pack,now);if(it.error)return J(it,400);out=pub();}
  else if(P==='/api/mini/quit'&&req.method==='POST'){if(S.mini){S.mini=null;S.current=S.miniHold||null;S.miniHold=null;}if(!S.current)E.next(S,g,pack,now);out=pub();}
- else if(P==='/api/quest/start'&&req.method==='POST'){const d=body.date||today;const qp=PC[d];
-   if(qp?.quest&&!qrec(d).done){if(!qrec(d).started&&activeQ().length>=QUEST_CAP)return J({error:'Finish your quest to unlock the next one! 🗝️',paused:true},409);
+ else if(P==='/api/quest/start'&&req.method==='POST'){const d=body.date||LU().current||today;const qp=PC[d];
+   if(qp?.quest&&!qrec(d).done){if(d!==LU().current)return J({error:'Finish your quest to unlock the next one! 🗝️',queued:true},409);
      S.quests??={};const q=S.quests[d]??={};q.started??=now;S.questFocus=d;pack=await withBoost(qp);if(!S.mini&&S.current&&!String(S.current.packKey||'').startsWith(d+':'))S.current=null;}
    if(!S.current)E.next(S,g,pack,now);out=pub();}
  else if(P==='/api/term'&&req.method==='POST'){const t=String(body.term||'').slice(0,60);if(t)ev.push({event:'term',term:t,topicId:S.current?.topicId,topic:g.byId[S.current?.topicId]?.name});out={ok:true};}
  else if(P==='/api/quests'){
-   const A=activeQ(),ps=paused();const packs=await Promise.all([...recent].reverse().map(d=>withBoost(PC[d])));
-   out={today,active:A.length,cap:QUEST_CAP,paused:ps,quests:packs.filter(Boolean).map(p=>({...E.questInfo(S,g,p),today:p.date===today,active:A.includes(p.date),focus:pack?.date===p.date,
-     waiting:ps&&p.date===today,canStart:!!p.quest&&!qrec(p.date).started&&A.length<QUEST_CAP,boost:p.boost||null}))};}
+   const L=LU(),fin=await Promise.all(L.finished.map(d=>withBoost(PC[d])));
+   // the queued quests stay a secret ("Next up: ???"): only whether one is waiting goes out
+   out={today,current:pack?{...E.questInfo(S,g,pack),today:pack.date===today,boost:pack.boost||null}:null,nextUp:L.queued.length>0,finished:fin.filter(Boolean).map(p=>E.questInfo(S,g,p))};}
  else if(P==='/api/next'&&req.method==='POST'){if(!S.current)E.next(S,g,pack,now);out=pub();}
  else if(P==='/api/skipbonus'&&req.method==='POST'){S.current=null;E.next(S,g,pack,now);out=pub();}
  else if(P==='/api/choice'&&req.method==='POST'){const r=E.choose(S,g,body.choice,pack,now);E.next(S,g,pack,now);out={...r,state:pub()};}

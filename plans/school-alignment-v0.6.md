@@ -1,4 +1,4 @@
-# School alignment v0.5: follow what the learner meets at school
+# School alignment v0.6: follow what the learner meets at school
 
 **Status:** 🟡 implemented on branch `feat/school-alignment`, 8/8 slices, pending review and a live run. Design:
 [docs/SCHOOL.md](../docs/SCHOOL.md).

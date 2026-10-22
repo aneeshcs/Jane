@@ -22,8 +22,12 @@ export const loadTax=()=>JSON.parse(fs.readFileSync(path.join(DIR,'public/tax.js
 export const loadSchool=()=>{const f=path.join(DIR,'public/school.json');return fs.existsSync(f)?JSON.parse(fs.readFileSync(f,'utf8')):null;};
 export const ptDate=(ms=Date.now())=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
 export function kvList(prefix){if(FS)return FS.listSync(prefix);const out=wr(['kv','key','list','--binding','JANE_KV','--remote','--prefix',prefix]);return JSON.parse(out).map(k=>k.name);}
-// active quests = started, not finished (max 3 at a time)
-export const QUEST_CAP=3;
+// active quests = started, not finished (v0.5: one at a time; older states may still hold several)
+// v0.5 refresh: how many leading stages of a quest the learner has reached. A stage is reached when any of its
+// questions (or its boss power-up card) was seen, or it holds the item on screen; every earlier stage counts too.
+// Reached stages are immutable: publish-lessons --refresh only changes the stages after them.
+export function questReached(S,pack){const d=pack.date,live=[S?.current,S?.miniHold].map(x=>String(x?.packKey||'')).filter(Boolean);let r=0;
+  (pack.topics||[]).forEach((t,i)=>{const pre=`${d}:${t.topicId}:`;if((t.questions||[]).some((q,j)=>S?.packSeen?.[pre+j])||S?.packSeen?.[pre+'powerup']||live.some(k=>k.startsWith(pre)))r=i+1;});return r;}
 export function activeQuests(S,except){const Q=S?.quests||{};return Object.entries(Q).filter(([d,q])=>q.started&&!q.done&&d!==except).map(([d])=>d).sort();}
 // Learner settings: [vars] LEARNER_NAME / LEARNER_AGE / LEARNER_GRADE (and SCHOOL_PROFILE) in wrangler.toml (env vars override; local mode uses env only, like the server). Defaults: Explorer, 10, upper elementary.
 export function learnerConfig(){const v={};if(!LOCAL)try{const t=fs.readFileSync(path.join(DIR,'wrangler.toml'),'utf8');const m=t.match(/^\[vars\]([\s\S]*?)(?=^\[|$(?![\s\S]))/m);
